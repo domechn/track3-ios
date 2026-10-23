@@ -431,7 +431,24 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                 <CardContent className="px-0 pb-3 pt-0">
                   <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
                     <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.details")}</summary>
-                  <div className="overflow-x-auto">
+                  {isIOS() ? <ul aria-label={t("rebalance.suggestions")} className="space-y-3 px-4">
+                    {result.rows.map((row) => (
+                      <li key={`${row.assetType ?? "cash"}:${row.symbol}`} aria-label={row.symbol} className="min-w-0 space-y-3 rounded-2xl border bg-card p-4 text-sm tabular-nums">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <strong className="min-w-0 truncate">{row.symbol}</strong>
+                          <span className="text-muted-foreground">{row.kind === "cash"
+                            ? t("rebalance.cashReserveAmount").replace("{amount}", row.tradeValue.toFixed(2)).replace("{currency}", currency.currency)
+                            : row.tradeValue > 0 ? t("rebalance.buy") : row.tradeValue < 0 ? t("rebalance.sell") : t("rebalance.noTrade")}</span>
+                        </div>
+                        <p>{t("rebalance.current")}: {row.currentPercent.toFixed(2)}% → {t("rebalance.target")}: {row.targetPercent.toFixed(2)}%</p>
+                        <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                          <span>{t("rebalance.value")}: {Math.abs(row.tradeValue).toFixed(2)} {currency.currency}</span>
+                          <span>{t("rebalance.quantity")}: {row.tradeQuantity === null ? "—" : Math.abs(row.tradeQuantity).toFixed(8)}</span>
+                        </div>
+                        {row.note && <p className="text-muted-foreground">{row.note === "missing-price" ? t("rebalance.missingPrice") : t("rebalance.belowThreshold")}</p>}
+                      </li>
+                    ))}
+                  </ul> : <div className="overflow-x-auto">
                     <table aria-label={t("rebalance.suggestions")} className="w-full min-w-[680px] text-xs tabular-nums">
                       <thead className="border-y bg-muted/40 text-muted-foreground">
                         <tr>
@@ -459,7 +476,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </div>}
                   </details>
                   <p className="px-4 pt-2 text-xs text-muted-foreground">{t("rebalance.rounding").replace("{currency}", currency.currency)}</p>
                 </CardContent>

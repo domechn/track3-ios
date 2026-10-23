@@ -3,6 +3,7 @@ import Darwin
 import LocalAuthentication
 import Security
 import UIKit
+import UserNotifications
 
 private final class Track3PrivacyLock: NSObject {
     static let shared = Track3PrivacyLock()
@@ -22,10 +23,11 @@ private final class Track3PrivacyLock: NSObject {
         center.addObserver(self, selector: #selector(privacyCover), name: UIApplication.willResignActiveNotification, object: nil)
         center.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
         center.addObserver(self, selector: #selector(foreground), name: UIApplication.didBecomeActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(windowVisible), name: UIWindow.didBecomeVisibleNotification, object: nil)
         if enabled {
             needsUnlock = true
             cover()
-            if UIApplication.shared.applicationState == .active { authenticateForeground() }
+            if !windows.isEmpty && UIApplication.shared.applicationState == .active { authenticateForeground() }
         }
     }
 
@@ -89,10 +91,19 @@ private final class Track3PrivacyLock: NSObject {
         else { uncover() }
     }
 
+    @objc private func windowVisible() {
+        if enabled && needsUnlock {
+            cover()
+            if UIApplication.shared.applicationState == .active { authenticateForeground() }
+        } else if UIApplication.shared.applicationState != .active {
+            cover()
+        }
+    }
+
     @objc private func retry() { authenticateForeground() }
 
     private func authenticateForeground() {
-        guard enabled && !authenticating else { return }
+        guard enabled && !authenticating && !windows.isEmpty else { return }
         authenticating = true
         let generation = unlockGeneration
         let context = LAContext()
@@ -274,7 +285,11 @@ public func track3IOSAuthenticate() -> Bool {
         approved = success
         semaphore.signal()
     }
-    return semaphore.wait(timeout: .now() + 90) == .success && approved
+    guard semaphore.wait(timeout: .now() + 90) == .success else {
+        context.invalidate()
+        return false
+    }
+    return approved
 }
 
 @_cdecl("track3_ios_haptic")
@@ -291,7 +306,14 @@ public func track3IOSHaptic(_ kind: UInt8) {
 @_cdecl("track3_ios_set_badge")
 public func track3IOSSetBadge(_ count: Int32) {
     DispatchQueue.main.async {
-        UIApplication.shared.applicationIconBadgeNumber = Int(max(0, count))
+        let badge = Int(max(0, count))
+        if #available(iOS 16.0, *) {
+            UNUserNotificationCenter.current().setBadgeCount(badge) { error in
+                if let error { NSLog("Track3 badge update failed: %@", error.localizedDescription) }
+            }
+        } else {
+            UIApplication.shared.applicationIconBadgeNumber = badge
+        }
     }
 }
 

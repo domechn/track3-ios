@@ -38,17 +38,14 @@ project.write_text(text)
 
 info = apple / "track3_iOS/Info.plist"
 info_text = info.read_text()
-for key, variable in (
-    ("CFBundleShortVersionString", "MARKETING_VERSION"),
-    ("CFBundleVersion", "CURRENT_PROJECT_VERSION"),
-):
+for key in ("CFBundleShortVersionString", "CFBundleVersion"):
     info_text = re.sub(
         rf"(<key>{key}</key>\s*<string>)[^<]*(</string>)",
-        rf"\g<1>$({variable})\g<2>",
+        rf"\g<1>{version}\g<2>",
         info_text,
         count=1,
     )
-info.write_text(info_text)
+info.write_text(info_text.rstrip("\n"))
 
 pbxproj = apple / "track3.xcodeproj/project.pbxproj"
 if pbxproj.exists():
@@ -66,6 +63,7 @@ if pbxproj.exists():
                 "INFOPLIST_FILE = track3_iOS/Info.plist;",
                 f"INFOPLIST_FILE = track3_iOS/Info.plist;\n\t\t\t\t{setting}",
             )
+    pbx_text = re.sub(r'(?m)^(\s*)PRODUCT_NAME = "?Track3"?;', r'\g<1>PRODUCT_NAME = "Track3";', pbx_text)
     pbxproj.write_text(pbx_text)
 
 entitlements = apple / entry.group(1)

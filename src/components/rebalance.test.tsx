@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Rebalance from "./rebalance";
 import { DataChangedContext } from "@/contexts/data-changed";
@@ -62,6 +62,25 @@ beforeEach(() => {
 afterEach(() => localStorage.removeItem(localeLocalStorageKey));
 
 describe("Rebalance page", () => {
+  it("shows detailed iPhone results as cards without a wide table", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [
+        { kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 },
+        { kind: "asset", assetType: "crypto", symbol: "ETH", percent: 50 },
+      ],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const cards = await screen.findByRole("list", { name: "Suggested trades" });
+    expect(screen.queryByRole("table", { name: "Suggested trades" })).not.toBeInTheDocument();
+    const btc = within(cards).getByRole("listitem", { name: /BTC/ });
+    expect(btc).toHaveTextContent("75.00%");
+    expect(btc).toHaveTextContent("50.00%");
+    expect(btc).toHaveTextContent("Sell");
+    expect(btc).toHaveTextContent("20.00");
+    expect(btc).toHaveTextContent("0.66666667");
+  });
   it("offers a touch slider for each target on iPhone", async () => {
     vi.mocked(isIOS).mockReturnValue(true);
     vi.mocked(getRebalanceProfile).mockResolvedValue({

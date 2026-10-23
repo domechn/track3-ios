@@ -132,10 +132,10 @@ const App = ({
             value={selectedTheme}
             className="grid max-w-2xl grid-cols-1 md:grid-cols-2 gap-6"
           >
-            <Label htmlFor="system" className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3">
+            {isIOS() && <Label htmlFor="system" className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3">
               <RadioGroupItem value="system" id="system" />
               {t("appearance.theme.system")}
-            </Label>
+            </Label>}
             <Label htmlFor="light" className="cursor-pointer">
               <RadioGroupItem value="light" className="sr-only" id="light" />
               <div

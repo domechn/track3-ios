@@ -63,6 +63,21 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
 });
 
+it("traps focus and locks background scroll while the iPhone rule editor is open", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<><button>Outside</button><GoalsAlerts /></>);
+  await screen.findByText("No rules yet");
+  await userEvent.click(screen.getByText("Add alert"));
+  const dialog = screen.getByRole("dialog", { name: "Add alert" });
+  expect(document.body.style.overflow).toBe("hidden");
+  within(dialog).getByRole("button", { name: "Cancel" }).focus();
+  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+  expect(document.body.style.overflow).toBe("");
+});
+
 it("shows stored portfolio values as a line chart", async () => {
   vi.mocked(queryPNLChartValue).mockResolvedValue([
     { timestamp: Date.parse("2025-01-01"), totalValue: 100 },

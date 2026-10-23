@@ -86,3 +86,20 @@ test("custom asset source picker opens from the bottom of the iPhone screen", as
   const box = await picker.boundingBox();
   expect(box!.y).toBeGreaterThan(400);
 });
+
+test("rebalance suggestions use readable cards at 375px when a profile has data", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await installTauriBridge(page, undefined, false, true);
+  await page.goto("/#/rebalance");
+  await page.getByText("Details", { exact: true }).click();
+  const cards = page.getByRole("list", { name: "Suggested trades" });
+  await expect(cards).toBeVisible();
+  await expect(page.getByRole("table", { name: "Suggested trades" })).toHaveCount(0);
+  const btc = cards.getByRole("listitem", { name: "BTC" });
+  await expect(btc).toContainText("Current");
+  await expect(btc).toContainText("Target");
+  await expect(btc).toContainText("Sell");
+  await expect(btc).toContainText("Value");
+  await expect(btc).toContainText("Quantity");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+});

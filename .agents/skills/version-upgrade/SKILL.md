@@ -25,14 +25,17 @@ The current Track3 version bump workflow updates the same version string in thes
 | `src-tauri/Cargo.toml`      | package `version`                           |
 | `src-tauri/Cargo.lock`      | `[[package]]` entry where `name = "track3"` |
 | `src-tauri/tauri.conf.json` | top-level `"version"`                       |
+| `src-tauri/gen/apple/project.yml` | `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` |
+| `src-tauri/gen/apple/track3.xcodeproj/project.pbxproj` | app target `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` |
+| `src-tauri/gen/apple/track3_iOS/Info.plist` | `CFBundleShortVersionString` and `CFBundleVersion` |
 
 From the observed unstaged upgrade pattern, the semantic change is the version bump itself. Formatter-only churn in `tauri.conf.json` can happen, but it is not part of the required release logic.
 
 ## Default Workflow
 
 1. Determine the target version from the user request. If the target version is not explicit, ask first.
-2. Read the four tracked files above and confirm the current version.
-3. Update the same target version in all four places.
+2. Read the tracked files above and confirm the current version.
+3. Update the same target version in all places. After updating `src-tauri/tauri.conf.json`, run `python3 scripts/ios/configure-project.py` to synchronize the committed Xcode files.
 4. Keep the edit surgical:
    - do **not** change dependency versions
    - do **not** change `productName`, `identifier`, bundle settings, or updater settings
@@ -82,8 +85,8 @@ See the assets to download this version and install.
 ## Practical Notes
 
 - `src-tauri/Cargo.lock` should only be updated for the `track3` package entry, not unrelated crates.
-- `src-tauri/tauri.conf.json` must stay in sync with the frontend/package versions or packaged app metadata will drift.
-- If the user says “do the normal version upgrade”, assume these four files are the required baseline set unless they explicitly mention additional release assets.
+- `src-tauri/tauri.conf.json` and the committed iOS project versions must stay in sync with the frontend/package versions or packaged app metadata will drift.
+- If the user says “do the normal version upgrade”, update the four desktop version files and three committed iOS project files above unless they explicitly mention additional release assets.
 - `scripts/update.mjs` copies the GitHub release body into `update.json` via `updateData.notes`, so release note content affects updater metadata as well.
 - If the repo version files still say the previous release version but the user wants notes through `HEAD`, describe the range accurately and avoid presenting that unpublished state as a finalized version number.
 

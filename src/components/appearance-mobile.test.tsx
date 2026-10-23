@@ -41,4 +41,14 @@ describe("iPhone appearance settings", () => {
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
   });
+
+  it("keeps the desktop theme choices unchanged", () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "#/settings/appearance";
+    render(<HashRouter><Appearance /></HashRouter>);
+    expect(screen.queryByText("Follow system")).not.toBeInTheDocument();
+    expect(screen.getByText("Light")).toBeInTheDocument();
+    expect(screen.getByText("Dark")).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(true);
+  });
 });
