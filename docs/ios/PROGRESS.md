@@ -45,7 +45,18 @@ for this worktree is S4 below.
   The web job passed TypeScript, 1,797 Vitest tests, 57 Playwright tests,
   and 61 Rust pure tests. Artifact uploads failed because the repository
   storage quota is full; the launch screenshot was recovered from the log.
-  The fixes in this worktree have **not** run on macOS CI yet.
+- On head `c83c7e5`, run `39973538452` passed its macOS iOS job: simulator
+  build and launch, ready marker, native symbols, unsigned IPA and project
+  check. The web job also passed after a 27-minute apt download at its
+  desktop Rust step. The current workflow changes remove the second apt
+  pass, add retries and bound the jobs and package step. These changes
+  have not run on CI because they have not been committed and pushed by
+  the driver.
+- The README now discloses Aptabase telemetry on iPhone. The release
+  checklist requires App Store privacy labels and an accurate
+  `PrivacyInfo.xcprivacy` manifest; both remain release tasks. Browser
+  tests now save an exchange and wallet at all three iPhone sizes and
+  collect page and console errors across the mobile route suite.
 - A signed physical-device run remains necessary for Face ID/Touch ID
   and passcode fallback, Keychain migration and restore, app-switcher cover,
   notification delivery and badge, haptics, share sheet, Files/iCloud Drive,
@@ -71,6 +82,14 @@ for this worktree is S4 below.
   sync pill's clearance above the tab bar.
 - The current worktree still needs the macOS iOS workflow after the driver
   commits and pushes. No signed-device claim is made from the local checks.
+- Review follow-up local checks passed: `corepack yarn tsc --noEmit`,
+  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit`, 1,798 Vitest
+  tests in 217 files, and all 75 tests in the three mobile Playwright
+  files. The browser run saved 82 screenshots in `test-results/mobile/`.
+  The existing Vitest suite emits expected jsdom canvas and intentional
+  error-boundary messages while exiting successfully. Workflow YAML
+  parsed, and its Ubuntu 24.04 package list covers Playwright's 33
+  Chromium dependencies.
 
 ## S1 foundation
 

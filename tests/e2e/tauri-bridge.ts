@@ -101,6 +101,12 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     if (cmd === "ios_haptic") { haptics++; return null; }
     if (cmd === "ios_lock_enabled") return false;
     if (cmd === "ios_set_badge") return null;
+    if (cmd === "query_binance_balance") {
+      if (args.apiKey !== "e2e-api-key" || args.apiSecret !== "e2e-api-secret") {
+        throw new Error("unexpected exchange credentials");
+      }
+      return {};
+    }
     if (cmd === "ios_share_file") {
       if (!/^\/e2e\/cache\/[0-9a-f-]{36}\/track3-export-data\.json$/.test(args.path) || !files.has(args.path)) {
         throw new Error(`invalid export file: ${args.path}`);

@@ -36,7 +36,8 @@ iPhone control.
 The Playwright iPhone suite saves viewport images in `test-results/mobile/`,
 including `ios-se-overview.png`, `ios-14-history.png`,
 `ios-pro-max-summary.png`, `ios-pro-max-profit.png`, `ios-se-first-launch.png`,
-`ios-14-created-goal.png`, and `ios-pro-max-assistant.png`. These are generated test
+`ios-14-added-sources.png`, `ios-14-created-goal.png`, and
+`ios-pro-max-assistant.png`. These are generated test
 artifacts, so run the browser suite to create them locally. The macOS CI
 simulator job saves `artifacts/iphone-initial.png` and
 `artifacts/iphone-launch.png` and attempts to upload them with its run.
@@ -90,6 +91,11 @@ Track3 does not require a Track3 account. Portfolio records remain local
 unless you export them or turn on optional S3 sync. Price lookups, exchange
 and wallet refreshes, license verification, and a configured AI provider
 send the data needed for those requests to their respective services.
+The iPhone app also sends Aptabase analytics events for app launch and
+refresh, and for some license actions. These include a persistent client
+ID, a session ID, device platform and user agent, locale, app and Tauri
+versions, and event-specific details such as failed or partial source IDs.
+Analytics are sent even when S3 sync is off.
 The AI assistant can propose changes; only the confirmation card can
 execute an approved action.
 

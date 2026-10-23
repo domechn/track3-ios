@@ -123,6 +123,39 @@ for (const phone of phones) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
   });
 
+  test(`an exchange and wallet can be added on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page);
+    await page.goto("/#/more");
+    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("navigation", { name: "Settings sections" })
+      .getByRole("link", { name: "Data sources" }).click();
+
+    await page.getByRole("button", { name: "Add wallet" }).click();
+    const wallet = page.getByRole("dialog", { name: "Edit data source" });
+    await wallet.getByRole("button", { name: "Continue" }).click();
+    await wallet.getByRole("textbox", { name: "Alias" }).fill("Long-term BTC");
+    await wallet.getByRole("textbox", { name: "Address" }).fill("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    await wallet.getByRole("button", { name: "Save changes" }).click();
+    await expect(wallet).not.toBeVisible();
+    await expect(page.getByRole("region", { name: "Wallet" }).getByRole("button", { name: /^Long-term BTC / })).toBeVisible();
+
+    await page.getByRole("button", { name: "Add exchange" }).click();
+    const exchange = page.getByRole("dialog", { name: "Edit data source" });
+    await exchange.getByRole("button", { name: "Continue" }).click();
+    await exchange.getByRole("textbox", { name: "Alias" }).fill("Portfolio Binance");
+    await exchange.getByRole("textbox", { name: "Api Key" }).fill("e2e-api-key");
+    await exchange.getByRole("textbox", { name: "Api Secret" }).fill("e2e-api-secret");
+    await exchange.getByRole("button", { name: "Save changes" }).click();
+    await expect(exchange).not.toBeVisible();
+    await expect(page.getByRole("region", { name: "Exchanges" }).getByRole("button", { name: /^Portfolio Binance / })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Wallet" }).getByRole("button", { name: /^Long-term BTC / })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Exchanges" }).getByRole("button", { name: /^Portfolio Binance / })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-added-sources.png` });
+  });
+
   test(`Files export restores on iPhone ${phone.name}`, async ({ page }) => {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     const bridge = await installTauriBridge(page);

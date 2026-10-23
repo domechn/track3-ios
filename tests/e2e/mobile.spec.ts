@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { installTauriBridge } from "./tauri-bridge";
 
@@ -12,7 +12,21 @@ const sizes = [
   { width: 430, height: 932 },
 ];
 
+let browserErrors: string[];
+test.beforeEach(() => { browserErrors = []; });
+test.afterEach(() => { expect(browserErrors).toEqual([]); });
+
+function watchPage(page: Page) {
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
+  return page;
+}
+
 test("the iOS viewport permits text zoom", async ({ page }) => {
+  watchPage(page);
+  await installTauriBridge(page);
   await page.goto("/");
   const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
   expect(viewport).toContain("viewport-fit=cover");
@@ -23,7 +37,7 @@ test("the iOS viewport permits text zoom", async ({ page }) => {
 for (const size of sizes) {
   test(`data routes fit an iPhone viewport at ${size.width}x${size.height}`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: size, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
-    const page = await context.newPage();
+    const page = watchPage(await context.newPage());
     mkdirSync("test-results/mobile", { recursive: true });
     try {
       await installTauriBridge(page);
@@ -95,7 +109,7 @@ for (const size of sizes) {
 for (const width of [844, 932]) {
 test(`a ${width}pt landscape iPhone keeps the touch shell`, async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width, height: 390 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -110,7 +124,7 @@ test(`a ${width}pt landscape iPhone keeps the touch shell`, async ({ browser }) 
 
 test("history snapshots use touch rows and a detail sheet", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/history");
@@ -130,7 +144,7 @@ test("history snapshots use touch rows and a detail sheet", async ({ browser }) 
 
 test("history swipe reveals delete, then confirm and undo restore the row", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/history");
@@ -166,7 +180,7 @@ test("history swipe reveals delete, then confirm and undo restore the row", asyn
 
 test("history pagination controls stay together at phone width", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/history");
@@ -182,7 +196,7 @@ test("history pagination controls stay together at phone width", async ({ browse
 
 test("the portfolio date range opens a native date sheet on phones", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -197,7 +211,7 @@ test("the portfolio date range opens a native date sheet on phones", async ({ br
 
 test("comparison dates use a snapshot selection sheet", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/comparison");
@@ -209,13 +223,19 @@ test("comparison dates use a snapshot selection sheet", async ({ browser }) => {
     await expect.poll(() => dateInput.evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16);
     await page.evaluate(() => window.scrollTo(0, 0));
     const handle = sheet.locator(".mobile-sheet-handle-area");
-    await handle.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
-    await handle.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 102, clientY: 205 }] });
-    await handle.dispatchEvent("touchend", { changedTouches: [{ identifier: 1, clientX: 102, clientY: 205 }] });
+    const swipeHandle = async (fromX: number, fromY: number, toX: number, toY: number) => {
+      await handle.evaluate((element, points) => {
+        const touch = (x: number, y: number) => new Touch({ identifier: 1, target: element, clientX: x, clientY: y });
+        const start = touch(points.fromX, points.fromY);
+        const end = touch(points.toX, points.toY);
+        element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [start], changedTouches: [start] }));
+        element.dispatchEvent(new TouchEvent("touchmove", { bubbles: true, touches: [end], changedTouches: [end] }));
+        element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [end] }));
+      }, { fromX, fromY, toX, toY });
+    };
+    await swipeHandle(100, 100, 102, 205);
     await expect(page.locator(".mobile-pull-indicator")).toHaveCount(0);
-    await handle.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 5, clientY: 100 }] });
-    await handle.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 110, clientY: 190 }] });
-    await handle.dispatchEvent("touchend", { changedTouches: [{ identifier: 1, clientX: 110, clientY: 190 }] });
+    await swipeHandle(5, 100, 110, 190);
     await expect(page).toHaveURL(/#\/comparison$/);
   } finally {
     await context.close();
@@ -224,7 +244,7 @@ test("comparison dates use a snapshot selection sheet", async ({ browser }) => {
 
 test("the More route is visible on desktop", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/more");
@@ -236,7 +256,7 @@ test("the More route is visible on desktop", async ({ browser }) => {
 
 test("a bottom sheet follows the handle between medium and large detents", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/comparison");
@@ -269,7 +289,7 @@ test("a bottom sheet follows the handle between medium and large detents", async
 
 test("comparison range choices respond to a horizontal swipe", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/comparison");
@@ -287,7 +307,7 @@ test("comparison range choices respond to a horizontal swipe", async ({ browser 
 
 test("coin transactions open as detail rows with edit actions", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page, undefined, true);
     await page.goto("/#/coins/BTC");
@@ -302,7 +322,7 @@ test("coin transactions open as detail rows with edit actions", async ({ browser
 
 test("coin switching opens a searchable sheet", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/coins/BTC");
@@ -317,7 +337,7 @@ test("coin switching opens a searchable sheet", async ({ browser }) => {
 
 test("expanded overview rankings fit the phone card", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -353,7 +373,7 @@ test("expanded overview rankings fit the phone card", async ({ browser }) => {
 
 test("portfolio change can switch from percent to value by touch", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -369,7 +389,7 @@ test("portfolio change can switch from percent to value by touch", async ({ brow
 
 test("insight actions fit full size phone touch targets", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page, undefined, true);
     await page.goto("/#/assistant");
@@ -392,7 +412,7 @@ test("insight actions fit full size phone touch targets", async ({ browser }) =>
 
 test("wallet changes open a detail sheet with available actions", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/wallets");
@@ -407,7 +427,7 @@ test("wallet changes open a detail sheet with available actions", async ({ brows
 
 test("wallet allocation has a full size touch row for each source", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/wallets");
@@ -421,7 +441,7 @@ test("wallet allocation has a full size touch row for each source", async ({ bro
 
 test("large route titles collapse into the sticky header while scrolling", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -441,7 +461,7 @@ test("back navigation returns to the previous page in the More tab", async ({ br
     viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
   });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/more");
@@ -462,7 +482,7 @@ test("back navigation returns to the previous page in the More tab", async ({ br
 
 test("pushing a detail route starts at the top with a sticky Back control", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -484,7 +504,7 @@ test("pushing a detail route starts at the top with a sticky Back control", asyn
 
 test("tab switches restore position and tapping the active tab returns to its root", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -509,7 +529,7 @@ test("tab switches restore position and tapping the active tab returns to its ro
 
 test("Analytics opens its subpages and Back returns to Analytics", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/summary");
@@ -528,7 +548,7 @@ test("Analytics opens its subpages and Back returns to Analytics", async ({ brow
 
 test("the latest history snapshot has a visible delete action in its detail", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/history");
@@ -544,7 +564,7 @@ test("the latest history snapshot has a visible delete action in its detail", as
 
 test("wide touch screens do not activate phone gestures", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/coins/BTC");
@@ -563,7 +583,7 @@ test("wide touch screens do not activate phone gestures", async ({ browser }) =>
 
 test("refresh source status rises from the bottom as a sheet", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");
@@ -582,7 +602,7 @@ test("refresh source status rises from the bottom as a sheet", async ({ browser 
 
 test("pulling down reveals the last refresh time", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
+  const page = watchPage(await context.newPage());
   try {
     await installTauriBridge(page);
     await page.goto("/#/overview");

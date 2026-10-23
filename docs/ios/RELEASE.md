@@ -22,6 +22,23 @@ signing and a provisioning profile.
 The Xcode target currently supports iPhone only (`TARGETED_DEVICE_FAMILY=1`);
 an iPad layout requires separate design and validation before enabling iPad.
 
+## App Store privacy preparation
+
+Before submitting a signed build, review the actual app and bundled SDK
+network traffic, then complete the App Store Connect privacy labels.
+Include Aptabase analytics: launch, refresh and license-action events send
+a persistent client ID and session ID, platform and user agent, locale,
+app and Tauri versions, and event details that can include failed or
+partial source IDs. Review exchange, wallet, price, license, assistant
+provider and optional S3 requests separately.
+
+Prepare and include `PrivacyInfo.xcprivacy` in the iOS app bundle with
+accurate collected-data, tracking and required-reason API declarations
+for the release build and its bundled dependencies. Check the compiled
+archive for the manifest and resolve Xcode's privacy report before
+TestFlight submission. The manifest and App Store privacy labels remain
+release tasks; the unsigned CI IPA does not establish their accuracy.
+
 ## Signed device checks before TestFlight
 
 1. Install a signed build on an iPhone with a passcode. Check fresh launch,
