@@ -89,7 +89,9 @@ that directory. Backups are available through Files and Finder. Selecting
 arbitrary external directories across launches is unavailable because the
 current plugin does not retain security-scoped access.
 
-The simulator debug build enables a frontend probe that waits for the overview
-heading and invokes a debug-only Rust command to write a readiness marker in
-the app cache, even when data loading fails or charts remain busy. CI polls
-for that marker after capturing its screenshot and logs.
+The simulator debug build enables a frontend probe that waits for rendered
+content, including the empty portfolio on a fresh install, and invokes a
+debug-only Rust command to write a readiness marker in the app cache. An
+early script and the React error boundary also send startup errors to an
+app-cache log in probe builds. CI checks its first screenshot after 20 seconds,
+prints any frontend errors, and then polls for the readiness marker.

@@ -8,6 +8,7 @@ import { renderRightClickMenu } from "./utils/hook";
 import { I18nProvider, useTranslation } from "@/i18n";
 import { isIOS, PlatformProvider } from "@/utils/platform";
 import IOSKeyRecoveryNotice from "@/components/ios-key-recovery-notice";
+import AppErrorBoundary from "@/components/app-error-boundary";
 
 export const ChartResizeContext = React.createContext<{
   needResize: number;
@@ -51,9 +52,11 @@ function Shell() {
 function App() {
   return (
     <I18nProvider>
-      <PlatformProvider>
-        <Shell />
-      </PlatformProvider>
+      <AppErrorBoundary>
+        <PlatformProvider>
+          <Shell />
+        </PlatformProvider>
+      </AppErrorBoundary>
     </I18nProvider>
   );
 }

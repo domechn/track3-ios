@@ -111,6 +111,7 @@
   "assistant.action.result.exported": "已导出",
   "assistant.action.result.unavailable": "操作状态不可用。请重新加载聊天以查看结果。",
   "app.skipToMainContent": "跳到主内容",
+  "app.loadFailed": "Track3 无法打开此页面。",
   "app.brand": "Track3",
   "app.proBadge": "PRO",
   "nav.overview": "概览",

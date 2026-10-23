@@ -1,3 +1,5 @@
+#[cfg(debug_assertions)]
+use std::io::Write;
 use std::{collections::HashMap, io};
 
 use crate::{
@@ -245,6 +247,26 @@ fn mark_frontend_ready(handle: tauri::AppHandle) -> Result<(), String> {
     std::fs::write(cache_dir.join("track3-ready"), b"track3:ready").map_err(|e| e.to_string())
 }
 
+#[cfg(debug_assertions)]
+#[tauri::command]
+fn record_frontend_error(handle: tauri::AppHandle, message: String) -> Result<(), String> {
+    let cache_dir = handle.path().app_cache_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+    let path = cache_dir.join("track3-frontend-errors.log");
+    if path
+        .metadata()
+        .is_ok_and(|metadata| metadata.len() >= 65536)
+    {
+        return Ok(());
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| e.to_string())?;
+    writeln!(file, "{}", message.chars().take(4000).collect::<String>()).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -324,6 +346,7 @@ pub fn run() {
         get_database_url,
         ios_key_recovery_needed,
         mark_frontend_ready,
+        record_frontend_error,
     ]);
     #[cfg(not(debug_assertions))]
     let builder = builder.invoke_handler(tauri::generate_handler![
