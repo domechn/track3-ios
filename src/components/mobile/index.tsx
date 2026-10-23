@@ -65,6 +65,7 @@ export function BottomSheet({
   const { t } = useTranslation();
   const [detent, setDetent] = useState<"medium" | "large">(initialDetent ?? detents[0] ?? "medium");
   const startY = useRef<number | null>(null);
+  const [drag, setDrag] = useState(0);
   const [viewport, setViewport] = useState(() => {
     const visual = window.visualViewport;
     return visual ? {
@@ -91,11 +92,19 @@ export function BottomSheet({
   const wasOpen = useRef(false);
   if (open && !wasOpen.current) restoreFocus.current = document.activeElement as HTMLElement;
   wasOpen.current = open;
-  const dragStart = (event: React.PointerEvent) => { startY.current = event.clientY; };
+  const dragStart = (event: React.PointerEvent) => {
+    startY.current = event.clientY;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+  const dragMove = (event: React.PointerEvent) => {
+    if (startY.current === null) return;
+    setDrag(Math.max(-window.innerHeight, Math.min(window.innerHeight - 120, event.clientY - startY.current)));
+  };
   const dragEnd = (event: React.PointerEvent) => {
     if (startY.current === null) return;
     const distance = event.clientY - startY.current;
     startY.current = null;
+    setDrag(0);
     if (distance > 80) {
       if (detent === "large" && detents.includes("medium")) setDetent("medium");
       else onOpenChange(false);
@@ -103,17 +112,23 @@ export function BottomSheet({
       setDetent("large");
     }
   };
+  const sheetHeight = detent === "large"
+    ? "100dvh - env(safe-area-inset-top) - .5rem"
+    : "min(60dvh, 42rem)";
+  const dragHeight = drag === 0 ? undefined
+    : `calc(${sheetHeight} ${drag > 0 ? "-" : "+"} ${Math.abs(drag)}px)`;
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="mobile-sheet-backdrop" />
         <Dialog.Content className={cn("mobile-sheet", `mobile-sheet-${detent}`)} aria-describedby={undefined}
-          style={viewport ? { bottom: viewport.bottom, maxHeight: viewport.height } : undefined}
+          style={{ ...(viewport ? { bottom: viewport.bottom, maxHeight: viewport.height } : {}), height: dragHeight }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             restoreFocus.current?.focus();
           }}>
-          <div className="mobile-sheet-handle-area" onPointerDown={dragStart} onPointerUp={dragEnd}>
+          <div className="mobile-sheet-handle-area" onPointerDown={dragStart} onPointerMove={dragMove}
+            onPointerUp={dragEnd} onPointerCancel={() => { startY.current = null; setDrag(0); }}>
             <span className="mobile-sheet-handle" aria-hidden="true" />
           </div>
           <div className="mobile-sheet-heading">
@@ -213,6 +228,7 @@ export function PullToRefresh({ children, onRefresh, disabled, className, lastRe
   useEffect(() => () => { start.current = null; }, []);
   return <div data-testid="pull-to-refresh" className={className}
     onTouchStart={(event) => {
+      if (!event.currentTarget.contains(event.target as Node)) return;
       if (disabled || refreshing || window.scrollY > 0) return;
       start.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }}

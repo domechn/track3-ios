@@ -885,7 +885,7 @@ const App = ({
   return (
     <OverviewLoadingContext.Provider value={{ reportLoaded }}>
       <div className="relative min-h-[400px]">
-        <h1 className="sr-only">{formatAssetLabel({ symbol, assetType })}</h1>
+        {!isMobile && <h1 className="sr-only">{formatAssetLabel({ symbol, assetType })}</h1>}
         <StaggerContainer className="space-y-4">
           <UpdatePriceDialog
             open={updatePriceDialogOpen}

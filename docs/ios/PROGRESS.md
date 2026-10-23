@@ -86,6 +86,20 @@ and signed build checks remain pending.
   saved 40 PNGs in `test-results/mobile/`; all have the expected dimensions.
   The route sweep checked overflow, clipped text, tab visibility, and
   injected safe-area clearance at 320, 375, 390, and 430 CSS pixels.
+- Reviewer follow-up: the Xcode project check now restores the committed
+  variable based `Info.plist` and its trailing newline after Tauri rewrites
+  the file. Portal sheet gestures no longer trigger page refresh or swipe-back.
+  Sheet detents track the handle during a drag. Phone data routes have one
+  `h1`, history rows retain logo previews, mobile inputs use at least 16px
+  text, and `/more` renders on desktop.
+- Local checks after this follow-up passed: `corepack yarn tsc --noEmit`;
+  Vitest (208 files, 1,748 tests); Playwright mobile suite (26 tests).
+  The four viewport sweeps regenerated 40 PNGs in `test-results/mobile/`
+  and checked width, clipped text, tab visibility, and safe-area clearance.
+  The comparison sheet tests cover portal drag isolation and both detents.
+- The duplicated empty-date check in S3-owned `configuration.ts` and the
+  existing i18n key order were left for their owner because this step
+  prohibits edits to S3 files and non-append edits to locale JSON.
 - Still pending: green macOS CI after the driver commits and pushes these
   changes, simulator review, physical-device interaction checks, and a native haptic bridge. The
   shared haptic hook uses vibration where a WebView supports it; WKWebView

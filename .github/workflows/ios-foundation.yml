@@ -160,7 +160,9 @@ jobs:
             rm -rf artifacts/ipa
           fi
       - name: Check committed Xcode project
-        run: git diff --exit-code -- src-tauri/gen/apple
+        run: |
+          python3 scripts/ios/configure-project.py
+          git diff --exit-code -- src-tauri/gen/apple
       - name: Upload simulator screenshots and launch logs
         if: always()
         continue-on-error: true

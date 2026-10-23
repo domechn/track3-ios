@@ -309,6 +309,7 @@ function Layout({
         {/* Main content */}
         <main id="app-main-content" tabIndex={-1} className="p-5"
           onTouchStart={(event) => {
+            if (!event.currentTarget.contains(event.target as Node)) return;
             const touch = event.touches[0];
             swipeStart.current = touch.clientX < 24 ? { x: touch.clientX, y: touch.clientY } : null;
           }}

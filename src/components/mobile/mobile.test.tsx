@@ -95,6 +95,39 @@ describe("mobile interactions", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Last refresh at 10:30");
   });
 
+  it("does not refresh when a drag starts inside a portal sheet", () => {
+    const onRefresh = vi.fn();
+    render(<PullToRefresh onRefresh={onRefresh}>
+      <BottomSheet open onOpenChange={() => {}} title="Dates">
+        <div>Snapshot dates</div>
+      </BottomSheet>
+    </PullToRefresh>);
+    const sheet = screen.getByRole("dialog", { name: "Dates" });
+    fireEvent.touchStart(sheet, { touches: [{ clientX: 100, clientY: 20 }], changedTouches: [{ clientX: 100, clientY: 20 }] });
+    fireEvent.touchMove(sheet, { touches: [{ clientX: 100, clientY: 120 }], changedTouches: [{ clientX: 100, clientY: 120 }] });
+    fireEvent.touchEnd(sheet, { touches: [{ clientX: 100, clientY: 120 }], changedTouches: [{ clientX: 100, clientY: 120 }] });
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("lets the sheet handle track a drag before changing detents", () => {
+    render(<BottomSheet open onOpenChange={() => {}} title="Details">
+      <div>Content</div>
+    </BottomSheet>);
+    const sheet = screen.getByRole("dialog", { name: "Details" });
+    const handle = sheet.querySelector(".mobile-sheet-handle-area")!;
+    fireEvent.pointerDown(handle, { clientY: 300, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientY: 200, pointerId: 1 });
+    expect(sheet).toHaveStyle({ height: "calc(min(60dvh, 42rem) + 100px)" });
+    fireEvent.pointerUp(handle, { clientY: 200, pointerId: 1 });
+    expect(sheet).toHaveClass("mobile-sheet-large");
+    fireEvent.pointerDown(handle, { clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientY: 250, pointerId: 1 });
+    expect(sheet).toHaveStyle({ height: "calc(100dvh - env(safe-area-inset-top) - .5rem - 50px)" });
+    fireEvent.pointerUp(handle, { clientY: 300, pointerId: 1 });
+    expect(sheet).toHaveClass("mobile-sheet-medium");
+  });
+
   it("closes an action sheet after choosing an action", () => {
     const onOpenChange = vi.fn();
     const onChoose = vi.fn();

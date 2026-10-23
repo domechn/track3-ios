@@ -33,10 +33,13 @@ for (const size of sizes) {
         await expect(page.locator("#app-main-content")).toBeVisible();
         await expect.poll(() => page.locator(".app-content").evaluate((node) => getComputedStyle(node).marginLeft)).toBe("0px");
         await expect(page.locator(route === "history" ? ".history-mobile-list"
-          : route === "cost-basis" ? "#app-main-content h1.text-2xl"
+          : route === "cost-basis" ? "#app-main-content .mobile-large-title"
           : route === "more" ? ".mobile-more-hub"
           : route === "goals" ? "#app-main-content h1:not(.mobile-large-title)"
-          : "#app-main-content h1.sr-only")).toBeAttached({ timeout: route === routes[0] ? 20_000 : 5_000 });
+          : "#app-main-content .mobile-large-title")).toBeAttached({ timeout: route === routes[0] ? 20_000 : 5_000 });
+        if (!["more", "goals"].includes(route)) {
+          await expect(page.locator("#app-main-content h1")).toHaveCount(1);
+        }
         await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
         if (route.startsWith("coins/")) {
           await expect(page.getByTestId("coin-page-loading-overlay")).toHaveClass(/opacity-0/);
@@ -113,6 +116,7 @@ test("history snapshots use touch rows and a detail sheet", async ({ browser }) 
     await page.goto("/#/history");
     const row = page.getByTestId("history-mobile-row").first();
     await expect(row).toBeVisible();
+    await expect(row.locator(".image-stack img")).not.toHaveCount(0);
     await row.click();
     const detail = page.getByRole("dialog", { name: /historical data detail/i });
     await expect(detail).toBeVisible();
@@ -201,6 +205,63 @@ test("comparison dates use a snapshot selection sheet", async ({ browser }) => {
     const sheet = page.getByRole("dialog", { name: /base date/i });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole("button", { name: /2024/ }).first()).toBeVisible();
+    const dateInput = sheet.locator('input[type="date"]');
+    await expect.poll(() => dateInput.evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const handle = sheet.locator(".mobile-sheet-handle-area");
+    await handle.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 100, clientY: 100 }] });
+    await handle.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 102, clientY: 205 }] });
+    await handle.dispatchEvent("touchend", { changedTouches: [{ identifier: 1, clientX: 102, clientY: 205 }] });
+    await expect(page.locator(".mobile-pull-indicator")).toHaveCount(0);
+    await handle.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 5, clientY: 100 }] });
+    await handle.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 110, clientY: 190 }] });
+    await handle.dispatchEvent("touchend", { changedTouches: [{ identifier: 1, clientX: 110, clientY: 190 }] });
+    await expect(page).toHaveURL(/#\/comparison$/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the More route is visible on desktop", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/more");
+    await expect(page.locator(".mobile-more-hub")).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("a bottom sheet follows the handle between medium and large detents", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/comparison");
+    await page.getByRole("button", { name: /base date/i }).click();
+    const sheet = page.getByRole("dialog", { name: /base date/i });
+    const handle = sheet.locator(".mobile-sheet-handle-area");
+    const medium = (await sheet.boundingBox())!.height;
+    const start = (await handle.boundingBox())!;
+    const x = start.x + start.width / 2;
+    const y = start.y + start.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y - 100, { steps: 5 });
+    expect((await sheet.boundingBox())!.height).toBeGreaterThan(medium + 50);
+    await page.mouse.up();
+    await expect(sheet).toHaveClass(/mobile-sheet-large/);
+    const large = (await sheet.boundingBox())!.height;
+    const next = (await handle.boundingBox())!;
+    const nextY = next.y + next.height / 2;
+    await page.mouse.move(x, nextY);
+    await page.mouse.down();
+    await page.mouse.move(x, nextY + 100, { steps: 5 });
+    expect((await sheet.boundingBox())!.height).toBeLessThan(large - 50);
+    await page.mouse.up();
+    await expect(sheet).toHaveClass(/mobile-sheet-medium/);
   } finally {
     await context.close();
   }
@@ -248,6 +309,7 @@ test("coin switching opens a searchable sheet", async ({ browser }) => {
     await page.getByRole("combobox", { name: /symbol/i }).click();
     await expect(page.getByRole("dialog", { name: /symbol/i })).toBeVisible();
     await expect(page.getByPlaceholder(/search/i)).toBeVisible();
+    await expect.poll(() => page.getByPlaceholder(/search/i).evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(16);
   } finally {
     await context.close();
   }

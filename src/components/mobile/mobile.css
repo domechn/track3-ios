@@ -42,7 +42,7 @@
 .mobile-tab-badge { position: absolute; top: -.4rem; left: .9rem; border-radius: 1rem; padding: .1rem .28rem; background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); font-size: .65rem; }
 @media (max-width: 950px) and (pointer: coarse) { .mobile-tab-bar { display: flex; } }
 .date-picker-mobile { display: none; }
-.mobile-date-input { min-height: 2.75rem; width: 100%; border: 1px solid hsl(var(--border)); border-radius: .6rem; padding: .5rem .75rem; background: hsl(var(--card)); color: hsl(var(--foreground)); }
+.mobile-date-input { min-height: 2.75rem; width: 100%; border: 1px solid hsl(var(--border)); border-radius: .6rem; padding: .5rem .75rem; background: hsl(var(--card)); color: hsl(var(--foreground)); font-size: 1rem; }
 .mobile-date-snapshots { display: grid; gap: .5rem; }
 .mobile-date-snapshot { display: flex; justify-content: space-between; align-items: center; min-height: 3rem; gap: 1rem; width: 100%; padding: .75rem; border-radius: .75rem; background: hsl(var(--card)); text-align: left; }
 .mobile-date-snapshot[aria-current] { outline: 2px solid hsl(var(--ring)); }
@@ -55,6 +55,7 @@
 .mobile-coin-option { min-height: 2.75rem; width: 100%; border-bottom: 1px solid hsl(var(--border)); padding: .6rem; text-align: left; }
 @media (pointer: coarse) { .mobile-chart-touch, .mobile-chart-touch canvas { touch-action: pan-y; } }
 @media (max-width: 950px) and (pointer: coarse) {
+  .mobile-sheet input { font-size: 1rem; }
   .date-picker-mobile { display: block; }
   .date-picker-desktop { display: none; }
   .comparison-metric-header { display: none !important; }

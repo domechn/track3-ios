@@ -985,7 +985,12 @@ const App = ({
                           <span className="shrink-0 font-mono font-semibold">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
                         </span>
                         <span className="flex justify-between gap-2 text-xs text-muted-foreground">
-                          <span>{t("history.assetCount").replace("{n}", String(row.assetCount))}</span>
+                          <span className="flex items-center gap-2">
+                            <ImageStack imageSrcs={row.topAssets.map((asset) =>
+                              resolveAssetLogoSrc(asset, logoMap[asset.symbol]))}
+                              imageWidth={18} imageHeight={18} />
+                            {t("history.assetCount").replace("{n}", String(row.assetCount))}
+                          </span>
                           <span style={{ color: positiveNegativeColor(row.change ?? 0, quoteColor) }}>
                             {row.change === null ? "—" : `${row.change > 0 ? "+" : row.change < 0 ? "-" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.change)))}`}
                           </span>

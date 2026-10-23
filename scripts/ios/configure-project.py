@@ -48,7 +48,7 @@ for key, variable in (
         info_text,
         count=1,
     )
-info.write_text(info_text)
+info.write_text(info_text.rstrip("\n") + "\n")
 
 pbxproj = apple / "track3.xcodeproj/project.pbxproj"
 if pbxproj.exists():

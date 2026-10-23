@@ -163,7 +163,7 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold touch:hidden">{t("cost.title")}</h1>
+        {!isMobile && <h1 className="text-2xl font-semibold">{t("cost.title")}</h1>}
         <p className="text-sm text-muted-foreground">{t("cost.subtitle")}</p>
       </div>
       <AISetupCard page="cost-basis"
