@@ -1,7 +1,13 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor } from "@testing-library/react";
+import { HashRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SystemInfo from "@/components/system-info";
+import { isIOS } from "@/utils/platform";
+
+const render = (ui: React.ReactElement) => testingRender(<HashRouter>{ui}</HashRouter>);
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 
 const mocks = vi.hoisted(() => ({
   activeLicense: vi.fn(),
@@ -101,6 +107,27 @@ beforeEach(() => {
 });
 
 describe("System Info subscription management", () => {
+  it("keeps license entry but hides external subscription links on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/systemInfo?section=pro";
+    render(<SystemInfo onProStatusChange={vi.fn()} />);
+    expect(await screen.findByText("Free")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /view pro benefits/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /subscribe monthly/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Enter existing license key/i)).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+  it("shows only app details on the iPhone About page", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/systemInfo?section=about";
+    render(<SystemInfo onProStatusChange={vi.fn()} />);
+    expect(await screen.findByText("0.6.1")).toBeInTheDocument();
+    expect(screen.queryByText("Upgrade to Pro")).not.toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
   it("keeps subscription controls available when plan data is malformed", async () => {
     mocks.getSubscriptionPlans.mockResolvedValueOnce({});
     render(<SystemInfo onProStatusChange={vi.fn()} />);

@@ -49,6 +49,7 @@ import UsageLabel from "./usage-label";
 import { ASSISTANT_APP_ACTION_EVENT } from "@/middlelayers/ai/actions";
 import { INSIGHT_QUESTION_STORAGE_KEY } from "@/middlelayers/insights-service";
 import { takePendingAssistantQuestion } from "@/middlelayers/ai/pending-question";
+import { isIOS, usePlatform } from "@/utils/platform";
 
 type LoadState =
   | { status: "loading" }
@@ -155,6 +156,8 @@ function ReadyChat({
   baseCurrency: CurrencyRateDetail;
 }) {
   const { t } = useTranslation();
+  const { keyboardHeight } = usePlatform();
+  const mobile = isIOS();
   const secrets = useMemo(() => configuredSecretValues(config), [config]);
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -336,11 +339,13 @@ function ReadyChat({
   const handleNewChat = useCallback(async () => {
     const meta = await createNew();
     navigate(`/assistant/${meta.id}`);
+    setSidebarOpen(false);
   }, [createNew, navigate]);
 
   const handleSelectSession = useCallback(
     (id: string) => {
       navigate(`/assistant/${id}`);
+      setSidebarOpen(false);
     },
    [navigate],
  );
@@ -365,7 +370,8 @@ function ReadyChat({
 
   return (
     <div
-      className="relative flex h-[calc(100vh-88px)] overflow-hidden"
+      className={`relative flex min-w-0 overflow-hidden ${mobile ? "" : "h-[calc(100vh-88px)]"}`}
+      style={mobile ? { height: `calc(100dvh - 10rem - ${keyboardHeight}px)` } : undefined}
       data-testid="chat-session-layout"
     >
       {deleteError && (
@@ -373,7 +379,23 @@ function ReadyChat({
           {t("assistant.chat.deleteFailed")}: {deleteError}
         </p>
       )}
-      <div
+      {mobile && sidebarOpen && <div className="flex w-full min-w-0 flex-col">
+        <button className="min-h-11 self-start px-4 text-primary" onClick={() => setSidebarOpen(false)}>
+          {t("common.back")}
+        </button>
+        <SessionSidebar
+          mobile
+          sessions={sessions}
+          activeId={sessionId ?? null}
+          isLoading={isLoading}
+          onSelect={handleSelectSession}
+          onNew={handleNewChat}
+          onDelete={handleDeleteSession}
+          onPin={pin}
+          processingId={processingSessionId}
+        />
+      </div>}
+      {!mobile && <div
         className={`overflow-hidden transition-[width] duration-200 ease-in-out ${
           sidebarOpen ? "w-[260px]" : "w-0"
         }`}
@@ -390,8 +412,8 @@ function ReadyChat({
           processingId={processingSessionId}
        />
         </div>
-      </div>
-     {sessionLoadError ? (
+      </div>}
+     {mobile && sidebarOpen ? null : sessionLoadError ? (
        <div role="alert" className="flex-1 p-6 text-sm text-destructive">
          {t("assistant.chat.sessionLoadFailed")}: {sessionLoadError}
        </div>

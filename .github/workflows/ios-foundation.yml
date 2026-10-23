@@ -82,6 +82,16 @@ jobs:
         working-directory: src-tauri
       - name: Build unsigned simulator app
         run: VITE_TRACK3_IOS_READY_PROBE=1 corepack yarn tauri ios build --target aarch64-sim --debug --no-sign --ci
+      - name: Check native symbols in simulator app
+        run: |
+          set -euo pipefail
+          APP=$(find src-tauri -type d -name '*.app' -print -quit)
+          test -n "$APP"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
+          nm -gU "$APP/$EXECUTABLE" > "$RUNNER_TEMP/track3-native-symbols.txt"
+          for symbol in track3_ios_install_native track3_ios_lock_enabled track3_ios_set_lock_enabled track3_ios_authenticate track3_ios_haptic track3_ios_set_badge track3_ios_share_file track3_ios_keychain_read track3_ios_keychain_write track3_ios_keychain_delete; do
+            grep -Fq " _$symbol" "$RUNNER_TEMP/track3-native-symbols.txt"
+          done
       - name: Launch in iPhone simulator
         run: |
           set -euxo pipefail
@@ -163,6 +173,35 @@ jobs:
         run: |
           python3 scripts/ios/configure-project.py
           git diff --exit-code -- src-tauri/gen/apple
+      - name: Print simulator crash reason
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from time import time
+
+          root = Path.home() / "Library/Logs/DiagnosticReports"
+          for path in sorted(root.glob("*.ips"), key=lambda item: item.stat().st_mtime, reverse=True):
+              if time() - path.stat().st_mtime > 600 or not path.name.lower().startswith(("track3", "track3_ios")):
+                  continue
+              print(f"Crash report: {path.name}")
+              lines = path.read_text(errors="replace").splitlines()
+              try:
+                  report = json.loads("\n".join(lines[1:]))
+                  for key in ("exception", "termination", "asi", "faultingThread", "lastExceptionBacktrace"):
+                      if key in report:
+                          print(f"{key}: {str(report[key])[:4000]}")
+                  thread = report.get("faultingThread")
+                  if isinstance(thread, int):
+                      frames = report.get("threads", [])[thread].get("frames", [])
+                      print(f"frames: {str(frames[:12])[:4000]}")
+              except (ValueError, IndexError, KeyError, TypeError):
+                  for line in lines[:120]:
+                      if any(word in line.lower() for word in ("exception", "termination", "panic", "abort")):
+                          print(line[:1000])
+              break
+            PY
       - name: Upload simulator screenshots and launch logs
         if: always()
         continue-on-error: true
@@ -183,3 +222,8 @@ jobs:
             artifacts/*.zip
             artifacts/*.ipa
           retention-days: 1
+      - name: Typecheck iOS native bridge
+        if: always()
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios15.0-simulator src-tauri/gen/apple/Sources/track3/Track3Native.swift

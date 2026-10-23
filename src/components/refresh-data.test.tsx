@@ -12,6 +12,10 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts } from "@/middlelayers/alert-notifications";
 import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-service";
 import axe from "axe-core";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 
 // Hoist mock fn references so they're available inside vi.mock factories
 const mockSetButtonLoading = vi.hoisted(() => vi.fn());
@@ -63,6 +67,7 @@ vi.mock("@/middlelayers/insights-service", () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(isIOS).mockReturnValue(false);
   mockRefreshAction.current = null;
   localStorage.clear();
   vi.mocked(updateAllCurrencyRates).mockResolvedValue(undefined as never);
@@ -94,6 +99,31 @@ describe("RefreshData — currency rates refresh ordering", () => {
     await act(async () => { finish?.(); await refresh; });
     expect(settled).toBe(true);
   });
+  it("opens a progress sheet while an iPhone refresh is running", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+  });
+
+  it("hides results from the previous run while an iPhone refresh is pending", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockResolvedValueOnce({
+      failedSources: [], requiresDataSourceAction: false, usedLastKnownData: true,
+      persisted: true, sourceResults: [], sourceStatuses: [{ sourceId: "btc:0", label: "Old BTC result", status: "stale" }],
+    } as never);
+    const user = userEvent.setup();
+    render(<RefreshData loading={false} />);
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Old BTC result")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(screen.getByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+    expect(screen.queryByText("Old BTC result")).not.toBeInTheDocument();
+  });
+
   it("announces an active refresh to assistive technology", () => {
     render(<RefreshData loading={true} />);
     expect(screen.getByRole("status")).toHaveTextContent("Refreshing portfolio");

@@ -10,6 +10,8 @@
 		1546A7D02C0CED6808736293 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D78FD9D20BADB532674927F2 /* libapp.a */; };
 		28487405AB2B4E53FDF26DE2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FA0A99ECEB0D2992464B3D5 /* Assets.xcassets */; };
 		28A8125413B0B5DF9048531D /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6D7F0AB6B8996AE253A86092 /* main.mm */; };
+		12EA7F7A15004775A3C28F03 /* Track3Native.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3C4B0177564A25A84369F9 /* Track3Native.swift */; };
+		5A91BB1DA82643E39D7940DD /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19CF20CBEB7B40DE8848A774 /* LocalAuthentication.framework */; };
 		5908703D70F2BB4A7C9EF913 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2048ABF31861B72F4A79F883 /* Metal.framework */; };
 		6EDAD11F9949F6B74721B4E5 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = 72D516C1EBD74702E73F838D /* assets */; };
 		6F18A0CA84E19B0740C234FE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DAD5142586CB595EEF3895BE /* LaunchScreen.storyboard */; };
@@ -26,12 +28,14 @@
 		05D4A17B622483899317F02B /* app.rs */ = {isa = PBXFileReference; path = app.rs; sourceTree = "<group>"; };
 		1A67EDF1E73A6D01FA41FFA2 /* binance.rs */ = {isa = PBXFileReference; path = binance.rs; sourceTree = "<group>"; };
 		1FA0A99ECEB0D2992464B3D5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		19CF20CBEB7B40DE8848A774 /* LocalAuthentication.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = LocalAuthentication.framework; path = System/Library/Frameworks/LocalAuthentication.framework; sourceTree = SDKROOT; };
 		2048ABF31861B72F4A79F883 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		206DC90D1D2BA66BCF6B25B2 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		24260350EB9086DBFA4F1A7F /* export-assistant-chats.rs */ = {isa = PBXFileReference; path = "export-assistant-chats.rs"; sourceTree = "<group>"; };
 		2A298EB02AB5B3B11CEF3EAD /* database_path.rs */ = {isa = PBXFileReference; path = database_path.rs; sourceTree = "<group>"; };
 		2ACB7787CA06CE68553A2CE3 /* sync_persistence.rs */ = {isa = PBXFileReference; path = sync_persistence.rs; sourceTree = "<group>"; };
 		30AB28320D517270AAA5BC06 /* preflight.rs */ = {isa = PBXFileReference; path = preflight.rs; sourceTree = "<group>"; };
+		3D3C4B0177564A25A84369F9 /* Track3Native.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Track3Native.swift; sourceTree = "<group>"; };
 		5208DA2A1954CF8B9C010F57 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		66AB3C7C7125FA58C4A3F070 /* refresh_persistence.rs */ = {isa = PBXFileReference; path = refresh_persistence.rs; sourceTree = "<group>"; };
 		6D7F0AB6B8996AE253A86092 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
@@ -68,6 +72,7 @@
 				1546A7D02C0CED6808736293 /* libapp.a in Frameworks */,
 				8235E4C2E880AF90977F3F30 /* CoreGraphics.framework in Frameworks */,
 				5908703D70F2BB4A7C9EF913 /* Metal.framework in Frameworks */,
+				5A91BB1DA82643E39D7940DD /* LocalAuthentication.framework in Frameworks */,
 				971EC5283508F1A4FC1DA77E /* MetalKit.framework in Frameworks */,
 				F598195BD173F87E6B4D4443 /* QuartzCore.framework in Frameworks */,
 				AED303D9D2CBB08FB4E45F07 /* Security.framework in Frameworks */,
@@ -106,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				6D7F0AB6B8996AE253A86092 /* main.mm */,
+				3D3C4B0177564A25A84369F9 /* Track3Native.swift */,
 				606C62917CEDB1177ED23C86 /* bindings */,
 			);
 			path = track3;
@@ -196,6 +202,7 @@
 				EF5A5F15D96C201FEA8B2C8B /* MetalKit.framework */,
 				A434CF65E149BE8F9647B1F7 /* QuartzCore.framework */,
 				D57CC456C3745D86CD90384E /* Security.framework */,
+				19CF20CBEB7B40DE8848A774 /* LocalAuthentication.framework */,
 				5208DA2A1954CF8B9C010F57 /* UIKit.framework */,
 				206DC90D1D2BA66BCF6B25B2 /* WebKit.framework */,
 			);
@@ -298,6 +305,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				28A8125413B0B5DF9048531D /* main.mm in Sources */,
+				12EA7F7A15004775A3C28F03 /* Track3Native.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

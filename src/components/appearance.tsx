@@ -18,6 +18,8 @@ import {
   useTranslation,
   type Locale,
 } from "@/i18n";
+import { isIOS } from "@/utils/platform";
+import { useSearchParams } from "react-router-dom";
 
 const App = ({
   onQuoteColorChange,
@@ -30,6 +32,7 @@ const App = ({
   const [selectedLocale, setSelectedLocale] = useState<Locale>(locale);
   const originalThemeRef = useRef<Theme>("light");
   const currentTheme = useTheme();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     loadGeneralSettings();
@@ -69,16 +72,20 @@ const App = ({
     setLocale(next);
   }
 
+  const section = isIOS() ? searchParams.get("section") : null;
+  const showTheme = !section || section === "theme";
+  const showLanguage = !section || section === "language";
+
   return (
     <div className="space-y-6">
-      <div>
+      {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("appearance.title")}</h3>
         <p className="text-sm text-muted-foreground">
           {t("appearance.subtitle")}
         </p>
-      </div>
+      </div>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {!section && <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -111,9 +118,9 @@ const App = ({
             </p>
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
-      <Card>
+      {showTheme && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("appearance.theme")}
@@ -125,6 +132,10 @@ const App = ({
             value={selectedTheme}
             className="grid max-w-2xl grid-cols-1 md:grid-cols-2 gap-6"
           >
+            {isIOS() && <Label htmlFor="system" className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3">
+              <RadioGroupItem value="system" id="system" />
+              {t("appearance.theme.system")}
+            </Label>}
             <Label htmlFor="light" className="cursor-pointer">
               <RadioGroupItem value="light" className="sr-only" id="light" />
               <div
@@ -175,9 +186,9 @@ const App = ({
             {t("common.updatePreferences")}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showTheme && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("appearance.quoteColor")}
@@ -207,9 +218,9 @@ const App = ({
             </div>
           </RadioGroup>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showLanguage && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("appearance.language")}
@@ -233,7 +244,7 @@ const App = ({
             ))}
           </RadioGroup>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 };

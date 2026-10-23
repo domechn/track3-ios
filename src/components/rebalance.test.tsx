@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Rebalance from "./rebalance";
 import { DataChangedContext } from "@/contexts/data-changed";
@@ -14,6 +14,10 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { REBALANCE_OPTIONS_KEY } from "@/middlelayers/ai/actions/page-settings";
 import axe from "axe-core";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 vi.mock("@/middlelayers/configuration", async (original) => ({
   ...await original<typeof import("@/middlelayers/configuration")>(),
   loadAIConfig: vi.fn().mockResolvedValue({ endpoint: "http://localhost", apiKey: "", model: "test", contextSize: 8192 }),
@@ -42,6 +46,7 @@ const assets = [
 ];
 
 beforeEach(() => {
+  vi.mocked(isIOS).mockReturnValue(false);
   vi.clearAllMocks();
   localStorage.removeItem(REBALANCE_OPTIONS_KEY);
   sessionStorage.removeItem(REBALANCE_OPTIONS_KEY);
@@ -57,6 +62,58 @@ beforeEach(() => {
 afterEach(() => localStorage.removeItem(localeLocalStorageKey));
 
 describe("Rebalance page", () => {
+  it("shows detailed iPhone results as cards without a wide table", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [
+        { kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 },
+        { kind: "asset", assetType: "crypto", symbol: "ETH", percent: 50 },
+      ],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const cards = await screen.findByRole("list", { name: "Suggested trades" });
+    expect(screen.queryByRole("table", { name: "Suggested trades" })).not.toBeInTheDocument();
+    const btc = within(cards).getByRole("listitem", { name: /BTC/ });
+    expect(btc).toHaveTextContent("75.00%");
+    expect(btc).toHaveTextContent("50.00%");
+    expect(btc).toHaveTextContent("Sell");
+    expect(btc).toHaveTextContent("20.00");
+    expect(btc).toHaveTextContent("0.66666667");
+  });
+  it("offers a touch slider for each target on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 100 }],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const slider = await screen.findByRole("slider", { name: "Target percentage for BTC" });
+    fireEvent.change(slider, { target: { value: "75" } });
+    expect(screen.getByRole("spinbutton", { name: "Target percentage for BTC" })).toHaveValue(75);
+  });
+
+  it("offers 44 point stepper controls and a full-height percentage field on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 }],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const percent = await screen.findByRole("spinbutton", { name: "Target percentage for BTC" });
+    expect(percent).toHaveClass("h-11");
+    expect(screen.getByLabelText("Target kind")).toHaveClass("h-11");
+    expect(screen.getByRole("textbox", { name: "Symbol" })).toHaveClass("h-11");
+    expect(screen.getByRole("button", { name: "Remove target BTC" })).toHaveClass("h-11");
+    fireEvent.click(screen.getByRole("button", { name: "Increase BTC target" }));
+    expect(percent).toHaveValue(51);
+    fireEvent.click(screen.getByRole("button", { name: "Decrease BTC target" }));
+    expect(percent).toHaveValue(50);
+    fireEvent.change(percent, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Increase BTC target" }));
+    expect(percent).toHaveValue(1);
+  });
+
   it("has no axe violations with a saved target profile", async () => {
     vi.mocked(getRebalanceProfile).mockResolvedValue({
       targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 100 }],

@@ -66,6 +66,7 @@ if pbxproj.exists():
                 "INFOPLIST_FILE = track3_iOS/Info.plist;",
                 f"INFOPLIST_FILE = track3_iOS/Info.plist;\n\t\t\t\t{setting}",
             )
+    pbx_text = re.sub(r'(?m)^(\s*)PRODUCT_NAME = "?Track3"?;', r'\g<1>PRODUCT_NAME = "Track3";', pbx_text)
     pbxproj.write_text(pbx_text)
 
 entitlements = apple / entry.group(1)

@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import MessageBubble from "./message-bubble";
 import type { ChatMessage } from "./use-chat";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 
 vi.mock("@/i18n", () => ({
   useTranslation: () => ({
@@ -12,6 +15,7 @@ vi.mock("@/i18n", () => ({
         "assistant.chat.thinking": "Thinking...",
         "assistant.chat.noResponse": "(No response)",
         "assistant.chat.think.label": "Thinking",
+        "assistant.chat.toolActivity": "Tool activity",
         "assistant.usage.tokens": "Prompt {prompt} · Completion {completion} tokens",
         "assistant.usage.cost": "Est. {cost}",
         "assistant.usage.estimated": "Estimated",
@@ -22,6 +26,17 @@ vi.mock("@/i18n", () => ({
 }));
 
 describe("MessageBubble", () => {
+  it("collapses tool activity on iPhone while keeping its summary visible", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<MessageBubble message={{ role: "assistant", blocks: [{ kind: "agent_activity", activities: [
+      { taskId: "fetch", skillName: "portfolio", description: "Read portfolio", status: "completed", resultPreview: "Done" },
+    ] }] }} />);
+    const details = screen.getByText("Tool activity").closest("details");
+    expect(details).not.toHaveAttribute("open");
+    expect(details).toHaveTextContent("Read portfolio");
+    vi.mocked(isIOS).mockReturnValue(false);
+  });
+
   it("shows assistant message tokens and hides cost until pricing is configured", () => {
     const message: ChatMessage = {
       role: "assistant", blocks: [{ kind: "text", text: "Done" }],

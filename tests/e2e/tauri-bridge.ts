@@ -9,7 +9,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -51,6 +51,14 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   }
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/history_snapshots_up.sql"), "utf8"));
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/rebalance_profiles_up.sql"), "utf8"));
+  if (seedRebalanceProfile) {
+    db.run("INSERT INTO rebalance_profiles (id, targets, tolerance_percent) VALUES (1, ?, 0)", [
+      JSON.stringify([
+        { kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 },
+        { kind: "asset", assetType: "crypto", symbol: "ETH", percent: 50 },
+      ]),
+    ]);
+  }
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/alerts_up.sql"), "utf8"));
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/sync_state_up.sql"), "utf8"));
   const config = JSON.stringify({
@@ -79,6 +87,8 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
 
   await page.exposeBinding("__e2eInvoke", async (_source, cmd: string, args: any, options?: any) => {
     if (cmd === "get_database_url") return "sqlite:e2e.db";
+    if (cmd === "ios_startup_failure") return null;
+    if (cmd === "ios_retry_startup") return false;
     if (cmd === "plugin:sql|load") return args.db;
     if (cmd === "plugin:sql|select") return select(args.query, args.values);
     if (cmd === "plugin:sql|execute") return execute(args.query, args.values);

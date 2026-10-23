@@ -22,6 +22,8 @@ import { getVersion, trackEventWithClientID } from "@/utils/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "@/i18n";
 import { redactSecrets } from "@/middlelayers/security/redact";
+import { isIOS } from "@/utils/platform";
+import { useSearchParams } from "react-router-dom";
 
 type SubscriptionInfo = {
   planType: "monthly" | "yearly" | null;
@@ -38,13 +40,14 @@ const App = ({
 }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [version, setVersion] = useState<string>("0.1.0");
   const [activeLicense, setActiveLicense] = useState<string | undefined>();
   const [inputLicense, setInputLicense] = useState<string | undefined>();
   const [showLicense, setShowLicense] = useState(false);
   const [saveLicenseLoading, setSaveLicenseLoading] = useState(false);
   const [inactiveLicenseLoading, setInactiveLicenseLoading] = useState(false);
-  const [showLegacyInput, setShowLegacyInput] = useState(false);
+  const [showLegacyInput, setShowLegacyInput] = useState(isIOS());
 
   // subscription states
   const [subscriptionInfo, setSubscriptionInfo] =
@@ -59,7 +62,7 @@ const App = ({
   useEffect(() => {
     loadVersion();
     loadLicense();
-    loadSubscriptionPlans();
+    if (!isIOS()) loadSubscriptionPlans();
   }, []);
 
   useEffect(() => {
@@ -318,18 +321,19 @@ const App = ({
   const monthlyPlan = getPlan("monthly");
   const yearlyPlan = getPlan("yearly");
   const yearlySavingsLabel = getYearlySavingsLabel(monthlyPlan, yearlyPlan);
+  const section = isIOS() ? searchParams.get("section") : null;
 
   return (
     <div className="space-y-6">
-      <div>
+      {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("system.title")}</h3>
         <p className="text-sm text-muted-foreground">
           {t("system.subtitle")}
         </p>
-      </div>
+      </div>}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        {section !== "pro" && <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t("system.appVersion")}
@@ -341,8 +345,8 @@ const App = ({
               {t("system.appVersionNote")}
             </p>
           </CardContent>
-        </Card>
-        <Card>
+        </Card>}
+        {section !== "about" && <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t("system.proStatus")}
@@ -362,9 +366,10 @@ const App = ({
                   : t("system.proStatus.subPrompt")}
             </p>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
 
+      {section !== "about" && <>
       {/* Active subscription details */}
       {isSubscribed && subscriptionInfo && (
         <Card>
@@ -399,13 +404,13 @@ const App = ({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
+              {!isIOS() && <Button
                 variant="outline"
                 onClick={onManageSubscription}
                 disabled={portalLoading}
               >
                 {t("system.manageSub")}
-              </Button>
+              </Button>}
               <ConfirmDeleteDialog
                 trigger={
                   <Button
@@ -488,7 +493,7 @@ const App = ({
       )}
 
       {/* Subscription plans — shown when no active license */}
-      {!activeLicense && (
+      {!activeLicense && !isIOS() && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -609,6 +614,7 @@ const App = ({
           )}
         </Card>
       )}
+      </>}
     </div>
   );
 };
