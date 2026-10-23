@@ -382,7 +382,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <TooltipProvider>
+            {!isIOS() && <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <InfoCircledIcon className="text-muted-foreground w-4 h-4 mt-0.5" />
@@ -400,11 +400,21 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
                   </div>
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
+            </TooltipProvider>}
             <span>
               {t("data.autoBackupDesc")}
             </span>
           </div>
+          {isIOS() && <dl className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex justify-between gap-3">
+              <dt>{t("data.lastBackupAt")}</dt>
+              <dd>{lastBackupAt ? timeToDateStr(lastBackupAt, true) : t("data.na")}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>{t("data.lastImportAt")}</dt>
+              <dd>{lastImportAt ? timeToDateStr(lastImportAt, true) : t("data.na")}</dd>
+            </div>
+          </dl>}
 
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
             <div

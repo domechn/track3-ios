@@ -559,7 +559,7 @@ const App = ({
             {totalValueShower.formatTotalValue()}
           </div>
           <p className="text-xs text-muted-foreground mb-2">
-            <button type="button" aria-label={t("totalValue.toggleChange")}
+            <button type="button" aria-label={`${changedValueOrPercentage}, ${t("totalValue.toggleChange")}`}
               onClick={() => setShowValue((value) => !value)}
               className={`tabular-nums touch:min-h-11 touch:px-2 ${changePercentageColorClass(
                 totalValueShower,

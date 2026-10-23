@@ -170,7 +170,9 @@ test.describe("coarse pointer", () => {
       for (const control of [
         page.getByRole("link", { name: "Sync", exact: true }).last(),
         page.getByRole("switch", { name: "Path style addressing" }),
-        page.locator("aside").getByRole("link", { name: "Overview" }),
+        width <= 950
+          ? page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" })
+          : page.locator("aside").getByRole("link", { name: "Overview" }),
       ]) {
         expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(43.99);
       }

@@ -228,3 +228,16 @@ test("rebalance suggestions use readable cards at 375px when a profile has data"
   await expect(btc).toContainText("Quantity");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
+
+test("collapsed rebalance header shows its full title at 375px", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await installTauriBridge(page);
+  await page.goto("/#/rebalance");
+  await expect(page.getByRole("heading", { level: 1, name: "Rebalance" })).toBeVisible();
+  await expect(page.getByText("Trade options", { exact: true })).toBeAttached();
+  await page.evaluate(() => window.scrollTo(0, 180));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(64);
+  const title = page.locator("#app-top-bar .mobile-compact-title");
+  await expect(title).toBeVisible();
+  expect(await title.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

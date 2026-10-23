@@ -988,8 +988,8 @@ const App = ({
                       actions={isLatest ? [{ label: t("common.delete"), destructive: true, disabled: deleting,
                         onClick: () => setDeleteCandidate(row.id) }] : []}>
                       <button type="button" data-testid="history-mobile-row"
-                        aria-label={t("history.viewSnapshot").replace("{date}", timeToDateStr(new Date(row.createdAt).getTime(), true))}
                         className="history-mobile-snapshot-button" onClick={() => onRowClick(row.id)}>
+                        <span className="sr-only">{t("history.viewSnapshot").replace("{date}", timeToDateStr(new Date(row.createdAt).getTime(), true))}</span>
                         <span className="flex min-w-0 justify-between gap-3">
                           <span className="min-w-0 break-words text-left font-medium">{timeToDateStr(new Date(row.createdAt).getTime(), true)}</span>
                           <span className="shrink-0 font-mono font-semibold">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>

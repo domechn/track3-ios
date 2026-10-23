@@ -57,6 +57,9 @@ for (const phone of phones) {
         await expect(page.getByText("Profit Summary", { exact: true })).toBeAttached();
       }
       await page.evaluate(() => document.fonts.ready);
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator("#app-main-content")).not.toContainText("Loading page");
+      await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
       await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-${route}.png` });
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
       const tab = page.locator(".mobile-tab-bar");

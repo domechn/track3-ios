@@ -10,7 +10,7 @@
   .mobile-header-total { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: .05rem; }
   .mobile-compact-title { display: block; max-width: 28%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: .5rem; font-size: .875rem; font-weight: 600; }
   .mobile-header-back { flex: none; margin-right: .5rem; }
-  .mobile-header-back + .mobile-compact-title { max-width: 3.5rem; }
+  .mobile-header-back + .mobile-compact-title { flex: 1; max-width: none; }
   .mobile-analytics-hub { display: block; }
   .mobile-header-total-label { color: hsl(var(--muted-foreground)); font-size: .65rem; line-height: 1; }
   .mobile-header-total-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }

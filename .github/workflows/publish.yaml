@@ -17,7 +17,7 @@ jobs:
       release-id: ${{ steps.release.outputs.release-id }}
       tag: ${{ steps.release.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: create draft release
         id: release
         env:
@@ -65,9 +65,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: enable corepack
@@ -79,7 +79,7 @@ jobs:
         run: echo "dir=$(yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
         shell: bash
       - name: cache yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
@@ -121,9 +121,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: enable corepack

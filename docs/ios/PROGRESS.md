@@ -39,19 +39,15 @@ for this worktree is S4 below.
   now supports iPhone only; iPad has no validated layout. It saves screenshots in
   `test-results/mobile/`. CI now installs cached Chromium and runs the
   mobile suites, browser typecheck and Rust pure tests.
-- macOS run `39969080654` on head `9a1dc47` passed: the simulator app built
-  and launched with a rendered empty Overview, native symbols and the
-  committed Xcode project passed their checks, and an unsigned IPA built.
-  The web job passed TypeScript, 1,797 Vitest tests, 57 Playwright tests,
-  and 61 Rust pure tests. Artifact uploads failed because the repository
-  storage quota is full; the launch screenshot was recovered from the log.
-- On head `c83c7e5`, run `39973538452` passed its macOS iOS job: simulator
-  build and launch, ready marker, native symbols, unsigned IPA and project
-  check. The web job also passed after a 27-minute apt download at its
-  desktop Rust step. The current workflow changes remove the second apt
-  pass, add retries and bound the jobs and package step. These changes
-  have not run on CI because they have not been committed and pushed by
-  the driver.
+- Run `39981443802` on head `dde653d` passed both jobs. The simulator app
+  launched with a rendered empty Overview and a ready marker; native symbols,
+  the committed Xcode project and unsigned IPA passed. The web job passed
+  TypeScript, 1,798 Vitest tests in 217 files, 75 iPhone Playwright tests
+  and 61 Rust pure tests. Screenshot and build artifacts uploaded, including
+  `iphone-launch.png` and 82 browser screenshots.
+- Review found the separate desktop browser suite failing and missing from
+  the iOS web job. This follow-up updates its phone assertions and adds the
+  suite to the web job. The updated workflow has not run on CI yet.
 - The README now discloses Aptabase telemetry on iPhone. The release
   checklist requires App Store privacy labels and an accurate
   `PrivacyInfo.xcprivacy` manifest; both remain release tasks. Browser
@@ -66,30 +62,21 @@ for this worktree is S4 below.
 ### S4 local verification
 
 - `corepack yarn tsc --noEmit` and
-  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed.
-  `corepack yarn build` passed without the previous Rollup circular chunk
-  warning. The production preview passed the seven-route sweep at 375, 390
-  and 430 CSS pixels.
-- `cargo test --locked -p track3-pure-tests --lib` passed: 61 tests,
-  including the iOS share-path rule, before this follow-up; Rust was not
-  rerun because this follow-up changes no Rust code. Full Vitest passed:
-  1,798 tests in 217 files. The three mobile Playwright files passed:
-  72 tests. They saved 79 screenshots under `test-results/mobile/`, including first launch,
-  portfolio, history, profit, goal creation, assistant reply and dark theme.
-  The earlier S4 review inspected Overview, History, profit, assistant and
-  dark-theme screenshots. The current browser run checked console errors,
-  overflow, safe-area spacing, 44px labels and disclosures, and the locked
-  sync pill's clearance above the tab bar.
-- The current worktree still needs the macOS iOS workflow after the driver
-  commits and pushes. No signed-device claim is made from the local checks.
-- Review follow-up local checks passed: `corepack yarn tsc --noEmit`,
-  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit`, 1,798 Vitest
-  tests in 217 files, and all 75 tests in the three mobile Playwright
-  files. The browser run saved 82 screenshots in `test-results/mobile/`.
-  The existing Vitest suite emits expected jsdom canvas and intentional
-  error-boundary messages while exiting successfully. Workflow YAML
-  parsed, and its Ubuntu 24.04 package list covers Playwright's 33
-  Chromium dependencies.
+  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed after
+  this review follow-up. Full Vitest passed: 1,800 tests in 218 files.
+  The four desktop browser files passed 77/77, and the three iPhone
+  files passed 76/76 when run separately. The phone run saved 82 screenshots
+  in `test-results/mobile/`. The SE Overview, Rebalance and Profit Summary
+  captures were inspected: Overview has no loading overlay, the header title
+  is fully shown, and Profit Summary selects 2024 for the fixture.
+- `corepack yarn build` and the seven-route production preview passed before
+  this review follow-up. `cargo test --locked -p track3-pure-tests --lib`
+  passed 61 tests before this follow-up; no Rust code changed in it.
+  The full Vitest suite emits expected jsdom canvas and intentional
+  error-boundary messages while exiting successfully. Workflow YAML parsed.
+- The last pushed head passed the macOS iOS workflow; this review follow-up
+  needs another CI run after the driver commits and pushes. No signed-device
+  claim is made from the local checks.
 
 ## S1 foundation
 
@@ -103,9 +90,8 @@ for this worktree is S4 below.
   lets the readiness probe recognize a fresh install's empty portfolio, adds
   an app error screen and startup JavaScript error capture, and checks the
   initial simulator screenshot. The workflow now attempts to upload the
-  simulator `.app`, unsigned `.ipa`, screenshots, and logs on every run. The
-  repository currently has zero stored artifacts; account artifact quota
-  may still prevent uploads.
+  simulator `.app`, unsigned `.ipa`, screenshots, and logs on every run.
+  Artifacts uploaded successfully in the later S4 run `39981443802`.
 - A local production build reproduced the blank page: a circular Vite manual
   chunk made `vendor-charts` read React before initialization. Removing that
   chunk rule removed the circular import. At an iPhone viewport the rebuilt
@@ -114,10 +100,8 @@ for this worktree is S4 below.
 - Local `corepack yarn tsc --noEmit` and the probe-enabled frontend build
   passed. `corepack yarn vitest run` passed (1,723 tests in 203 files).
 
-The S1 exit condition is **not yet met**. The driver must commit and push
-this worktree, then provide the macOS CI result. A green iOS job and a
-rendered simulator screenshot artifact are still required. Physical device
-and signed build checks remain pending.
+The S1 simulator exit condition was met by run `39981443802` on `dde653d`.
+Physical device and signed build checks remain pending.
 
 ## S2 mobile shell and data screens
 

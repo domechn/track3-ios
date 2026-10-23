@@ -153,7 +153,7 @@ function TopBar({
           <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
         </button>}
         {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
-        <MobileHeaderTotal currency={currentCurrency} live={isProUser} />
+        {!(mobile && onBack && compactTitle) && <MobileHeaderTotal currency={currentCurrency} live={isProUser} />}
         {isProUser && !mobile && (
           <div className="mr-4">
             <RealTimeTotalValue

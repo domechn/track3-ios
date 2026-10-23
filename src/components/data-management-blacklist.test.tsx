@@ -126,6 +126,22 @@ describe("Data Management", () => {
     window.location.hash = "";
   });
 
+  it("shows the last backup and import dates as readable text on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/data?section=backup";
+    mocks.getAutoBackupDirectory.mockResolvedValue("/Documents/Track3");
+    try {
+      render(<DataManagement />);
+      await waitFor(() => expect(screen.getByText(/Last Backup At:/)).toBeVisible());
+      expect(screen.getByText(/Last Import At:/)).toBeVisible();
+      expect(screen.getByText(/Last Backup At:/).parentElement).toHaveTextContent("2024-4-16");
+      expect(screen.getByText(/Last Import At:/).parentElement).toHaveTextContent("2024-4-15");
+    } finally {
+      vi.mocked(isIOS).mockReturnValue(false);
+      window.location.hash = "";
+    }
+  });
+
   it("lets an iPhone owner enable app lock after native authentication", async () => {
     vi.mocked(isIOS).mockReturnValue(true);
     vi.mocked(appLockEnabled).mockResolvedValue(false);

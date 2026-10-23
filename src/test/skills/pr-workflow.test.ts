@@ -43,7 +43,7 @@ describe("pull request workflow", () => {
     expect(qualitySteps).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          uses: "actions/setup-node@v4",
+          uses: "actions/setup-node@v7",
           with: expect.objectContaining({ "node-version": 24 }),
         }),
         expect.objectContaining({

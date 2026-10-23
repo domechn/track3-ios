@@ -5,6 +5,7 @@
 Run `corepack yarn tsc --noEmit`, `corepack yarn vitest run`,
 `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit`, and the three
 mobile Playwright files named in the [README](../../README.md). Run
+`corepack yarn test:e2e` for the full desktop and iPhone browser suite. Run
 `cargo test --locked -p track3-pure-tests --lib` from `src-tauri`.
 The `ios-foundation.yml` web and macOS iOS jobs must pass on the release
 commit. Check that the simulator launch produced a rendered screenshot,
@@ -14,9 +15,8 @@ does not replace the signed physical-device checks below.
 The `iOS foundation` workflow builds an unsigned simulator `.app` bundle and
 unsigned device `.ipa`. Every run attempts to upload simulator screenshots,
 launch logs, `Track3-simulator.app.zip`, and `Track3-unsigned.ipa`.
-The GitHub Actions artifact quota was exhausted in run `39926851914`;
-the repository owner must clear old artifacts before these uploads can succeed.
-Upload errors are nonfatal so the launch diagnostics still reach the run log.
+Artifact uploads succeeded in run `39981443802`. Upload errors are nonfatal
+so launch diagnostics still reach the run log.
 The unsigned device IPA will not install on a device without valid Apple
 signing and a provisioning profile.
 The Xcode target currently supports iPhone only (`TARGETED_DEVICE_FAMILY=1`);
