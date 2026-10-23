@@ -1,6 +1,9 @@
 import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 
 vi.mock("@/i18n", () => ({
   useTranslation: () => ({
@@ -50,6 +53,18 @@ describe("ChatComposer", () => {
     render(<ChatComposer value="" onChange={onChange} onSend={onSend} onStop={onStop} isStreaming={false} />);
     await Promise.resolve();
     expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the iPhone keyboard closed until tapped and uses the Send button", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    const send = vi.fn();
+    render(<ChatComposer value="Test" onChange={onChange} onSend={send} onStop={onStop} isStreaming={false} />);
+    const input = screen.getByTestId("chat-input");
+    expect(input).not.toHaveFocus();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(send).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Enter to send/)).not.toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
   });
 
   it("renders textarea and send button", () => {

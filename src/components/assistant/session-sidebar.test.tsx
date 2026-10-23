@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SessionSidebar from "./session-sidebar";
@@ -19,6 +19,17 @@ function makeSession(overrides: Partial<ChatSessionMeta> = {}): ChatSessionMeta 
 }
 
 describe("SessionSidebar", () => {
+  it("reveals session actions with a left swipe on iPhone", () => {
+    render(<SessionSidebar mobile sessions={[makeSession()]} activeId={null} isLoading={false}
+      onSelect={vi.fn()} onNew={vi.fn()} onDelete={vi.fn()} onPin={vi.fn()} />);
+    const row = screen.getByTestId("session-item-s1");
+    expect(row).toHaveAttribute("data-actions-open", "false");
+    fireEvent.touchStart(row, { touches: [{ clientX: 240, clientY: 90 }] });
+    fireEvent.touchEnd(row, { changedTouches: [{ clientX: 145, clientY: 92 }] });
+    expect(row).toHaveAttribute("data-actions-open", "true");
+    expect(screen.getByTestId("session-pin-s1")).toBeVisible();
+  });
+
   it("has no axe violations with a selectable session", async () => {
     const { container } = render(
       <SessionSidebar sessions={[makeSession()]} activeId="s1" isLoading={false}

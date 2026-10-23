@@ -10,6 +10,7 @@ import MarkdownRenderer from "./markdown-renderer";
 import type { AssistantBlock, ChatMessage } from "./use-chat";
 import UsageLabel from "./usage-label";
 import ActionCard from "./action-card";
+import { isIOS } from "@/utils/platform";
 
 function stripThinkTags(s: string): string {
   return s.replace(/<\/?think\s*>/gi, "").trim();
@@ -20,7 +21,7 @@ function ThinkBlock({ text, isStreaming, hasResponseStarted }: {
   isStreaming?: boolean;
   hasResponseStarted?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(!isIOS());
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoCollapsedRef = useRef(false);
   const { t } = useTranslation();
@@ -129,7 +130,8 @@ function mergeBlocks(blocks: AssistantBlock[]): AssistantBlock[] {
 }
 
 function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: boolean, hasResponseStarted?: boolean,
-  onDecideAction?: (id: string, decision: "approve" | "reject") => void, canDecideAction?: boolean) {
+  onDecideAction?: (id: string, decision: "approve" | "reject") => void, canDecideAction?: boolean,
+  t?: (key: string) => string) {
   if (block.kind === "think") {
     return <ThinkBlock key={idx} text={block.text} isStreaming={isStreaming} hasResponseStarted={hasResponseStarted} />;
   }
@@ -144,8 +146,8 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
   if (block.kind === "agent_activity") {
     const activities = block.activities;
     if (activities.length === 0) return null;
-    return (
-      <div key={idx} className="space-y-1 px-1 py-2">
+    const content = (
+      <div className="space-y-1 px-1 py-2">
         {activities.map((a) => (
           <div key={a.taskId} className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className={`inline-block h-2 w-2 rounded-full ${
@@ -161,6 +163,12 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
         ))}
       </div>
     );
+    return isIOS()
+      ? <details key={idx} className="rounded-lg border px-3">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm">{t?.("assistant.chat.toolActivity")}</summary>
+          {content}
+        </details>
+      : <div key={idx}>{content}</div>;
   }
   if (block.kind === "pending_action") {
     return <ActionCard key={block.id} action={block} onDecide={onDecideAction} canDecide={canDecideAction} />;
@@ -242,7 +250,7 @@ export default function MessageBubble({
             ) : (
               blocks.map((b, i) => renderAssistantBlock(
                 b, i, isStreaming, blocks.slice(i + 1).some((later) => later.kind === "text"),
-                onDecideAction, canDecideAction,
+                onDecideAction, canDecideAction, t,
               ))
             )}
             {!isStreaming && !blocks.some((block) => block.kind === "pending_action" ||

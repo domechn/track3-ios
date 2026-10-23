@@ -27,6 +27,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
+import { isIOS } from "@/utils/platform";
 
 type Draft = {
   id: number; kind: AlertKind; assetType: AssetType; symbol: string;
@@ -81,7 +82,7 @@ export default function GoalsAlerts() {
       ).catch(() => []);
       setRules(nextRules);
       if (!manualInitialized.current) {
-        setManualOpen(nextRules.length === 0);
+        setManualOpen(!isIOS() && nextRules.length === 0);
         manualInitialized.current = true;
       }
       setHistory(nextHistory);
@@ -131,6 +132,7 @@ export default function GoalsAlerts() {
       setValidationField(null);
       setStatus(t("goals.saved"));
       await reload();
+      if (isIOS()) setManualOpen(false);
     } catch (cause) {
       setValidationField(cause instanceof Error
         ? cause.message === "Invalid threshold" ? "threshold"
@@ -149,7 +151,8 @@ export default function GoalsAlerts() {
       cooldownMinutes: String(rule.cooldownSeconds / 60),
     });
     setStatus("");
-    document.getElementById("goal-rule-editor")?.scrollIntoView?.({ behavior: "smooth" });
+    if (isIOS()) setManualOpen(true);
+    else document.getElementById("goal-rule-editor")?.scrollIntoView?.({ behavior: "smooth" });
   }
 
   async function mutate(action: () => Promise<unknown>) {
@@ -183,9 +186,17 @@ export default function GoalsAlerts() {
           }}>{notificationsEnabled ? t("goals.notificationEnabled") : t("goals.enableNotifications")}</Button>
         </CardContent>
       </Card>
-      <details open={manualOpen} onToggle={(event) => setManualOpen(event.currentTarget.open)} className="order-last rounded-lg border bg-card">
-        <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.manual")}</summary>
-      <Card id="goal-rule-editor" className="border-0 shadow-none">
+      <details
+        open={manualOpen}
+        onToggle={(event) => setManualOpen(event.currentTarget.open)}
+        role={isIOS() && manualOpen ? "dialog" : undefined}
+        aria-label={isIOS() && manualOpen ? t("goals.mobile.add") : undefined}
+        aria-modal={isIOS() && manualOpen ? true : undefined}
+        className={isIOS() && manualOpen
+          ? "fixed inset-0 z-50 order-last overflow-y-auto bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+1rem)]"
+          : "order-last rounded-lg border bg-card"}>
+        <summary className="flex min-h-11 cursor-pointer items-center px-4 py-2 text-sm font-medium">{t(isIOS() ? "goals.mobile.add" : "aiSetup.manual")}</summary>
+      {(!isIOS() || manualOpen) && <Card id="goal-rule-editor" className="border-0 shadow-none">
         <CardHeader className="pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2" aria-label={t("goals.templates")}>
@@ -254,7 +265,7 @@ export default function GoalsAlerts() {
           {validationField && status && <p id="goal-rule-status" role="alert" className="text-sm">{status}</p>}
           {!validationField && status && <p role="status" className="text-sm">{status}</p>}
         </CardContent>
-      </Card>
+      </Card>}
       </details>
       {loading ? <FinanceChartSkeleton /> : <GoalChart rules={rules} snapshots={snapshots} portfolioValues={portfolioValues} />}
       <Card>

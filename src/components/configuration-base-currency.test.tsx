@@ -8,6 +8,9 @@ import {
   queryPreferCurrency,
   queryQuerySize,
 } from "@/middlelayers/configuration";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 
 vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -98,6 +101,25 @@ beforeEach(() => {
 });
 
 describe("Configuration base currency initialization", () => {
+  it("shows focused currency controls on iPhone instead of the desktop source tables", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/configuration?section=currency";
+    render(<Configuration />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update currency rates" })).toBeInTheDocument());
+    expect(screen.queryByText("Stock Brokers")).not.toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
+  it("keeps custom holdings reachable on the iPhone sources page", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/configuration?section=sources";
+    render(<Configuration />);
+    expect(await screen.findByText("No custom assets yet")).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
   it("uses initialPreferCurrency immediately and skips extra prefer-currency query", async () => {
     render(<Configuration initialPreferCurrency="EUR" />);
 

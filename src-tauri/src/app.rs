@@ -239,6 +239,86 @@ fn ios_key_recovery_needed() -> bool {
     false
 }
 
+#[tauri::command]
+fn ios_lock_enabled() -> bool {
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios_native::lock_enabled()
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        false
+    }
+}
+
+#[tauri::command]
+fn ios_set_lock_enabled(enabled: bool) -> Result<(), String> {
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios_native::set_lock_enabled(enabled);
+        Ok(())
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = enabled;
+        Err("iOS only".into())
+    }
+}
+
+#[tauri::command]
+async fn ios_authenticate() -> Result<bool, String> {
+    #[cfg(target_os = "ios")]
+    {
+        tauri::async_runtime::spawn_blocking(crate::ios_native::authenticate)
+            .await
+            .map_err(|_| "authentication failed".to_string())
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        Err("iOS only".into())
+    }
+}
+
+#[tauri::command]
+fn ios_haptic(kind: String) -> Result<(), String> {
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios_native::haptic(&kind)
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = kind;
+        Err("iOS only".into())
+    }
+}
+
+#[tauri::command]
+fn ios_set_badge(count: i32) -> Result<(), String> {
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios_native::set_badge(count);
+        Ok(())
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = count;
+        Err("iOS only".into())
+    }
+}
+
+#[tauri::command]
+fn ios_share_file(handle: tauri::AppHandle, path: String) -> Result<(), String> {
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios_native::share_file(&handle, &path)
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        let _ = (handle, path);
+        Err("iOS only".into())
+    }
+}
+
 #[cfg(debug_assertions)]
 #[tauri::command]
 fn mark_frontend_ready(handle: tauri::AppHandle) -> Result<(), String> {
@@ -289,6 +369,8 @@ pub fn run() {
         let app_config_dir = resource_path.app_config_dir()?;
         let instance_lock = acquire_app_instance_lock(&app_data_dir).map_err(io::Error::other)?;
         app.manage(instance_lock);
+        #[cfg(target_os = "ios")]
+        crate::ios_native::install();
         #[cfg(target_os = "ios")]
         crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
             .map_err(io::Error::other)?;
@@ -345,6 +427,12 @@ pub fn run() {
         delete_sync_snapshot,
         get_database_url,
         ios_key_recovery_needed,
+        ios_lock_enabled,
+        ios_set_lock_enabled,
+        ios_authenticate,
+        ios_haptic,
+        ios_set_badge,
+        ios_share_file,
         mark_frontend_ready,
         record_frontend_error,
     ]);
@@ -363,6 +451,12 @@ pub fn run() {
         delete_sync_snapshot,
         get_database_url,
         ios_key_recovery_needed,
+        ios_lock_enabled,
+        ios_set_lock_enabled,
+        ios_authenticate,
+        ios_haptic,
+        ios_set_badge,
+        ios_share_file,
     ]);
     builder
         .run(tauri::generate_context!())

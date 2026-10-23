@@ -12,6 +12,10 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts } from "@/middlelayers/alert-notifications";
 import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-service";
 import axe from "axe-core";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 
 // Hoist mock fn references so they're available inside vi.mock factories
 const mockSetButtonLoading = vi.hoisted(() => vi.fn());
@@ -60,6 +64,7 @@ vi.mock("@/middlelayers/insights-service", () => ({
 }));
 
 beforeEach(() => {
+  vi.mocked(isIOS).mockReturnValue(false);
   vi.resetAllMocks();
   localStorage.clear();
   vi.mocked(updateAllCurrencyRates).mockResolvedValue(undefined as never);
@@ -77,6 +82,14 @@ beforeEach(() => {
 });
 
 describe("RefreshData — currency rates refresh ordering", () => {
+  it("opens a progress sheet while an iPhone refresh is running", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+  });
+
   it("announces an active refresh to assistive technology", () => {
     render(<RefreshData loading={true} />);
     expect(screen.getByRole("status")).toHaveTextContent("Refreshing portfolio");

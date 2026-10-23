@@ -14,6 +14,10 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { REBALANCE_OPTIONS_KEY } from "@/middlelayers/ai/actions/page-settings";
 import axe from "axe-core";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 vi.mock("@/middlelayers/configuration", async (original) => ({
   ...await original<typeof import("@/middlelayers/configuration")>(),
   loadAIConfig: vi.fn().mockResolvedValue({ endpoint: "http://localhost", apiKey: "", model: "test", contextSize: 8192 }),
@@ -42,6 +46,7 @@ const assets = [
 ];
 
 beforeEach(() => {
+  vi.mocked(isIOS).mockReturnValue(false);
   vi.clearAllMocks();
   localStorage.removeItem(REBALANCE_OPTIONS_KEY);
   sessionStorage.removeItem(REBALANCE_OPTIONS_KEY);
@@ -57,6 +62,18 @@ beforeEach(() => {
 afterEach(() => localStorage.removeItem(localeLocalStorageKey));
 
 describe("Rebalance page", () => {
+  it("offers a touch slider for each target on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 100 }],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const slider = await screen.findByRole("slider", { name: "Target percentage for BTC" });
+    fireEvent.change(slider, { target: { value: "75" } });
+    expect(screen.getByRole("spinbutton", { name: "Target percentage for BTC" })).toHaveValue(75);
+  });
+
   it("has no axe violations with a saved target profile", async () => {
     vi.mocked(getRebalanceProfile).mockResolvedValue({
       targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 100 }],

@@ -8,6 +8,8 @@ pub mod ent;
 pub mod info;
 #[cfg(target_os = "ios")]
 pub mod ios_backup;
+#[cfg(target_os = "ios")]
+pub mod ios_native;
 pub mod key_rotation;
 pub mod migration;
 pub mod refresh_persistence;

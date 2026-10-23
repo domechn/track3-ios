@@ -8,6 +8,7 @@ import {
   exportHistoricalData,
   importHistoricalData,
   readHistoricalDataFromFile,
+  shareHistoricalData,
 } from "@/middlelayers/data";
 import { UniqueIndexConflictResolver } from "@/middlelayers/types";
 import {
@@ -20,7 +21,7 @@ import {
   removeFromBlacklist,
   saveAutoBackupDirectory,
 } from "@/middlelayers/configuration";
-import { ExportData } from "@/middlelayers/datamanager";
+import type { ExportData } from "@/middlelayers/datamanager";
 import { timeToDateStr } from "@/utils/date";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,8 @@ import {
 import { redactSecrets } from "@/middlelayers/security/redact";
 import { chooseBackupLocation } from "@/utils/backup-location";
 import { isIOS } from "@/utils/platform";
+import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
+import { BottomSheet } from "@/components/mobile-compat";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const { toast } = useToast();
@@ -63,6 +66,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const [exportData, setExportData] = useState<ExportData | undefined>(
     undefined,
   );
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [autoBackupDirectory, setAutoBackupDirectory] = useState<string>();
   const { run: runBackupFolderDelete } = useOptimisticDelete(setAutoBackupDirectory);
   const [lastBackupAt, setLastBackupAt] = useState<Date>();
@@ -72,6 +76,24 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const [encKeyInput, setEncKeyInput] = useState("");
   const [encKeyConfirm, setEncKeyConfirm] = useState("");
   const [encKeySaving, setEncKeySaving] = useState(false);
+  const [lockEnabled, setLockEnabled] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
+  const [lockError, setLockError] = useState(false);
+  useEffect(() => {
+    if (isIOS()) void appLockEnabled().then(setLockEnabled).catch(() => setLockError(true));
+  }, []);
+  async function toggleAppLock() {
+    setLockBusy(true);
+    setLockError(false);
+    try {
+      await setAppLockEnabled(!lockEnabled);
+      setLockEnabled(!lockEnabled);
+    } catch {
+      setLockError(true);
+    } finally {
+      setLockBusy(false);
+    }
+  }
   async function handleChangeEncryptionKey() {
     if (!encKeyInput || encKeyInput !== encKeyConfirm) {
       toast({
@@ -144,29 +166,45 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
     }
   }
 
+  async function onShareDataClick() {
+    try {
+      await shareHistoricalData(exportConfiguration);
+    } catch {
+      toast({ description: t("data.shareFailed"), variant: "destructive" });
+    }
+  }
+
   async function onImportDataClick() {
     const ed = await readHistoricalDataFromFile();
     setExportData(ed);
     if (!ed) {
       return;
     }
+    if (isIOS()) {
+      setShowImportConfirm(true);
+      return;
+    }
+    await inspectImport(ed);
+  }
+
+  async function inspectImport(ed: ExportData) {
     const hasConflicts = await checkIfDuplicatedHistoricalData(ed);
     if (hasConflicts) {
       setShowConflictResolverDialog(true);
     } else {
-      importData("IGNORE");
+      await importData("IGNORE", ed);
     }
   }
 
-  async function importData(cr: UniqueIndexConflictResolver) {
-    if (!exportData) {
+  async function importData(cr: UniqueIndexConflictResolver, selectedData = exportData) {
+    if (!selectedData) {
       toast({
         description: t("data.noDataToImport"),
         variant: "destructive",
       });
       return;
     }
-    return importHistoricalData(cr, exportData)
+    return importHistoricalData(cr, selectedData)
       .then((imported) => {
         if (!imported) {
           return;
@@ -234,9 +272,25 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
     });
   }
 
+  const section = isIOS() ? new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") : null;
+  const showBackup = !section || section === "backup";
+  const showBlacklist = !section || section === "blacklist";
+  const showSecurity = !section || section === "security";
+
   return (
     <div className="space-y-6">
-      <Dialog
+      {showBackup && showImportConfirm && <BottomSheet title={t("data.restoreConfirm.title")}>
+        <p className="py-2 text-center">{t("data.restoreConfirm.description")}</p>
+        <Button variant="destructive" className="min-h-12 w-full" onClick={() => {
+          setShowImportConfirm(false);
+          if (exportData) void inspectImport(exportData);
+        }}>{t("data.restoreConfirm.action")}</Button>
+        <Button variant="outline" className="min-h-12 w-full" onClick={() => {
+          setShowImportConfirm(false);
+          setExportData(undefined);
+        }}>{t("common.cancel")}</Button>
+      </BottomSheet>}
+      {showBackup && <Dialog
         open={showConflictResolverDialog}
         onOpenChange={setShowConflictResolverDialog}
       >
@@ -256,16 +310,16 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
-      <div>
+      {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("data.title")}</h3>
         <p className="text-sm text-muted-foreground">
           {t("data.subtitle")}
         </p>
-      </div>
+      </div>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {showBackup && <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -308,11 +362,14 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             <Button onClick={onExportDataClick} size="sm">
               {t("data.exportButton")}
             </Button>
+            {isIOS() && <Button onClick={() => void onShareDataClick()} variant="outline" className="ml-2 min-h-11">
+              {t("data.shareJSON")}
+            </Button>}
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
-      <Card>
+      {showBackup && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.autoBackup")}
@@ -370,9 +427,9 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showBlacklist && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.blacklist")}
@@ -412,9 +469,22 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showSecurity && isIOS() && <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">{t("data.appLock.title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t("data.appLock.description")}</p>
+          {lockError && <p role="alert" className="text-sm text-destructive">{t("data.appLock.failed")}</p>}
+          <Button className="min-h-11" disabled={lockBusy} onClick={() => void toggleAppLock()}>
+            {t(lockEnabled ? "data.appLock.disable" : "data.appLock.enable")}
+          </Button>
+        </CardContent>
+      </Card>}
+
+      {showSecurity && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.encryption.key.title")}
@@ -444,7 +514,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
               : t("data.encryption.key.update")}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 };

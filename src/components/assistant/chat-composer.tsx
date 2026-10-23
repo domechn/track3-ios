@@ -10,6 +10,7 @@ import {
   StopIcon,
   Cross2Icon,
 } from "@radix-ui/react-icons";
+import { isIOS } from "@/utils/platform";
 
 type ImageAttachment = {
   id: string;
@@ -61,8 +62,7 @@ export default function ChatComposer({
   }, []);
 
   useEffect(() => {
-    // Autofocus on mount for a faster first interaction.
-    textareaRef.current?.focus();
+    if (!isIOS()) textareaRef.current?.focus();
   }, []);
 
   // Auto-resize the textarea up to a comfortable cap so long prompts
@@ -214,7 +214,7 @@ export default function ChatComposer({
                 return;
               }
 
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (!isIOS() && e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (canSend) {
                   handleSend();
@@ -257,10 +257,10 @@ export default function ChatComposer({
         </div>
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2 px-1">
-        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+        {!isIOS() && <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
           <KeyboardIcon className="h-3 w-3" />
           {t("assistant.chat.composer.hint")}
-        </span>
+        </span>}
         {isStreaming && (
           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <ReloadIcon className="h-3 w-3 animate-spin" />

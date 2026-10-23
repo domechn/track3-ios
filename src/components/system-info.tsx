@@ -22,6 +22,7 @@ import { getVersion, trackEventWithClientID } from "@/utils/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "@/i18n";
 import { redactSecrets } from "@/middlelayers/security/redact";
+import { isIOS } from "@/utils/platform";
 
 type SubscriptionInfo = {
   planType: "monthly" | "yearly" | null;
@@ -318,18 +319,19 @@ const App = ({
   const monthlyPlan = getPlan("monthly");
   const yearlyPlan = getPlan("yearly");
   const yearlySavingsLabel = getYearlySavingsLabel(monthlyPlan, yearlyPlan);
+  const section = isIOS() ? new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") : null;
 
   return (
     <div className="space-y-6">
-      <div>
+      {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("system.title")}</h3>
         <p className="text-sm text-muted-foreground">
           {t("system.subtitle")}
         </p>
-      </div>
+      </div>}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        {section !== "pro" && <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t("system.appVersion")}
@@ -341,8 +343,8 @@ const App = ({
               {t("system.appVersionNote")}
             </p>
           </CardContent>
-        </Card>
-        <Card>
+        </Card>}
+        {section !== "about" && <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t("system.proStatus")}
@@ -362,9 +364,10 @@ const App = ({
                   : t("system.proStatus.subPrompt")}
             </p>
           </CardContent>
-        </Card>
+        </Card>}
       </div>
 
+      {section !== "about" && <>
       {/* Active subscription details */}
       {isSubscribed && subscriptionInfo && (
         <Card>
@@ -609,6 +612,7 @@ const App = ({
           )}
         </Card>
       )}
+      </>}
     </div>
   );
 };

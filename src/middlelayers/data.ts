@@ -45,6 +45,7 @@ import { configuredSecretValues, redactSecrets } from "./security/redact";
 import { maskSourceIdentifier } from "./source-status";
 import { CEX_OPTIONS, STOCK_BROKER_OPTIONS } from "./constants";
 import { exportFile } from "@/utils/export-file";
+import { shareExport } from "@/utils/share-export";
 import {
   type FailedPortfolioSource,
   type LoadPortfoliosResult,
@@ -341,6 +342,10 @@ export async function exportHistoricalData(
 ): Promise<boolean> {
   return exportFile("track3-export-data.json", ["json"], (path) =>
     DATA_MANAGER.exportHistoricalData(path, exportConfiguration));
+}
+
+export async function shareHistoricalData(exportConfiguration = false): Promise<void> {
+  await shareExport((path) => DATA_MANAGER.exportHistoricalData(path, exportConfiguration));
 }
 
 // return true if there are duplicated data in track3-export-data

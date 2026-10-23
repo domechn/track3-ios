@@ -46,6 +46,7 @@ import {
 } from "@/middlelayers/constants";
 import { useTranslation } from "@/i18n";
 import { configuredSecretValues, redactSecrets } from "@/middlelayers/security/redact";
+import { isIOS } from "@/utils/platform";
 
 import { SummaryCards } from "./summary-cards";
 import { GeneralSettings } from "./general-settings";
@@ -55,6 +56,8 @@ import { WalletSection } from "./wallet-section";
 import { OthersSection } from "./others-section";
 import { QuickLookDialog } from "./quick-look-dialog";
 import { AttachModal } from "./attach-modal";
+import { MobileSources } from "./mobile-sources";
+import { MobileOthers } from "./mobile-others";
 
 import type {
   ExchangeRow,
@@ -1141,6 +1144,106 @@ const App = ({
     attachModalTargetIdx >= 0
       ? others[attachModalTargetIdx]?.attachTo
       : undefined;
+
+  async function saveMobileExchange(value: ExchangeRow, original?: ExchangeRow) {
+    if (exchanges.some((item) => item !== original && item.type === value.type && item.apiKey === value.apiKey)) {
+      throw new Error("Duplicate exchange");
+    }
+    if (!await validateExchangeConfig(value)) throw new Error("Invalid exchange");
+    setExchanges((current) => original ? current.map((item) => item === original ? value : item) : [...current, value]);
+    markFormChanged();
+  }
+
+  async function saveMobileWallet(value: WalletRow, original?: WalletRow) {
+    if (wallets.some((item) => item !== original && item.type === value.type && item.address === value.address)) {
+      throw new Error("Duplicate wallet");
+    }
+    if (!await validateWalletAddress(value)) throw new Error("Invalid wallet");
+    setWallets((current) => original ? current.map((item) => item === original ? value : item) : [...current, value]);
+    markFormChanged();
+  }
+
+  async function saveMobileBroker(value: StockBrokerRow, original?: StockBrokerRow) {
+    if (stockBrokers.some((item) => item !== original && item.type === value.type && item.queryId === value.queryId)) {
+      throw new Error("Duplicate broker");
+    }
+    if (!await validateStockBrokerConfig(value)) throw new Error("Invalid broker");
+    setStockBrokers((current) => original ? current.map((item) => item === original ? value : item) : [...current, value]);
+    markFormChanged();
+  }
+
+  const mobileSection = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section");
+  if (isIOS()) {
+    return mobileSection === "currency" ? (
+      <GeneralSettings
+        groupUSD={groupUSD}
+        onGroupUSDChange={onGroupUSDSelectChange}
+        hideInactive={hideInactive}
+        onHideInactiveChange={onHideInactiveSelectChange}
+        querySize={querySize}
+        onQuerySizeChange={onQuerySizeChanged}
+        preferCurrency={preferCurrency}
+        preferCurrencyLoading={preferCurrencyLoading}
+        preferCurrencyOptions={preferCurrencyOptions}
+        preferredCurrencyDetail={preferredCurrencyDetail}
+        onPreferCurrencyChange={onPreferCurrencyChanged}
+        refreshCurrencyLoading={refreshCurrencyLoading}
+        onUpdateCurrencyRatesClick={onUpdateCurrencyRatesClick}
+      />
+    ) : (
+      <div className="space-y-6">
+      <MobileSources
+        exchanges={exchanges}
+        wallets={wallets}
+        brokers={stockBrokers}
+        exchangeOptions={cexOptions}
+        walletOptions={walletOptions}
+        brokerOptions={stockBrokerOptions}
+        onSaveExchange={saveMobileExchange}
+        onSaveWallet={saveMobileWallet}
+        onSaveBroker={saveMobileBroker}
+        onRemoveExchange={(item) => handleRemoveExchange(item.type, item.apiKey)}
+        onRemoveWallet={(item) => handleRemoveWallet(item.type, item.address)}
+        onRemoveBroker={(item) => handleRemoveStockBroker(item.type, item.queryId)}
+        onToggleExchange={(item) => handleActiveExchange(item.type, item.apiKey)}
+        onToggleWallet={(item) => handleActiveWallet(item.type, item.address)}
+        onToggleBroker={(item) => handleActiveStockBroker(item.type, item.queryId)}
+        isPro={isPro}
+        onQuickLookExchange={handleQuickLookExchange}
+        onQuickLookWallet={handleQuickLookWallet}
+        onQuickLookBroker={handleQuickLookStockBroker}
+      />
+      <MobileOthers
+        others={others}
+        onSave={(index, value) => {
+          if (index === null) handleAddOther(value);
+          else {
+            setOthers((current) => current.map((item, idx) => idx === index ? value : item));
+            markFormChanged();
+          }
+        }}
+        onRemove={handleRemoveOther}
+        onAttach={(index) => { setAttachModalTargetIdx(index); setAttachModalOpen(true); }}
+      />
+      <AttachModal
+        open={attachModalOpen}
+        onOpenChange={handleAttachModalOpenChange}
+        currentAttachTo={currentAttachTo}
+        cexOptions={cexAttachOptions}
+        walletOptions={walletAttachOptions}
+        onSelect={handleAttachSelect}
+      />
+      <QuickLookDialog
+        open={quickLookOpen}
+        onOpenChange={handleQuickLookOpenChange}
+        title={quickLookTitle}
+        loading={quickLookLoading}
+        data={quickLookData}
+        logoMap={quickLookLogoMap}
+      />
+      </div>
+    );
+  }
 
   // ==========================================================================
   // Render

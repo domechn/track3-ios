@@ -32,6 +32,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger,
 } from "./ui/alert-dialog";
+import { isIOS } from "@/utils/platform";
 
 type TargetDraft = RebalanceTarget & { id: number; previousAsset?: { assetType: AssetType; symbol: string } };
 
@@ -267,7 +268,9 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
             </CardHeader>
             <CardContent className="space-y-3 px-4 pb-4">
               {targets.map((target, index) => (
-                <div key={target.id} className="grid grid-cols-[minmax(90px,1fr)_minmax(85px,1fr)_72px_32px] items-end gap-1.5 sm:grid-cols-[150px_minmax(120px,1fr)_110px_32px] touch:grid-cols-2 touch:sm:grid-cols-[150px_minmax(120px,1fr)_110px_44px]">
+                <div key={target.id} className={isIOS()
+                  ? "grid min-w-0 grid-cols-2 items-end gap-3 rounded-2xl border bg-card p-4"
+                  : "grid grid-cols-[minmax(90px,1fr)_minmax(85px,1fr)_72px_32px] items-end gap-1.5 sm:grid-cols-[150px_minmax(120px,1fr)_110px_32px] touch:grid-cols-2 touch:sm:grid-cols-[150px_minmax(120px,1fr)_110px_44px]"}>
                   <label className="space-y-1 text-xs text-muted-foreground">
                     <span>{t("rebalance.targetKind")}</span>
                     <select className="touch:h-11 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground h-8"
@@ -314,6 +317,13 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                       value={Number.isNaN(target.percent) ? "" : target.percent}
                       onChange={(event) => updateTarget(index, { ...target, percent: numberOrZero(event.target.value) })} />
                   </label>
+                  {isIOS() && <input
+                    type="range" min="0" max="100" step="1"
+                    className="col-span-2 min-h-11 w-full accent-primary"
+                    aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
+                    value={Number.isNaN(target.percent) ? 0 : target.percent}
+                    onChange={(event) => updateTarget(index, { ...target, percent: Number(event.target.value) })}
+                  />}
                   <Button className="touch:h-11 touch:w-11 p-0 h-8 w-8" size="sm" variant="ghost"
                     aria-label={t("rebalance.remove").replace("{asset}", labelFor(target))}
                     onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>×</Button>

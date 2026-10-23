@@ -93,6 +93,9 @@ import ChatPage from "./chat-page";
 import { appendMessages, loadSession, orchestrateQuery, streamChatCompletion } from "@/middlelayers/ai";
 import { callLlm } from "@/middlelayers/ai/orchestrator/llm";
 import { storePendingAssistantQuestion } from "@/middlelayers/ai/pending-question";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false), usePlatform: () => ({ keyboardHeight: 0 }) }));
 
 const baseCurrency: CurrencyRateDetail = {
   currency: "USD",
@@ -127,6 +130,7 @@ const config: AIConfig = {
  }
 
 beforeEach(() => {
+  vi.mocked(isIOS).mockReturnValue(false);
   chatOptions.current = null;
   useActualChat.current = false;
   liveChat.current = null;
@@ -159,6 +163,17 @@ beforeEach(() => {
 });
 
 describe("ChatPage", () => {
+  it("opens chat sessions as a full phone page", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(loadAIConfig).mockResolvedValue(config);
+    vi.mocked(queryPreferCurrency).mockResolvedValue(baseCurrency);
+    renderAt("/assistant", true);
+    const toggle = await screen.findByTestId("sidebar-toggle");
+    await userEvent.click(toggle);
+    expect(screen.getByTestId("session-sidebar")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-card")).not.toBeInTheDocument();
+  });
+
   it("auto-sends a setup question with its page and safe settings context in a new session", async () => {
     storePendingAssistantQuestion({ question: "Make it equal weight", page: "rebalance", summary: "BTC 75%, ETH 25%" });
     vi.mocked(loadAIConfig).mockResolvedValue(config);

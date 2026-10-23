@@ -33,6 +33,7 @@ import { redactSecrets } from "@/middlelayers/security/redact";
 import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-service";
 import { normalizeSourceStatuses, sourceIdentity, sortSourceStatuses } from "@/middlelayers/source-status";
 import { partialEndpointKeys } from "@/middlelayers/datafetch/utils/source-failure";
+import { isIOS } from "@/utils/platform";
 
 const retries = 3;
 const retryInterval = 3000;
@@ -62,10 +63,12 @@ const App = ({
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [sourceStatuses, setSourceStatuses] = useState<PortfolioSourceStatus[]>(readStoredStatuses);
   const [lastResult, setLastResult] = useState<RefreshAllDataResult>();
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     setButtonLoading: setRefreshLoading,
     setProgress: setRefreshProgress,
+    progress,
   } = useContext(RefreshButtonLoadingContext);
 
   const retry = async <T,>(
@@ -92,6 +95,8 @@ const App = ({
 
   const runRefresh = async (sourceId?: string) => {
     if (sourceId && !lastResult?.sourceResults) return;
+    if (isIOS()) setStatusDialogOpen(true);
+    setRefreshing(true);
     cancelInsightRefresh();
     setRefreshLoading(true);
     const operation: RefreshOperation = { operationUuid: uuidv4() };
@@ -179,6 +184,7 @@ const App = ({
       toast({ description: t(messageKey), variant: "destructive" });
       trackEventWithClientID("data_refreshed", { failed: "true" });
     } finally {
+      setRefreshing(false);
       setRefreshLoading(false);
       setProgress(0);
       afterRefresh?.(succeeded);
@@ -265,11 +271,13 @@ const App = ({
         </Button>
       )}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className={isIOS()
+          ? "bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+          : "sm:max-w-md"}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("refresh.sourceStatus")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {partialStatuses.length
+              {refreshing ? t("refresh.inProgress") : partialStatuses.length
                 ? t("refresh.partialSummary")
                   .replace("{total}", String(sourceStatuses.length))
                   .replace("{failed}", String(failedStatuses.length))
@@ -285,6 +293,9 @@ const App = ({
                     sortedStatuses.filter((source) => source.status === "stale").map(displayIdentity).join(", "))
                   : t("refresh.allCurrent")}
             </AlertDialogDescription>
+            {refreshing && <div role="progressbar" aria-label={t("refresh.inProgress")} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
+            </div>}
           </AlertDialogHeader>
           <div className="my-2 max-h-80 space-y-2 overflow-y-auto">
             {sortedStatuses.map((source) => {
