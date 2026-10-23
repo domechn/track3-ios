@@ -58,6 +58,7 @@ jobs:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
       - run: corepack yarn install --immutable
+      - run: corepack yarn build
       - name: Initialize the Xcode project when absent
         run: |
           if [ ! -f src-tauri/gen/apple/project.yml ]; then
@@ -84,23 +85,41 @@ jobs:
           xcrun simctl bootstatus "$SIM_ID" -b
           APP=$(find src-tauri -type d -name '*.app' | head -n 1)
           test -n "$APP"
+          test -n "$(find "$APP" -type f -path '*/migrations/init/assets_v2_up.sql' -print -quit)"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
           mkdir -p artifacts
           ditto -c -k --sequesterRsrc --keepParent "$APP" artifacts/Track3-simulator-app.zip
           xcrun simctl install "$SIM_ID" "$APP"
           APP_PID=$(xcrun simctl launch "$SIM_ID" dev.track3.ios | sed -n 's/.*: //p')
           test -n "$APP_PID"
           sleep 20
-          xcrun simctl spawn "$SIM_ID" log show --last 1m --style compact --predicate 'process == "Track3"' > artifacts/launch.log || true
-          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'Track3*' -mmin -2 -print > artifacts/crash-reports.txt 2>/dev/null || true
+          xcrun simctl spawn "$SIM_ID" log show --last 1m --style compact --predicate "process ==[c] \"$EXECUTABLE\"" > artifacts/launch.log || true
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -iname "${EXECUTABLE}*" -mmin -2 -print > artifacts/crash-reports.log 2>/dev/null || true
           xcrun simctl spawn "$SIM_ID" launchctl list | awk -v pid="$APP_PID" '$1 == pid {found=1} END {exit !found}'
           xcrun simctl io "$SIM_ID" screenshot artifacts/iphone-launch.png
-          test ! -s artifacts/crash-reports.txt
+          swift scripts/ios/check-screenshot.swift artifacts/iphone-launch.png
+          xcrun simctl spawn "$SIM_ID" launchctl list | awk -v pid="$APP_PID" '$1 == pid {found=1} END {exit !found}'
+          test ! -s artifacts/crash-reports.log
+          ! grep -Eiq 'failed to read migration|error while running tauri application' artifacts/launch.log
       - name: Build unsigned device IPA
         run: |
-          corepack yarn tauri ios build --target aarch64 --debug --no-sign --ci
-          IPA=$(find src-tauri -type f -name '*.ipa' -path '*arm64*' | head -n 1)
-          test -n "$IPA"
-          cp "$IPA" artifacts/Track3-unsigned.ipa
+          set -euo pipefail
+          if ! corepack yarn tauri ios build --target aarch64 --debug --no-sign --ci; then
+            echo "Tauri did not export an unsigned IPA; checking for a built device app"
+          fi
+          IPA=$(find src-tauri -type f -name '*.ipa' -print -quit)
+          if [ -n "$IPA" ]; then
+            cp "$IPA" artifacts/Track3-unsigned.ipa
+          else
+            APP=$(find src-tauri -type d -name '*.app' ! -ipath '*sim*' -print -quit)
+            test -n "$APP"
+            EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
+            test -x "$APP/$EXECUTABLE"
+            mkdir -p artifacts/ipa/Payload
+            cp -R "$APP" artifacts/ipa/Payload/
+            (cd artifacts/ipa && zip -qry ../Track3-unsigned.ipa Payload)
+            rm -rf artifacts/ipa
+          fi
       - name: Upload generated Xcode project
         if: always()
         uses: actions/upload-artifact@v4
@@ -108,9 +127,15 @@ jobs:
           name: xcode-project
           path: generated-project/
           include-hidden-files: true
+          retention-days: 1
       - name: Upload simulator and IPA artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-foundation
-          path: artifacts/
+          path: |
+            artifacts/*.png
+            artifacts/*.log
+            artifacts/*.zip
+            artifacts/*.ipa
+          retention-days: 1

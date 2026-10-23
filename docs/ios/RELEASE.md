@@ -16,7 +16,7 @@ signing profile contains the default Data Protection entitlement and test
 database open, key rotation, import/export, and notifications on a device.
 
 CI runs `corepack yarn tauri ios init --ci` only when the project is absent.
-The `xcode-project` artifact contains the generated project. Download it with
+The one-day `xcode-project` artifact contains the generated project. Download it with
 `gh run download <run-id> -n xcode-project -D src-tauri/gen/apple`, add the
 generated files to the repository, and let subsequent CI builds use that
 committed project.
