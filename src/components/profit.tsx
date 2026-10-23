@@ -234,7 +234,7 @@ const App = ({
               className="min-w-0"
               labelClassName="font-medium text-sm"
             />
-            <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block text-muted-foreground" />
+            <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block touch:inline-block text-muted-foreground" />
           </Link>
         </TableCell>
         <TableCell className="text-right py-1.5">

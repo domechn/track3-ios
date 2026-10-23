@@ -16,7 +16,7 @@ export function tabForPath(path: string): MobileTab {
   return "more";
 }
 
-export function MobileNavigation({ unread = 0 }: { unread?: number }) {
+export function MobileNavigation({ unread = 0, onTabSwitch }: { unread?: number; onTabSwitch?: () => void }) {
   const { t } = useTranslation();
   const haptic = useHaptics();
   const { pathname, search } = useLocation();
@@ -32,7 +32,16 @@ export function MobileNavigation({ unread = 0 }: { unread?: number }) {
     { id: "more" as const, icon: DotsHorizontalIcon, title: t("nav.more", "More") },
   ];
   return <nav aria-label={t("mobile.tabs", "Tabs")} className="mobile-tab-bar">
-    {tabs.map(({ id, icon: Icon, title }) => <Link key={id} to={lastPath.current[id]} onClick={() => haptic("selection")}
+    {tabs.map(({ id, icon: Icon, title }) => <Link key={id} to={selected === id ? tabRoots[id] : lastPath.current[id]}
+      onClick={(event) => {
+        haptic("selection");
+        if (selected === id && pathname === tabRoots[id]) {
+          event.preventDefault();
+          window.scrollTo(0, 0);
+        } else if (selected !== id) {
+          onTabSwitch?.();
+        }
+      }}
       className="mobile-tab" aria-current={selected === id ? "page" : undefined}>
       <span className="mobile-tab-icon"><Icon aria-hidden="true" />{id === "more" && unread > 0 &&
         <span className="mobile-tab-badge" aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}</span>

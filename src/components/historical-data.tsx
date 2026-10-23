@@ -596,6 +596,16 @@ const App = ({
                   )}
                 </p>
               ) : null}
+              {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
+                <button type="button" className="history-mobile-delete self-start"
+                  disabled={deleting}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setDeleteCandidate(selectedDataId);
+                  }}>
+                  {t("history.deleteSnapshot")}
+                </button>
+              )}
             </DialogHeader>
             {detailLoading ? <p role="status" className="text-sm text-muted-foreground">{t("common.loading")}</p> : null}
             {detailError ? <p role="alert" className="text-sm text-destructive">{t("history.detailLoadFailed")}</p> : null}

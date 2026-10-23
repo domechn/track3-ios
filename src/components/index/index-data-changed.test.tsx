@@ -192,6 +192,7 @@ import {
 import { useDataChangedVersion as realUseDataChangedVersion } from "@/contexts/data-changed";
 
 beforeEach(() => {
+  vi.stubGlobal("scrollTo", vi.fn());
   vi.mocked(processAlerts).mockReset();
   vi.mocked(processAlerts).mockResolvedValue([]);
   lastDataChangedVersion = 0;
@@ -268,9 +269,10 @@ describe("App data-changed version bumps on refresh and soft refresh", () => {
     const nav = view.container.querySelector(".mobile-tab-bar");
     expect(nav).not.toBeNull();
     expect(nav!.querySelectorAll("a")).toHaveLength(4);
+    expect(view.container.querySelector('.mobile-analytics-hub a[href="#/cost-basis"]')).toBeInTheDocument();
     fireEvent.click(nav!.querySelector('a[href="#/more"]')!);
     await waitFor(() => expect(view.container.querySelector(".mobile-more-hub")).toBeInTheDocument());
-    expect(view.container.querySelector('.mobile-more-hub a[href="#/cost-basis"]')).toBeInTheDocument();
+    expect(view.container.querySelector('.mobile-more-hub a[href="#/cost-basis"]')).not.toBeInTheDocument();
   });
 
   it("finishes boot while startup alert evaluation is pending", async () => {

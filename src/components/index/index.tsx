@@ -30,7 +30,7 @@ import "./index.css";
 import { Route, Routes, HashRouter, Outlet, Navigate, useLocation } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   getAvailableDates,
   queryLastRefreshAt,
@@ -68,6 +68,7 @@ import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components
 import { useAlertBadge } from "@/components/use-alert-badge";
 import { useNavigate } from "react-router-dom";
 import { MobileHeaderTotal } from "@/components/mobile/header-total";
+import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
 const Setting = React.lazy(() => import("../settings"));
 const HistoricalData = React.lazy(() => import("../historical-data"));
@@ -122,6 +123,7 @@ function TopBar({
   onRefreshSuccess,
   compactTitle,
   refreshAction,
+  onBack,
 }: {
   mobile: boolean;
   isProUser: boolean;
@@ -137,6 +139,7 @@ function TopBar({
   onRefreshSuccess: () => void;
   compactTitle?: string;
   refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
+  onBack?: () => void;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
@@ -145,6 +148,10 @@ function TopBar({
   return (
     <div id="app-top-bar" className="sticky top-0 z-10 glass-subtle border-b relative">
       <div className="flex h-12 items-center px-4">
+        {mobile && onBack && <button type="button" className="mobile-back mobile-header-back"
+          onClick={onBack} aria-label={t("common.back", "Back")}>
+          <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
+        </button>}
         {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
         <MobileHeaderTotal currency={currentCurrency} live={isProUser} />
         {isProUser && !mobile && (
@@ -270,9 +277,36 @@ function Layout({
   }
   const backPath = stack.at(-2) ?? rootPath;
   const canGoBack = routePath !== rootPath;
+  const previousRoute = useRef({ tab: currentTab, path: routePath });
+  const tabScroll = useRef<Record<"overview" | "history" | "analytics" | "more", number>>({
+    overview: 0, history: 0, analytics: 0, more: 0,
+  });
+  const tabPaths = useRef<Record<"overview" | "history" | "analytics" | "more", string>>({ ...tabRoots });
+  const tabSwitchCaptured = useRef(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const refreshAction = useRef<(() => Promise<void>) | null>(null);
+  useLayoutEffect(() => {
+    const previous = previousRoute.current;
+    if (previous.tab === currentTab && previous.path === routePath) return;
+    const switchingTabs = previous.tab !== currentTab;
+    if (switchingTabs && !tabSwitchCaptured.current) tabScroll.current[previous.tab] = window.scrollY;
+    tabSwitchCaptured.current = false;
+    const target = switchingTabs && tabPaths.current[currentTab] === routePath
+      ? tabScroll.current[currentTab] : 0;
+    const restore = () => window.scrollTo(0, target);
+    restore();
+    const main = document.getElementById("app-main-content");
+    const observer = target > 0 && main && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => {
+        restore();
+        if (Math.abs(window.scrollY - target) < 2) observer?.disconnect();
+      }) : null;
+    if (main && observer) observer.observe(main);
+    tabPaths.current[currentTab] = routePath;
+    previousRoute.current = { tab: currentTab, path: routePath };
+    return () => observer?.disconnect();
+  }, [currentTab, routePath]);
   useEffect(() => {
     const update = () => setHeaderCollapsed(window.scrollY > 64);
     update();
@@ -302,6 +336,7 @@ function Layout({
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
           compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
           refreshAction={refreshAction}
         />
@@ -309,11 +344,13 @@ function Layout({
         {/* Main content */}
         <main id="app-main-content" tabIndex={-1} className="p-5"
           onTouchStart={(event) => {
+            if (!mobile) return;
             if (!event.currentTarget.contains(event.target as Node)) return;
             const touch = event.touches[0];
             swipeStart.current = touch.clientX < 24 ? { x: touch.clientX, y: touch.clientY } : null;
           }}
           onTouchEnd={(event) => {
+            if (!mobile) return;
             if (!canGoBack || !swipeStart.current) return;
             const touch = event.changedTouches[0];
             const dx = touch.clientX - swipeStart.current.x;
@@ -321,7 +358,7 @@ function Layout({
             swipeStart.current = null;
             if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
           }}>
-          <PullToRefresh onRefresh={() => refreshAction.current?.()}
+          <PullToRefresh disabled={!mobile} onRefresh={() => refreshAction.current?.()}
             lastRefreshText={lastRefreshAt
               ? t("topbar.lastRefreshAt") + lastRefreshAt
               : t("topbar.neverRefreshBefore")}>
@@ -345,30 +382,37 @@ function Layout({
           </PullToRefresh>
         </main>
       </div>
-      <MobileNavigation unread={unread} />
+      <MobileNavigation unread={unread} onTabSwitch={() => {
+        tabScroll.current[currentTab] = window.scrollY;
+        tabSwitchCaptured.current = true;
+      }} />
     </div>
   );
 }
 
 function MoreHub() {
   const { t } = useTranslation();
-  const groups = [
-    { title: t("nav.analytics", "Analytics"), items: [
-      { href: "#/summary", label: t("nav.summary") },
-      { href: "#/wallets", label: t("nav.wallets") },
-      { href: "#/comparison", label: t("nav.comparison") },
-      { href: "#/cost-basis", label: t("nav.costBasis") },
-      { href: "#/rebalance", label: t("nav.rebalance") },
-    ] },
-    { title: t("nav.more", "More"), items: [
-      { href: "#/goals", label: t("nav.goals") },
-      { href: "#/assistant", label: t("nav.assistant") },
-      { href: "#/settings/configuration", label: t("nav.settings") },
-    ] },
+  const items = [
+    { href: "#/rebalance", label: t("nav.rebalance") },
+    { href: "#/goals", label: t("nav.goals") },
+    { href: "#/assistant", label: t("nav.assistant") },
+    { href: "#/settings/configuration", label: t("nav.settings") },
   ];
-  return <div className="mobile-more-hub">{groups.map((group) =>
-    <InsetGroup key={group.title} title={group.title}>{group.items.map((item) =>
-      <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}</InsetGroup>)}</div>;
+  return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
+    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
+  </InsetGroup></div>;
+}
+
+function AnalyticsHub() {
+  const { t } = useTranslation();
+  const items = [
+    { href: "#/wallets", label: t("nav.wallets") },
+    { href: "#/comparison", label: t("nav.comparison") },
+    { href: "#/cost-basis", label: t("nav.costBasis") },
+  ];
+  return <div className="mobile-analytics-hub"><InsetGroup title={t("nav.analytics", "Analytics")}>
+    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
+  </InsetGroup></div>;
 }
 
 type AppRoutesProps = {
@@ -469,6 +513,7 @@ function AppRoutes({
           element={
             <AnimatedPage>
               <PageWrapper dateRange={maxDateRange} hasData={hasData}>
+                <AnalyticsHub />
                 <Summary
                   currency={currentCurrency}
                   dateRange={maxDateRange}

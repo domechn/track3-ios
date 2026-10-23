@@ -165,7 +165,7 @@ test("history swipe reveals delete, then confirm and undo restore the row", asyn
 });
 
 test("history pagination controls stay together at phone width", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
   const page = await context.newPage();
   try {
     await installTauriBridge(page);
@@ -430,6 +430,7 @@ test("large route titles collapse into the sticky header while scrolling", async
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeHidden();
     await page.evaluate(() => scrollTo(0, 180));
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeVisible();
+    expect((await back.boundingBox())!.y).toBeGreaterThanOrEqual(0);
     await expect(page.locator("#app-top-bar")).toContainText("Overview");
   } finally {
     await context.close();
@@ -453,6 +454,107 @@ test("back navigation returns to the previous page in the More tab", async ({ br
     await expect(page).toHaveURL(/#\/settings\/configuration$/);
     await page.locator(".mobile-route-heading").getByRole("button", { name: "Back" }).click();
     await expect(page).toHaveURL(/#\/more$/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("pushing a detail route starts at the top with a sticky Back control", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await page.getByRole("button", { name: "Show More" }).click();
+    await page.evaluate(() => scrollTo(0, 1000));
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(500);
+    await page.locator(".top-coins-rank-mobile .mobile-list-row").first().click();
+    await expect(page).toHaveURL(/#\/coins\//);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+    const back = page.locator("#app-top-bar").getByRole("button", { name: "Back" });
+    await expect(back).toBeVisible();
+    expect((await back.boundingBox())!.y).toBeGreaterThanOrEqual(0);
+    await page.evaluate(() => scrollTo(0, 180));
+    await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("tab switches restore position and tapping the active tab returns to its root", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await page.getByRole("button", { name: "Show More" }).click();
+    await page.evaluate(() => scrollTo(0, 500));
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(400);
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "History" }).click();
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(400);
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+    await page.getByRole("button", { name: "Show More" }).click();
+    await page.locator(".top-coins-rank-mobile .mobile-list-row").first().click();
+    await expect(page).toHaveURL(/#\/coins\//);
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Analytics" }).click();
+    await expect(page).toHaveURL(/#\/summary$/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Analytics opens its subpages and Back returns to Analytics", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/summary");
+    const links = page.locator(".mobile-analytics-hub");
+    for (const name of ["Wallets", "Comparison", "Cost basis"]) {
+      await expect(links.getByRole("link", { name })).toBeVisible();
+    }
+    await links.getByRole("link", { name: "Wallets" }).click();
+    await expect(page).toHaveURL(/#\/wallets$/);
+    await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
+    await expect(page).toHaveURL(/#\/summary$/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the latest history snapshot has a visible delete action in its detail", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/history");
+    await page.getByTestId("history-mobile-row").first().click();
+    const detail = page.getByRole("dialog", { name: /historical data detail/i });
+    await expect(detail.getByRole("button", { name: "Delete snapshot" })).toBeVisible();
+    await detail.getByRole("button", { name: "Delete snapshot" }).click();
+    await expect(page.getByRole("alertdialog", { name: /delete/i })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+test("wide touch screens do not activate phone gestures", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/coins/BTC");
+    const main = page.locator("#app-main-content");
+    await main.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 5, clientY: 80 }] });
+    await main.dispatchEvent("touchend", { changedTouches: [{ identifier: 1, clientX: 140, clientY: 81 }] });
+    await expect(page).toHaveURL(/#\/coins\/BTC$/);
+    const pull = page.getByTestId("pull-to-refresh");
+    await pull.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 100, clientY: 80 }] });
+    await pull.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 100, clientY: 150 }] });
+    await expect(page.locator(".mobile-pull-indicator")).toHaveCount(0);
   } finally {
     await context.close();
   }

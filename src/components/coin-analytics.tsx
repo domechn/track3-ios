@@ -828,7 +828,7 @@ const App = ({
                           {act.txnType}
                         </div>
                         <Pencil2Icon
-                          className="h-4 w-4 cursor-pointer hidden group-hover:inline-block text-muted-foreground"
+                          className="h-4 w-4 cursor-pointer hidden group-hover:inline-block touch:inline-block text-muted-foreground"
                           onClick={() => openUpdateTxnTypeDialog(act)}
                         />
                       </div>
@@ -842,7 +842,7 @@ const App = ({
                           )}
                         </div>
                         <Pencil2Icon
-                          className="h-4 w-4 cursor-pointer hidden group-hover:inline-block text-muted-foreground"
+                          className="h-4 w-4 cursor-pointer hidden group-hover:inline-block touch:inline-block text-muted-foreground"
                           onClick={() => openUpdatePriceDialog(act)}
                         />
                       </div>

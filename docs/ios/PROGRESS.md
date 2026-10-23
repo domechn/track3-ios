@@ -97,11 +97,26 @@ and signed build checks remain pending.
   The four viewport sweeps regenerated 40 PNGs in `test-results/mobile/`
   and checked width, clipped text, tab visibility, and safe-area clearance.
   The comparison sheet tests cover portal drag isolation and both detents.
-- The duplicated empty-date check in S3-owned `configuration.ts` and the
-  existing i18n key order were left for their owner because this step
-  prohibits edits to S3 files and non-append edits to locale JSON.
-- Still pending: green macOS CI after the driver commits and pushes these
-  changes, simulator review, physical-device interaction checks, and a native haptic bridge. The
+- Reviewer follow-up: pushed routes now open at the top, the sticky header
+  keeps Back visible, and tab switches restore their saved scroll position.
+  Tapping the active tab returns to its root or scrolls that root to the top.
+  The Analytics root links to Wallets, Comparison, and Cost basis; More keeps
+  its own routes. The latest history snapshot has a visible delete action in
+  its detail. Phone gestures are gated by the mobile media query, and touch
+  icons remain visible on wider touch displays. Locale keys added for S2
+  are at the end of both files, and the duplicate empty-date guard was removed.
+  This review explicitly requested that correction in S3-owned
+  `configuration.ts`. The existing S2 edits to S3-owned `refresh-data.tsx`
+  register the pull-to-refresh callback and its loading guard; the driver
+  should reconcile them with S3 before merging.
+- macOS CI run `39957522652` passed on the previous HEAD. This follow-up
+  still needs a new CI run after the driver commits and pushes it.
+  Local checks for this follow-up passed: `corepack yarn tsc --noEmit`,
+  Vitest (208 files, 1,748 tests), and Playwright mobile (31 tests).
+  Playwright regenerated 40 PNGs under `test-results/mobile/`; all have
+  the expected 2x dimensions, and the route sweep checked horizontal
+  overflow, clipped text, tab visibility, and safe-area clearance.
+  Physical-device interaction checks and a native haptic bridge remain pending. The
   shared haptic hook uses vibration where a WebView supports it; WKWebView
   needs a native bridge for physical feedback. S3-owned screens will need
   to adopt the shared phone components.

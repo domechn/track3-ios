@@ -326,7 +326,7 @@ const App = ({
                             {detailUrl && (
                               <img
                                 src={MoneyBankIcon}
-                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block cursor-pointer"
+                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block touch:inline-block cursor-pointer"
                                 onClick={() => openUrl(detailUrl)}
                                 alt="detail"
                               />
@@ -334,7 +334,7 @@ const App = ({
                             {airdropUrl && (
                               <img
                                 src={AirdropIcon}
-                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block cursor-pointer"
+                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block touch:inline-block cursor-pointer"
                                 onClick={() => openUrl(airdropUrl)}
                                 alt="airdrop"
                               />
