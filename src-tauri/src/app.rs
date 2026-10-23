@@ -220,6 +220,13 @@ fn get_database_url(database_path: tauri::State<'_, DatabasePath>) -> Result<Str
     sqlite_url(&database_path.0)
 }
 
+#[tauri::command]
+fn mark_frontend_ready(handle: tauri::AppHandle) -> Result<(), String> {
+    let cache_dir = handle.path().app_cache_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+    std::fs::write(cache_dir.join("track3-ready"), b"track3:ready").map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -244,6 +251,9 @@ pub fn run() {
             let instance_lock =
                 acquire_app_instance_lock(&app_data_dir).map_err(io::Error::other)?;
             app.manage(instance_lock);
+            #[cfg(target_os = "ios")]
+            crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
+                .map_err(io::Error::other)?;
             let database_path = tauri::async_runtime::block_on(resolve_database_path(
                 &app_data_dir,
                 &app_config_dir,
@@ -267,6 +277,9 @@ pub fn run() {
                 &ENT,
             ))
             .map_err(io::Error::other)?;
+            #[cfg(target_os = "ios")]
+            crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
+                .map_err(io::Error::other)?;
 
             tauri::async_runtime::block_on(run_migrations(
                 &database_path,
@@ -289,6 +302,7 @@ pub fn run() {
             replace_sync_snapshot,
             delete_sync_snapshot,
             get_database_url,
+            mark_frontend_ready,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

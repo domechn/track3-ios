@@ -2,35 +2,39 @@
 
 ## S1 foundation
 
-- Done locally: Tauri mobile library entry point and iOS configuration;
-  mobile capability and desktop plugin gating; platform state provider;
-  viewport and iOS theme defaults; iOS Info.plist and Data Protection project
-  configuration; macOS simulator/device CI workflow; architecture and release
-  documentation. The workflow now builds the frontend before Rust checks,
-  verifies bundled migration SQL and a nonblank simulator screenshot, checks
-  the app process after capture, and can package an unsigned IPA from a built
-  device app if Tauri does not export one.
-- Verified after this review: `corepack yarn tsc --noEmit` and
-  `corepack yarn vitest run` (1,702 tests across 197 files). Earlier
-  verification covered a frontend production build and 50 Rust pure tests.
-  The generated project configuration script passed an idempotence self-check.
-- CI run `39921354066` failed because `cargo check` ran before `dist` existed.
-  The Xcode project upload then hit an account-level artifact storage quota.
-  The new workflow builds `dist` first and sets one-day artifact retention;
-  quota recovery still depends on GitHub recalculating usage or clearing old
-  account artifacts.
-- Pending verification: a new macOS Rust target check, simulator installation
-  and launch, screenshot review, unsigned IPA build, and signed device validation.
-  An iPhone-sized browser preview cannot validate startup:
-  it has no Tauri bridge and reports a missing `invoke` function.
-- Pending repository artifact: generated `src-tauri/gen/apple` Xcode project.
-  Linux cannot run `tauri ios init`; CI must upload it as `xcode-project` after
-  the driver commits and pushes this worktree. The generated project must then
-  be downloaded and added in a later round.
-- Pending mobile backup work: automatic backups to a user-selected external
-  directory need persistent security-scoped access across launches. The mobile
-  filesystem scope also needs `$DOCUMENT/**` before shared Documents can be
-  used for backup export.
+- CI run `39923565686` passed the web job, both iOS Rust target checks, the
+  unsigned simulator and device builds, simulator install and launch, process
+  checks, screenshot capture, and IPA creation. Its two artifact uploads failed
+  because the account's GitHub Actions artifact storage quota was exhausted.
+  No screenshot or generated project from that run is available to inspect.
+- This round adds an iOS readiness signal after the frontend loads
+  configuration, queries SQLite, and renders the overview heading. CI now
+  requires the signal and a screenshot with at least 5% varied samples. It
+  prints a compressed screenshot and the generated Xcode project as
+  recoverable base64 log chunks. Artifact upload errors no longer mask build
+  and launch results while the account quota is exhausted. Screenshot and log
+  uploads remain configured; simulator ZIP and IPA uploads are temporarily
+  omitted. The unsigned device IPA is still built.
+- Exports now write their data before the iOS document picker opens. Manual
+  automatic backup setup uses the app's Documents directory on iOS, which
+  remains available across launches and is accessible through Files and
+  Finder. The mobile filesystem scope includes Documents. The app shell
+  respects iOS safe area insets, and narrow desktop windows stay classified
+  as desktop.
+- Encryption key files and rotation journals are marked
+  `NSURLIsExcludedFromBackupKey` on iOS. A restored device cannot decrypt
+  configuration encrypted with a custom key; users need their exported
+  configuration and its key to recover it. Device restore testing is pending.
+- The Rust library is named `track3_lib`, avoiding a Windows artifact name
+  collision with the `track3` binary.
+- Local verification for this round: `corepack yarn tsc --noEmit` passed,
+  `corepack yarn vitest run` passed (1,711 tests in 200 files), and
+  `cargo test --locked -p track3-pure-tests --lib` passed (50 tests). iOS
+  compilation and simulator validation require the next macOS CI run.
 
-The S1 exit condition is **not yet met**. No successful iOS CI result or
-simulator screenshot is available in this worktree yet.
+The S1 exit condition is **not yet met**. These changes need another macOS CI
+run and visual inspection of its screenshot. The generated
+`src-tauri/gen/apple` project still needs to be recovered from the next run's
+log (or artifact, if quota recovers) and added to the repository by the driver.
+Only the driver commits and pushes. Physical device and signed build checks
+remain pending.

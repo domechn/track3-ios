@@ -62,6 +62,7 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts, formatAlert } from "@/middlelayers/alert-notifications";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
+import { markIOSReady } from "@/utils/ios-ready";
 
 const Setting = React.lazy(() => import("../settings"));
 const HistoricalData = React.lazy(() => import("../historical-data"));
@@ -576,6 +577,10 @@ const App = () => {
       .then(() => loadAllData(active))
       .then(() => {
         if (!active) return;
+        setInitializing(false);
+        void markIOSReady().catch(() => {
+          console.warn("iOS readiness check failed");
+        });
         void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
           const text = formatAlert(alert, t);
           toast({ title: text.title, description: text.message });

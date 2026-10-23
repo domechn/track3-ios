@@ -11,6 +11,7 @@ describe("iOS platform state", () => {
     expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)", "iPhone", 0, 390).isIOS).toBe(true);
     expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 5, 1024).isIOS).toBe(true);
     expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 0, 1024).isIOS).toBe(false);
+    expect(detectPlatform("Mozilla/5.0 (Windows NT 10.0)", "Win32", 0, 390).isMobile).toBe(false);
   });
 
   it("reports visible keyboard overlap without negative heights", () => {

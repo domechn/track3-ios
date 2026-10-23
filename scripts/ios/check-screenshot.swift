@@ -25,7 +25,7 @@ for y in stride(from: bitmap.pixelsHigh / 10, to: bitmap.pixelsHigh * 9 / 10, by
 }
 
 let varied = samples - (colors.values.max() ?? 0)
-guard samples > 0, varied >= max(30, samples / 200) else {
+guard samples > 0, varied >= max(30, samples / 20) else {
     fatalError("Simulator screenshot is nearly uniform; the webview may be blank")
 }
 print("Screenshot has \(varied) varied samples out of \(samples)")

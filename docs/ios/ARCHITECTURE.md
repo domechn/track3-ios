@@ -19,15 +19,20 @@ The generated iOS Xcode project sets
 `com.apple.developer.default-data-protection` to
 `NSFileProtectionCompleteUntilFirstUserAuthentication`. This is iOS Data
 Protection backed by the device passcode and hardware keys, and applies to new
-files in the app sandbox, including `.ent-key`, SQLite files, rotation journals,
-and encrypted session files. This preserves the recoverable key rotation
-protocol, which atomically replaces `.ent-key`; storing only a second copy in
-Keychain would break that atomic protocol. The app expects the device to have
-been unlocked once after reboot. The existing legacy default encryption key
-is retained for compatibility with existing data. SQLite assets and
-transactions still rely on iOS Data Protection for at-rest protection, while
-sensitive configuration and assistant content also use app-layer encryption.
-Device backup and restore policy needs validation on a signed device build.
+files in the app sandbox. The app expects the device to have been unlocked
+once after reboot. SQLite assets and transactions rely on iOS Data Protection
+for at-rest protection; sensitive configuration and assistant content also
+use app-layer encryption.
+
+The recoverable rotation protocol atomically replaces `.ent-key` and uses
+temporary files and a journal. iOS marks those key artifacts with
+`NSURLIsExcludedFromBackupKey` as they are created and scans existing key
+artifacts at startup. This prevents an iCloud or Finder backup from carrying
+the encryption key beside the encrypted configuration. The existing legacy
+default key remains for compatibility. After a device restore, configuration
+encrypted with a custom key cannot be read from the restored database; the
+user must import an exported configuration using its original key. Device
+backup and restore behavior still needs validation on a signed build.
 
 `scripts/ios/configure-project.py` applies the Data Protection entitlement to
 the generated `project.yml` and entitlements file. `src-tauri/Info.ios.plist`
@@ -50,3 +55,16 @@ Rust persistence modules otherwise use paths supplied by Tauri and standard
 file APIs within the sandbox. `fs2` instance locking and `libc::O_NOFOLLOW`
 remain supported Unix operations; key rotation keeps its existing fsync and
 recovery behavior.
+
+The iOS document picker exports an already written file from the app's
+Documents directory. The frontend writes the file before opening the picker;
+desktop exports continue writing to the selected path afterward. Automatic
+backups on iOS use the app's Documents directory, with filesystem scope for
+that directory. Backups are available through Files and Finder. Selecting
+arbitrary external directories across launches is unavailable because the
+current plugin does not retain security-scoped access.
+
+After successful configuration and SQLite queries, the frontend waits for the
+overview heading to render and invokes a Rust command that writes a readiness
+marker in the app cache. Simulator CI checks that marker before taking its
+screenshot.

@@ -1,3 +1,3 @@
 fn main() {
-    track3::app::run();
+    track3_lib::app::run();
 }

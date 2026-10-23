@@ -491,6 +491,7 @@
   "data.na": "N/A",
   "data.autoBackupDesc": "Data is automatically backed up every 24h or after refresh when a backup folder is configured.",
   "data.chooseFolder": "Choose Folder",
+  "data.useDocumentsFolder": "Use Track3 Documents Folder",
   "data.clearFolder": "Clear",
   "data.clearFolderTitle": "Clear backup folder?",
   "data.clearFolderDesc": "Automatic backups will stop until you choose a folder again. Existing backup files will remain.",

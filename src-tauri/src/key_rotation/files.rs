@@ -369,7 +369,14 @@ pub(super) fn write_random_restricted(
             Uuid::new_v4()
         ));
         match write_restricted_new(&path, data) {
-            Ok(()) => return Ok(path),
+            Ok(()) => {
+                #[cfg(target_os = "ios")]
+                if let Err(error) = crate::ios_backup::exclude_key_artifact(&path) {
+                    let _ = fs::remove_file(&path);
+                    return Err(error);
+                }
+                return Ok(path);
+            }
             Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,
             Err(error) => {
                 return Err(format!("failed to stage {}: {error}", target.display()));

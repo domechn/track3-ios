@@ -7,7 +7,7 @@ import { OthersAnalyzer } from "./datafetch/coins/others";
 import { SOLAnalyzer } from "./datafetch/coins/sol";
 import { ERC20NormalAnalyzer, ERC20ProAnalyzer } from "./datafetch/coins/erc20";
 import { CexAnalyzer, supportedExchanges } from "./datafetch/coins/cex/cex";
-import { save, open } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { AddProgressFunc, UserLicenseInfo } from "./types";
 import { ASSET_HANDLER } from "./entities/assets";
 import { TRC20ProUserAnalyzer } from "./datafetch/coins/trc20";
@@ -44,6 +44,7 @@ import { FullRefreshRequiredError } from "./refresh-error";
 import { configuredSecretValues, redactSecrets } from "./security/redact";
 import { maskSourceIdentifier } from "./source-status";
 import { CEX_OPTIONS, STOCK_BROKER_OPTIONS } from "./constants";
+import { exportFile } from "@/utils/export-file";
 import {
   type FailedPortfolioSource,
   type LoadPortfoliosResult,
@@ -338,21 +339,8 @@ export async function fetchPortfolios(
 export async function exportHistoricalData(
   exportConfiguration = false,
 ): Promise<boolean> {
-  const filePath = await save({
-    filters: [
-      {
-        name: "track3-export-data",
-        extensions: ["json"],
-      },
-    ],
-    defaultPath: "track3-export-data.json",
-  });
-
-  if (!filePath) {
-    return false;
-  }
-  await DATA_MANAGER.exportHistoricalData(filePath, exportConfiguration);
-  return true;
+  return exportFile("track3-export-data.json", ["json"], (path) =>
+    DATA_MANAGER.exportHistoricalData(path, exportConfiguration));
 }
 
 // return true if there are duplicated data in track3-export-data

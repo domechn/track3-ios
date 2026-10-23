@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { save as saveFile } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { exportFile } from "@/utils/export-file";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { useTranslation } from "@/i18n";
 import {
@@ -212,11 +212,8 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
   async function exportCsv() {
     if (!result) return;
     try {
-      const filePath = await saveFile({
-        defaultPath: "track3-rebalance.csv",
-        filters: [{ name: "track3-rebalance", extensions: ["csv"] }],
-      });
-      if (filePath) await writeTextFile(filePath, suggestionsToCsv(result, currency.currency, t));
+      await exportFile("track3-rebalance.csv", ["csv"], (path) =>
+        writeTextFile(path, suggestionsToCsv(result, currency.currency, t)));
     } catch {
       setStatus(t("rebalance.exportError"));
     }

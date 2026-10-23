@@ -79,6 +79,13 @@ describe("App shell accessibility", () => {
     expect(mainContent).toHaveFocus();
   });
 
+  it("keeps the app shell inside iOS safe area insets", () => {
+    render(<App />);
+    const shell = screen.getByRole("main").parentElement?.parentElement;
+    expect(shell).toHaveClass("min-h-dvh");
+    expect(shell).toHaveClass("ios-safe-area");
+  });
+
   it("renders an overview page heading", () => {
     render(
       <Overview

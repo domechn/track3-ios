@@ -26,7 +26,7 @@ function Shell() {
 
   return (
     <ThemeProvider defaultTheme={isIOS() ? "system" : "light"} storageKey={themeLocalStorageKey}>
-      <div className="min-h-dvh" onContextMenu={isIOS() ? undefined : renderRightClickMenu}>
+      <div className="min-h-dvh ios-safe-area" onContextMenu={isIOS() ? undefined : renderRightClickMenu}>
         <a
           href="#app-main-content"
           onClick={focusMainContent}

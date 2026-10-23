@@ -6,6 +6,8 @@ pub mod binance;
 pub mod database_path;
 pub mod ent;
 pub mod info;
+#[cfg(target_os = "ios")]
+pub mod ios_backup;
 pub mod key_rotation;
 pub mod migration;
 pub mod refresh_persistence;

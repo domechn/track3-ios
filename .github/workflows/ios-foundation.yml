@@ -69,6 +69,12 @@ jobs:
           cp generated-icons/ios/*.png src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/
           mkdir -p generated-project
           rsync -a --exclude build --exclude Pods --exclude Externals --exclude '*.xcuserstate' src-tauri/gen/apple/ generated-project/
+      - name: Print Xcode project recovery copy
+        run: |
+          tar -czf /tmp/track3-xcode-project.tgz -C generated-project .
+          echo "TRACK3_XCODE_PROJECT_BEGIN"
+          base64 -i /tmp/track3-xcode-project.tgz | fold -w 3000 | sed 's/^/TRACK3_XCODE_PROJECT_CHUNK:/'
+          echo "TRACK3_XCODE_PROJECT_END"
       - name: Check the device Rust target
         run: cargo check --locked --target aarch64-apple-ios --lib
         working-directory: src-tauri
@@ -88,7 +94,6 @@ jobs:
           test -n "$(find "$APP" -type f -path '*/migrations/init/assets_v2_up.sql' -print -quit)"
           EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
           mkdir -p artifacts
-          ditto -c -k --sequesterRsrc --keepParent "$APP" artifacts/Track3-simulator-app.zip
           xcrun simctl install "$SIM_ID" "$APP"
           APP_PID=$(xcrun simctl launch "$SIM_ID" dev.track3.ios | sed -n 's/.*: //p')
           test -n "$APP_PID"
@@ -96,8 +101,17 @@ jobs:
           xcrun simctl spawn "$SIM_ID" log show --last 1m --style compact --predicate "process ==[c] \"$EXECUTABLE\"" > artifacts/launch.log || true
           find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -iname "${EXECUTABLE}*" -mmin -2 -print > artifacts/crash-reports.log 2>/dev/null || true
           xcrun simctl spawn "$SIM_ID" launchctl list | awk -v pid="$APP_PID" '$1 == pid {found=1} END {exit !found}'
+          CONTAINER=$(xcrun simctl get_app_container "$SIM_ID" dev.track3.ios data)
+          READY=$(find "$CONTAINER" -name track3-ready -type f -print -quit)
+          test -n "$READY"
+          grep -Fxq 'track3:ready' "$READY"
+          echo "track3:ready" >> artifacts/launch.log
           xcrun simctl io "$SIM_ID" screenshot artifacts/iphone-launch.png
           swift scripts/ios/check-screenshot.swift artifacts/iphone-launch.png
+          sips -Z 600 artifacts/iphone-launch.png --out /tmp/track3-launch-small.png >/dev/null
+          echo "TRACK3_SCREENSHOT_BEGIN"
+          base64 -i /tmp/track3-launch-small.png | fold -w 3000 | sed 's/^/TRACK3_SCREENSHOT_CHUNK:/'
+          echo "TRACK3_SCREENSHOT_END"
           xcrun simctl spawn "$SIM_ID" launchctl list | awk -v pid="$APP_PID" '$1 == pid {found=1} END {exit !found}'
           test ! -s artifacts/crash-reports.log
           ! grep -Eiq 'failed to read migration|error while running tauri application' artifacts/launch.log
@@ -122,20 +136,20 @@ jobs:
           fi
       - name: Upload generated Xcode project
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: xcode-project
           path: generated-project/
           include-hidden-files: true
           retention-days: 1
-      - name: Upload simulator and IPA artifacts
+      - name: Upload simulator screenshot and launch log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ios-foundation
           path: |
             artifacts/*.png
             artifacts/*.log
-            artifacts/*.zip
-            artifacts/*.ipa
           retention-days: 1

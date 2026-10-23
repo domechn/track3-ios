@@ -18,9 +18,11 @@
     "fs:allow-app-write-recursive",
     "fs:allow-appcache-write-recursive",
     "fs:allow-appconfig-write-recursive",
+    "fs:allow-document-read-recursive",
+    "fs:allow-document-write-recursive",
     {
       "identifier": "fs:scope",
-      "allow": ["$APPDATA/**", "$APPCACHE/**", "$APPCONFIG/**"]
+      "allow": ["$APPDATA/**", "$APPCACHE/**", "$APPCONFIG/**", "$DOCUMENT/**"]
     },
     "dialog:default",
     {

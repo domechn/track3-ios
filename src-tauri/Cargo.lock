@@ -6592,6 +6592,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "md-5",
+ "objc2-foundation",
  "percent-encoding",
  "reqwest 0.12.15",
  "ring",

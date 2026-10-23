@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useToast } from "@/components/ui/use-toast";
 import ConfirmDeleteDialog from "@/components/common/confirm-delete-dialog";
@@ -52,6 +51,8 @@ import {
   runEncryptionKeyRotation,
 } from "@/middlelayers/encryption-write-gate";
 import { redactSecrets } from "@/middlelayers/security/redact";
+import { chooseBackupLocation } from "@/utils/backup-location";
+import { isIOS } from "@/utils/platform";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const { toast } = useToast();
@@ -188,10 +189,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   }
 
   async function onChooseAutoBackupFolderButtonClick() {
-    const selected = await open({
-      multiple: false,
-      directory: true,
-    });
+    const selected = await chooseBackupLocation();
     if (selected) {
       const path = selected as string;
       await saveAutoBackupDirectory(path);
@@ -357,7 +355,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
             <div className="flex items-center gap-2">
               <Button onClick={onChooseAutoBackupFolderButtonClick} size="sm">
-                {t("data.chooseFolder")}
+                {t(isIOS() ? "data.useDocumentsFolder" : "data.chooseFolder")}
               </Button>
               <ConfirmDeleteDialog
                 trigger={<Button variant="outline" size="sm">{t("data.clearFolder")}</Button>}

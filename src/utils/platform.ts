@@ -9,10 +9,10 @@ export type Platform = {
   keyboardOpen: boolean;
 };
 
-export function detectPlatform(userAgent: string, platform: string, touchPoints: number, width: number) {
+export function detectPlatform(userAgent: string, platform: string, touchPoints: number, _width: number) {
   const isIOS = /iPhone|iPad|iPod/.test(userAgent) ||
     (platform === "MacIntel" && touchPoints > 1);
-  return { isIOS, isMobile: isIOS || width < 768 };
+  return { isIOS, isMobile: isIOS };
 }
 
 export function keyboardHeight(windowHeight: number, viewportHeight: number, offsetTop: number) {
