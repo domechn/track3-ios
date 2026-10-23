@@ -22,7 +22,7 @@ export default class AppErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    void reportIOSFrontendError(error.stack ?? error.message);
+    void reportIOSFrontendError(`${error.message}\n${error.stack ?? ""}`);
   }
 
   render() {

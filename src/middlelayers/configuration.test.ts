@@ -15,6 +15,7 @@ import {
   saveStableCoins,
   getImportedPartHashes,
   saveImportedPartHash,
+  getInitialQueryDateRange,
 } from "./configuration";
 import { GlobalConfig } from "./datafetch/types";
 
@@ -34,6 +35,7 @@ vi.mock("./database", () => ({
   getDatabase: vi.fn(),
   executeWrite: vi.fn(),
   executeWriteWork: vi.fn(),
+  selectFromDatabaseWithSql: vi.fn().mockResolvedValue([]),
 }));
 
 /** Minimal mock that tracks every execute call in order. */
@@ -91,6 +93,11 @@ beforeEach(() => {
   vi.mocked(executeWriteWork).mockImplementation(async (operation) =>
     operation(tracing.db as never),
   );
+});
+
+it("returns an empty date range when a fresh portfolio has no snapshots", async () => {
+  const { dr } = await getInitialQueryDateRange();
+  expect(dr).toEqual({ from: undefined, to: undefined });
 });
 
 describe("saveConfiguration", () => {

@@ -1082,5 +1082,6 @@
   "sync.pulledToast": "来自 {device} 的 {count} 个新快照",
   "sync.connection.conditions": "存储服务未执行条件写入。多设备同步需要此 S3 功能。",
   "sync.status.errorsPresent": "部分同步数据无法处理。Track3 将自动重试。",
-  "sync.disableFailed": "无法停用同步，请重试。"
+  "sync.disableFailed": "无法停用同步，请重试。",
+  "totalValue.toggleChange": "切换涨跌显示"
 }

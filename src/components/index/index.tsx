@@ -50,7 +50,7 @@ import {
   autoImportHistoricalData,
 } from "@/middlelayers/data";
 import { DateRange } from "react-day-picker";
-import { format, parseISO } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { invalidateCacheGroups } from "@/middlelayers/datafetch/utils/cache";
 import { CACHE_GROUP_KEYS } from "@/middlelayers/consts";
 import { APP_SOFT_REFRESH_EVENT } from "@/utils/hook";
@@ -107,6 +107,7 @@ export const RefreshButtonLoadingContext = React.createContext<{
   setButtonLoading: React.Dispatch<React.SetStateAction<boolean>>;
   progress: number;
   setProgress: React.Dispatch<React.SetStateAction<number>>;
+  refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
 }>(null as any);
 
 function TopBar({
@@ -119,6 +120,7 @@ function TopBar({
   lastRefreshAt,
   onRefreshSuccess,
   compactTitle,
+  refreshAction,
 }: {
   isProUser: boolean;
   quoteColor: QuoteColor;
@@ -132,6 +134,7 @@ function TopBar({
   lastRefreshAt?: string;
   onRefreshSuccess: () => void;
   compactTitle?: string;
+  refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
@@ -159,13 +162,14 @@ function TopBar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div id="app-refresh-trigger">
+                <div>
                   <RefreshButtonLoadingContext.Provider
                     value={{
                       buttonLoading: refreshButtonLoading,
                       setButtonLoading: setRefreshButtonLoading,
                       progress: refreshProgress,
                       setProgress: setRefreshProgress,
+                      refreshAction,
                     }}
                   >
                     <RefreshData
@@ -266,6 +270,7 @@ function Layout({
   const canGoBack = routePath !== rootPath;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const refreshAction = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     const update = () => setHeaderCollapsed(window.scrollY > 64);
     update();
@@ -295,6 +300,7 @@ function Layout({
           lastRefreshAt={lastRefreshAt}
           compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
           onRefreshSuccess={onRefreshSuccess}
+          refreshAction={refreshAction}
         />
 
         {/* Main content */}
@@ -311,10 +317,7 @@ function Layout({
             swipeStart.current = null;
             if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
           }}>
-          <PullToRefresh onRefresh={() => {
-            const button = document.querySelector<HTMLButtonElement>("#app-refresh-trigger button");
-            button?.click();
-          }}>
+          <PullToRefresh onRefresh={() => refreshAction.current?.()}>
           <div className="mobile-route-heading">
             <MobilePage title={routeTitle(location.pathname, t)}
               back={canGoBack ? () => navigate(backPath) : undefined} />
@@ -720,7 +723,7 @@ const App = () => {
     [dateRange],
   );
   useEffect(() => {
-    if (dateRange?.from && dateRange.to) {
+    if (dateRange?.from && dateRange.to && isValid(dateRange.from) && isValid(dateRange.to)) {
       localStorage.setItem(CURRENT_DATE_RANGE_KEY, JSON.stringify({
         from: format(dateRange.from, "yyyy-MM-dd"), to: format(dateRange.to, "yyyy-MM-dd"),
       }));

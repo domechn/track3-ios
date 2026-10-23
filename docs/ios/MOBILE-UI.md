@@ -15,13 +15,14 @@ queries and mutations.
   actions and Cancel. Each action has `{ label, onClick, destructive?,
   disabled? }`.
 - `SwipeableRow({ actions, children })` reveals trailing buttons after a
-  left swipe. Every action remains an accessible button. Wrap the visible row
-  content in a button when it opens a detail.
+  left swipe. Actions enter keyboard navigation when revealed. Wrap the
+  visible row content in a button when it opens a detail.
 - `SegmentedControl({ options, value, onChange, label? })` is a labeled radio
   group for short range choices.
 - `PullToRefresh({ onRefresh, disabled?, children })` calls refresh after a
-  downward gesture that begins at the top. Put the existing refresh trigger in
-  `onRefresh`, so source status, alerts, and sync continue to use one flow.
+  downward gesture that begins at the top. Return the refresh promise from
+  `onRefresh` so its progress indicator stays visible until the refresh ends.
+  The app shell invokes the existing refresh flow through context.
 - `InsetGroup({ title?, children })` and `ListRow({ value?, href?, onClick?,
   trailing?, children })` provide grouped lists with 44pt or larger rows.
 - `MobileRecordList({ records })` renders records as grouped rows. Each record

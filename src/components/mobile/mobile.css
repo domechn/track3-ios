@@ -15,7 +15,7 @@
 .mobile-action-sheet { display: grid; gap: .5rem; }
 .mobile-action { width: 100%; min-height: 3.25rem; text-align: center; border-radius: .75rem; background: hsl(var(--card)); font-size: 1rem; }
 .mobile-action-cancel { margin-top: .5rem; font-weight: 600; }
-.mobile-swipe-row { position: relative; display: flex; min-width: 0; overflow: hidden; }
+.mobile-swipe-row { position: relative; display: flex; min-width: 0; overflow: hidden; touch-action: pan-y; }
 .mobile-swipe-content { min-width: 0; flex: 1; }
 .mobile-swipe-actions { display: flex; max-width: 0; transition: max-width .2s ease; }
 .mobile-swipe-actions-revealed { max-width: 15rem; }

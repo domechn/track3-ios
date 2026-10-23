@@ -17,6 +17,7 @@ import axe from "axe-core";
 const mockSetButtonLoading = vi.hoisted(() => vi.fn());
 const mockSetProgress = vi.hoisted(() => vi.fn());
 const mockToast = vi.hoisted(() => vi.fn());
+const mockRefreshAction = vi.hoisted(() => ({ current: null as null | (() => Promise<void>) }));
 
 vi.mock("@/components/index/index", async () => {
   const { createContext } = await import("react");
@@ -26,6 +27,7 @@ vi.mock("@/components/index/index", async () => {
       setButtonLoading: mockSetButtonLoading,
       progress: 0,
       setProgress: mockSetProgress,
+      refreshAction: mockRefreshAction,
     }),
   };
 });
@@ -61,6 +63,7 @@ vi.mock("@/middlelayers/insights-service", () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mockRefreshAction.current = null;
   localStorage.clear();
   vi.mocked(updateAllCurrencyRates).mockResolvedValue(undefined as never);
   vi.mocked(refreshAllData).mockResolvedValue({
@@ -77,6 +80,20 @@ beforeEach(() => {
 });
 
 describe("RefreshData — currency rates refresh ordering", () => {
+  it("exposes a refresh promise for pull to refresh until the refresh completes", async () => {
+    let finish: (() => void) | undefined;
+    vi.mocked(refreshAllData).mockImplementation(() => new Promise((resolve) => {
+      finish = () => resolve({ failedSources: [], requiresDataSourceAction: false, usedLastKnownData: false } as never);
+    }));
+    render(<RefreshData loading={false} />);
+    expect(mockRefreshAction.current).not.toBeNull();
+    let settled = false;
+    const refresh = mockRefreshAction.current!().then(() => { settled = true; });
+    await waitFor(() => expect(refreshAllData).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    await act(async () => { finish?.(); await refresh; });
+    expect(settled).toBe(true);
+  });
   it("announces an active refresh to assistive technology", () => {
     render(<RefreshData loading={true} />);
     expect(screen.getByRole("status")).toHaveTextContent("Refreshing portfolio");

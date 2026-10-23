@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   refreshAllData,
   type RefreshAllDataResult,
@@ -66,6 +66,7 @@ const App = ({
   const {
     setButtonLoading: setRefreshLoading,
     setProgress: setRefreshProgress,
+    refreshAction,
   } = useContext(RefreshButtonLoadingContext);
 
   const retry = async <T,>(
@@ -91,6 +92,7 @@ const App = ({
   }
 
   const runRefresh = async (sourceId?: string) => {
+    if (refreshLoading) return;
     if (sourceId && !lastResult?.sourceResults) return;
     cancelInsightRefresh();
     setRefreshLoading(true);
@@ -200,6 +202,11 @@ const App = ({
       }
     }
   };
+
+  useEffect(() => {
+    refreshAction.current = () => runRefresh();
+    return () => { refreshAction.current = null; };
+  }, [refreshAction, runRefresh]);
 
   const hasFailure = sourceStatuses.some((source) => source.status === "failed" || source.status === "stale");
   const hasPartial = sourceStatuses.some((source) => source.status === "partial");

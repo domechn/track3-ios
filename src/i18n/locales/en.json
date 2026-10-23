@@ -1082,5 +1082,6 @@
   "sync.pulledToast": "{count} new snapshots from {device}",
   "sync.connection.conditions": "The store does not enforce conditional writes. Multi-device sync needs this S3 feature.",
   "sync.status.errorsPresent": "Some sync data could not be processed. Track3 will retry automatically.",
-  "sync.disableFailed": "Could not disable sync. Please try again."
+  "sync.disableFailed": "Could not disable sync. Please try again.",
+  "totalValue.toggleChange": "Toggle change display"
 }

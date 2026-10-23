@@ -33,7 +33,7 @@ and signed build checks remain pending.
 - Added the phone shell with four bottom tabs, per-tab back navigation,
   including stock asset query parameters, collapsing titles, a compact
   portfolio total, safe-area spacing, pull to
-  refresh through the existing refresh button, and a floating source-status
+  refresh through the existing refresh flow, and a floating source-status
   sheet. Desktop routing remains available.
 - Added reusable touch components in `src/components/mobile/`; their usage
   contract is in `docs/ios/MOBILE-UI.md`. History, comparison, cost basis,
@@ -41,13 +41,37 @@ and signed build checks remain pending.
   sheets, or date inputs instead of wide tables and popovers. Overview
   rankings and shared dialog styles fit phone widths. Comparison ranges
   support horizontal swipes; finance charts accept touch inspection.
-- Local checks passed: `corepack yarn tsc --noEmit`; Vitest (205 files,
-  1,736 tests); Playwright mobile suite (18 tests); Rust pure tests (60
-  tests). Playwright saved 28 route screenshots in `test-results/mobile/`
+- Local checks passed before review: `corepack yarn tsc --noEmit`; Vitest
+  (205 files, 1,736 tests); Playwright mobile suite (18 tests); Rust pure tests
+  (60 tests). Playwright saved 28 route screenshots in `test-results/mobile/`
   at 320, 375, 390, and 430 CSS pixels. Each route check waits for content
   to load, then asserts no document overflow or clipped visible leaf text
-  and checks bottom safe-area clearance. The screenshot set has the expected
-  dimensions and nonuniform pixel content.
+  and checks bottom safe-area clearance.
+- Review follow-up: iOS foundation run `39944121990` built but failed at
+  simulator launch. Its stack traced to formatting Invalid Dates on an empty
+  database. Fresh portfolios now receive an empty date range, and date range
+  persistence checks validity before formatting. The iOS error report now
+  includes the message. A new app render test covers the empty portfolio.
+- Viewport screenshots now use viewport capture; full-page capture made
+  Chromium switch to desktop layout during screenshot. The route loop also
+  visits More and Goals, and the history list gets a scrolled screenshot.
+  History swipe actions handle canceled pointers, leave the tab order while
+  concealed, and suppress the accidental row tap after a swipe. The suite
+  exercises swipe, delete confirmation, and undo. History pagination stays
+  together at phone width. The Pro header total polls, pull to refresh awaits
+  the actual refresh promise, and the portfolio change value can be toggled
+  by touch. The allocation chart accepts nearby taps.
+- Review follow-up local checks passed: `corepack yarn tsc --noEmit`;
+  Vitest (207 files, 1,743 tests); Playwright mobile suite (21 tests).
+  The final Playwright run saved 40 viewport screenshots in
+  `test-results/mobile/` at 320, 375, 390, and 430 CSS pixels. Live DOM
+  metrics check overflow, clipped text, tab visibility, and safe-area
+  clearance; a 390pt history screenshot and a 320pt scrolled history-list
+  screenshot were visually inspected.
+- The run also hit GitHub Actions artifact storage quota when uploading
+  simulator evidence and unsigned builds. Upload failure is now nonfatal so
+  the next job can report the simulator result independently. Artifact
+  retention remains unavailable until GitHub recalculates or frees quota.
 - Still pending: macOS GitHub Actions iOS compilation and simulator review,
   physical-device interaction checks, and a native haptic bridge. The
   shared haptic hook uses vibration where a WebView supports it; WKWebView

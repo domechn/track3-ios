@@ -29,8 +29,32 @@ describe("mobile interactions", () => {
     expect(row).not.toBeNull();
     fireEvent.pointerDown(row!, { clientX: 200, clientY: 100, pointerId: 1 });
     fireEvent.pointerUp(row!, { clientX: 120, clientY: 102, pointerId: 1 });
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Delete" }));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a concealed swipe action out of keyboard navigation", () => {
+    render(<SwipeableRow actions={[{ label: "Delete", onClick: () => {} }]}>Snapshot</SwipeableRow>);
+    const row = screen.getByText("Snapshot").closest("[data-swipeable-row]")!;
+    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    expect(row.querySelector("button")).toHaveAttribute("tabindex", "-1");
+    fireEvent.pointerDown(row, { clientX: 200, clientY: 100 });
+    fireEvent.pointerCancel(row, { clientX: 120, clientY: 102 });
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(row.querySelector("button")).toHaveAttribute("tabindex", "0");
+  });
+
+  it("does not open a row detail when a swipe ends with a click", () => {
+    const open = vi.fn();
+    render(<SwipeableRow actions={[{ label: "Delete", onClick: () => {} }]}>
+      <button onClick={open}>Snapshot</button>
+    </SwipeableRow>);
+    const row = screen.getByText("Snapshot").closest("[data-swipeable-row]")!;
+    fireEvent.pointerDown(row, { clientX: 200, clientY: 100 });
+    fireEvent.pointerUp(row, { clientX: 120, clientY: 102 });
+    fireEvent.click(screen.getByRole("button", { name: "Snapshot" }));
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("selects one segment and exposes its selected state", () => {

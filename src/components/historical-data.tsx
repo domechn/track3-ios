@@ -904,6 +904,7 @@ const App = ({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <div className="flex shrink-0 items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -965,6 +966,7 @@ const App = ({
                   >
                     <ChevronRightIcon />
                   </Button>
+                  </div>
                 </div>
               </div>
 

@@ -13,10 +13,14 @@ export function MobileHeaderTotal({ currency, live }: { currency: CurrencyRateDe
     if (!window.matchMedia?.("(max-width: 640px) and (pointer: coarse)").matches) return;
     let active = true;
     const query = live ? queryRealTimeAssetsValue : queryLatestAssets;
-    void query().catch(() => queryLatestAssets()).then((assets) => {
-      if (active) setTotal(assets.reduce((sum, asset) => sum + asset.value, 0));
-    }).catch(() => { if (active) setTotal(undefined); });
-    return () => { active = false; };
+    const load = () => {
+      void query().catch(() => queryLatestAssets()).then((assets) => {
+        if (active) setTotal(assets.reduce((sum, asset) => sum + asset.value, 0));
+      }).catch(() => { if (active) setTotal(undefined); });
+    };
+    load();
+    const timer = live ? window.setInterval(load, 60_000) : undefined;
+    return () => { active = false; if (timer !== undefined) window.clearInterval(timer); };
   }, [version, live]);
   return <div className="mobile-header-total" aria-label={t("history.total")}>
     <span className="mobile-header-total-label">{t("history.total")}</span>

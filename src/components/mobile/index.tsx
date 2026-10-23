@@ -150,7 +150,9 @@ export function SwipeableRow({ children, actions, className }: React.PropsWithCh
   const [revealed, setRevealed] = useState(false);
   const haptic = useHaptics();
   const start = useRef<{ x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
   const onPointerDown = (event: React.PointerEvent) => {
+    suppressClick.current = false;
     start.current = { x: event.clientX, y: event.clientY };
   };
   const onPointerUp = (event: React.PointerEvent) => {
@@ -159,14 +161,23 @@ export function SwipeableRow({ children, actions, className }: React.PropsWithCh
     const y = event.clientY - start.current.y;
     start.current = null;
     if (Math.abs(x) < 40 || Math.abs(x) < Math.abs(y)) return;
+    suppressClick.current = true;
+    window.setTimeout(() => { suppressClick.current = false; }, 500);
     setRevealed(x < 0);
     haptic("selection");
   };
   return <div data-swipeable-row className={cn("mobile-swipe-row", className)}
-    onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
+    onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+    onClickCapture={(event) => {
+      if (!suppressClick.current) return;
+      suppressClick.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }}>
     <div className="mobile-swipe-content">{children}</div>
-    <div className={cn("mobile-swipe-actions", revealed && "mobile-swipe-actions-revealed")}>
+    <div aria-hidden={!revealed} className={cn("mobile-swipe-actions", revealed && "mobile-swipe-actions-revealed")}>
       {actions.map((action) => <button type="button" key={action.label} disabled={action.disabled}
+        tabIndex={revealed ? 0 : -1}
         className={cn("mobile-swipe-action", action.destructive && "mobile-swipe-destructive")}
         onClick={() => { action.onClick(); setRevealed(false); }}>{action.label}</button>)}
     </div>
