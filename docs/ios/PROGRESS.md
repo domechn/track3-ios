@@ -72,8 +72,22 @@ and signed build checks remain pending.
   simulator evidence and unsigned builds. Upload failure is now nonfatal so
   the next job can report the simulator result independently. Artifact
   retention remains unavailable until GitHub recalculates or frees quota.
-- Still pending: macOS GitHub Actions iOS compilation and simulator review,
-  physical-device interaction checks, and a native haptic bridge. The
+- CI run `39949174467` built and launched the simulator app and built the IPA,
+  but its final generated Xcode project diff check failed. This follow-up
+  matches the two generated files to that exact CI diff. The mobile shell now
+  covers coarse-pointer landscape widths through 950px, avoids a second
+  hidden Pro total poll, and exposes the last refresh time while pulling.
+  Finance charts gate touch drags behind a long press and allow vertical page
+  scrolling. The toast close control is visible, named, and 44px wide on
+  touch screens. History has one mobile `h1`; the More settings link uses its
+  canonical route so Back returns through configuration to More.
+- This follow-up passed `corepack yarn tsc --noEmit`, Vitest (207 files,
+  1,745 tests), and the full mobile Playwright suite (24 tests). Playwright
+  saved 40 PNGs in `test-results/mobile/`; all have the expected dimensions.
+  The route sweep checked overflow, clipped text, tab visibility, and
+  injected safe-area clearance at 320, 375, 390, and 430 CSS pixels.
+- Still pending: green macOS CI after the driver commits and pushes these
+  changes, simulator review, physical-device interaction checks, and a native haptic bridge. The
   shared haptic hook uses vibration where a WebView supports it; WKWebView
   needs a native bridge for physical feedback. S3-owned screens will need
   to adopt the shared phone components.

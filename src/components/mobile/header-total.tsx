@@ -4,13 +4,14 @@ import { useDataChangedVersion } from "@/contexts/data-changed";
 import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
 import type { CurrencyRateDetail } from "@/middlelayers/types";
 import { useTranslation } from "@/i18n";
+import { MOBILE_MEDIA_QUERY } from "./index";
 
 export function MobileHeaderTotal({ currency, live }: { currency: CurrencyRateDetail; live: boolean }) {
   const { t } = useTranslation();
   const version = useDataChangedVersion();
   const [total, setTotal] = useState<number>();
   useEffect(() => {
-    if (!window.matchMedia?.("(max-width: 640px) and (pointer: coarse)").matches) return;
+    if (!window.matchMedia?.(MOBILE_MEDIA_QUERY).matches) return;
     let active = true;
     const query = live ? queryRealTimeAssetsValue : queryLatestAssets;
     const load = () => {

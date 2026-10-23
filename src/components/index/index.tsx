@@ -111,6 +111,7 @@ export const RefreshButtonLoadingContext = React.createContext<{
 }>(null as any);
 
 function TopBar({
+  mobile,
   isProUser,
   quoteColor,
   currentCurrency,
@@ -122,6 +123,7 @@ function TopBar({
   compactTitle,
   refreshAction,
 }: {
+  mobile: boolean;
   isProUser: boolean;
   quoteColor: QuoteColor;
   currentCurrency: CurrencyRateDetail;
@@ -145,7 +147,7 @@ function TopBar({
       <div className="flex h-12 items-center px-4">
         {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
         <MobileHeaderTotal currency={currentCurrency} live={isProUser} />
-        {isProUser && (
+        {isProUser && !mobile && (
           <div className="mr-4">
             <RealTimeTotalValue
               quoteColor={quoteColor}
@@ -254,7 +256,7 @@ function Layout({
   const location = useLocation();
   const navigate = useNavigate();
   const currentTab = tabForPath(location.pathname);
-  const routePath = location.pathname + location.search;
+  const routePath = (location.pathname === "/settings" ? "/settings/configuration" : location.pathname) + location.search;
   const rootPath = tabRoots[currentTab];
   const tabStacks = useRef<Record<"overview" | "history" | "analytics" | "more", string[]>>({
     overview: [tabRoots.overview], history: [tabRoots.history],
@@ -291,6 +293,7 @@ function Layout({
         className="app-content transition-[margin-left] duration-300 ease-in-out"
       >
         <TopBar
+          mobile={mobile}
           isProUser={isProUser}
           quoteColor={quoteColor}
           currentCurrency={currentCurrency}
@@ -317,7 +320,10 @@ function Layout({
             swipeStart.current = null;
             if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
           }}>
-          <PullToRefresh onRefresh={() => refreshAction.current?.()}>
+          <PullToRefresh onRefresh={() => refreshAction.current?.()}
+            lastRefreshText={lastRefreshAt
+              ? t("topbar.lastRefreshAt") + lastRefreshAt
+              : t("topbar.neverRefreshBefore")}>
           <div className="mobile-route-heading">
             <MobilePage title={routeTitle(location.pathname, t)}
               back={canGoBack ? () => navigate(backPath) : undefined} />
@@ -356,7 +362,7 @@ function MoreHub() {
     { title: t("nav.more", "More"), items: [
       { href: "#/goals", label: t("nav.goals") },
       { href: "#/assistant", label: t("nav.assistant") },
-      { href: "#/settings", label: t("nav.settings") },
+      { href: "#/settings/configuration", label: t("nav.settings") },
     ] },
   ];
   return <div className="mobile-more-hub">{groups.map((group) =>

@@ -27,7 +27,7 @@ describe("profit attribution", () => {
   it("opens grouped attribution fields in a phone detail sheet", async () => {
     const previousMatchMedia = window.matchMedia;
     window.matchMedia = (query: string) => ({
-      matches: query.includes("max-width: 640px"), media: query, onchange: null,
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
       addListener: () => {}, removeListener: () => {},
       addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
     });

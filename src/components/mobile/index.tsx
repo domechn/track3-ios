@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "@/i18n";
 import "./mobile.css";
 
+export const MOBILE_MEDIA_QUERY = "(max-width: 950px) and (pointer: coarse)";
+
 export function useHaptics() {
   return (kind: "selection" | "light" | "success" = "selection") => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
@@ -13,9 +15,9 @@ export function useHaptics() {
 }
 
 export function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.matchMedia?.("(max-width: 640px) and (pointer: coarse)").matches ?? false);
+  const [mobile, setMobile] = useState(() => window.matchMedia?.(MOBILE_MEDIA_QUERY).matches ?? false);
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 640px) and (pointer: coarse)");
+    const query = window.matchMedia(MOBILE_MEDIA_QUERY);
     const update = () => setMobile(query.matches);
     update();
     query.addEventListener?.("change", update);
@@ -201,8 +203,8 @@ export function SegmentedControl<T extends string>({ options, value, onChange, c
   </div>;
 }
 
-export function PullToRefresh({ children, onRefresh, disabled, className }: React.PropsWithChildren<{
-  onRefresh: () => void | Promise<void>; disabled?: boolean; className?: string;
+export function PullToRefresh({ children, onRefresh, disabled, className, lastRefreshText }: React.PropsWithChildren<{
+  onRefresh: () => void | Promise<void>; disabled?: boolean; className?: string; lastRefreshText?: string;
 }>) {
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -232,8 +234,9 @@ export function PullToRefresh({ children, onRefresh, disabled, className }: Reac
       setRefreshing(true);
       void Promise.resolve(onRefresh()).finally(() => setRefreshing(false));
     }}>
-    {(pull > 0 || refreshing) && <div className="mobile-pull-indicator" role="status" style={{ height: pull || 44 }}>
+    {(pull > 0 || refreshing) && <div className="mobile-pull-indicator" role="status" style={{ minHeight: pull || 44 }}>
       <span className={refreshing ? "animate-spin" : ""} aria-hidden="true">↻</span>
+      {lastRefreshText && <span className="mobile-pull-last-refresh">{lastRefreshText}</span>}
     </div>}
     {children}
   </div>;

@@ -1,10 +1,6 @@
 .mobile-route-heading, .mobile-more-hub, .history-mobile-list, .history-mobile-detail-list, .mobile-header-total, .mobile-compact-title { display: none; }
 
-@media (min-width: 641px) {
-  .mobile-route-heading, .mobile-more-hub, .history-mobile-list, .history-mobile-detail-list, .mobile-header-total, .mobile-compact-title { display: none; }
-}
-
-@media (max-width: 640px) and (pointer: coarse) {
+@media (max-width: 950px) and (pointer: coarse) {
   .app-layout { min-width: 0; max-width: 100vw; }
   .app-layout > aside { display: none; }
   .app-content { margin-left: 0 !important; width: 100%; min-width: 0; transition: none !important; }
@@ -20,7 +16,7 @@
   #app-top-bar .ml-auto > :is(div, button) { min-width: 2.75rem; }
   #app-top-bar button { min-height: 2.75rem; }
   #app-top-bar .absolute { position: fixed; left: 1rem; right: 1rem; top: calc(env(safe-area-inset-top) + 3.5rem); padding: .5rem; border-radius: .75rem; background: hsl(var(--card)); box-shadow: 0 4px 16px rgba(0,0,0,.15); }
-  #app-main-content { min-width: 0; width: 100%; padding: .75rem max(1rem, env(safe-area-inset-right)) calc(5rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); overflow-x: clip; }
+  #app-main-content { --mobile-safe-bottom: env(safe-area-inset-bottom); min-width: 0; width: 100%; padding: .75rem max(1rem, env(safe-area-inset-right)) calc(5rem + var(--mobile-safe-bottom)) max(1rem, env(safe-area-inset-left)); overflow-x: clip; }
   #app-main-content > * { min-width: 0; }
   .mobile-route-heading { display: block; }
   .mobile-more-hub { display: block; }

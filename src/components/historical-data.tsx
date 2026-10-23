@@ -554,7 +554,7 @@ const App = ({
 
   return (
     <div aria-busy={pageLoading} data-testid="history-content">
-      <h1 className="sr-only">{t("history.h1")}</h1>
+      {!isMobile && <h1 className="sr-only">{t("history.h1")}</h1>}
       <StaggerContainer className="space-y-4">
         {isMobile && <ConfirmDeleteDialog
           open={deleteCandidate !== null}

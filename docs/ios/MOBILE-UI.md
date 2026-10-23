@@ -19,9 +19,10 @@ queries and mutations.
   visible row content in a button when it opens a detail.
 - `SegmentedControl({ options, value, onChange, label? })` is a labeled radio
   group for short range choices.
-- `PullToRefresh({ onRefresh, disabled?, children })` calls refresh after a
+- `PullToRefresh({ onRefresh, disabled?, lastRefreshText?, children })` calls refresh after a
   downward gesture that begins at the top. Return the refresh promise from
   `onRefresh` so its progress indicator stays visible until the refresh ends.
+  `lastRefreshText` appears in the indicator while pulling or refreshing.
   The app shell invokes the existing refresh flow through context.
 - `InsetGroup({ title?, children })` and `ListRow({ value?, href?, onClick?,
   trailing?, children })` provide grouped lists with 44pt or larger rows.
@@ -30,7 +31,8 @@ queries and mutations.
   field list in a sheet. Use it for wide tables on phones.
 - `useHaptics()` returns a function taking `selection`, `light`, or `success`.
   It uses vibration where the WebView supports it and respects reduced motion.
-- `useIsMobile()` detects a coarse pointer at 640px or narrower. Use it when
+- `useIsMobile()` detects a coarse pointer at 950px or narrower, including an
+  iPhone in landscape. Use it when
   a phone sheet replaces a Radix popover or dialog, so only one overlay is
   mounted at a time.
 

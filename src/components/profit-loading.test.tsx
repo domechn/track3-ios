@@ -103,7 +103,7 @@ describe("Profit loading", () => {
   it("uses navigable grouped rows for profit leaders on a phone", async () => {
     const oldMatchMedia = window.matchMedia;
     window.matchMedia = (query: string) => ({
-      matches: query.includes("max-width: 640px"),
+      matches: query.includes("max-width: 950px"),
       media: query,
       onchange: null,
       addListener: vi.fn(), removeListener: vi.fn(),

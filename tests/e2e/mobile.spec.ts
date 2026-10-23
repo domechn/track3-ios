@@ -36,7 +36,7 @@ for (const size of sizes) {
           : route === "cost-basis" ? "#app-main-content h1.text-2xl"
           : route === "more" ? ".mobile-more-hub"
           : route === "goals" ? "#app-main-content h1:not(.mobile-large-title)"
-          : "#app-main-content h1.sr-only")).toBeAttached();
+          : "#app-main-content h1.sr-only")).toBeAttached({ timeout: route === routes[0] ? 20_000 : 5_000 });
         await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
         if (route.startsWith("coins/")) {
           await expect(page.getByTestId("coin-page-loading-overlay")).toHaveClass(/opacity-0/);
@@ -52,6 +52,14 @@ for (const size of sizes) {
           pageWidth: document.documentElement.scrollWidth,
           viewportWidth: document.documentElement.clientWidth,
           mainBottomPadding: parseFloat(getComputedStyle(document.querySelector("#app-main-content")!).paddingBottom),
+          safeBottomDelta: (() => {
+            const main = document.querySelector<HTMLElement>("#app-main-content")!;
+            const before = parseFloat(getComputedStyle(main).paddingBottom);
+            main.style.setProperty("--mobile-safe-bottom", "31px");
+            const after = parseFloat(getComputedStyle(main).paddingBottom);
+            main.style.removeProperty("--mobile-safe-bottom");
+            return after - before;
+          })(),
           tabHeight: document.querySelector(".mobile-tab-bar")!.getBoundingClientRect().height,
           overflowElements: [...document.querySelectorAll<HTMLElement>("body *")].filter((node) =>
             node.getBoundingClientRect().right > document.documentElement.clientWidth + 2 &&
@@ -68,7 +76,9 @@ for (const size of sizes) {
         expect(metrics.clipped, `${route}: clipped text`).toEqual([]);
         expect(metrics.pageWidth, `${route}: document overflow ${JSON.stringify(metrics.overflowElements)}`).toBeLessThanOrEqual(metrics.viewportWidth);
         expect(metrics.mainBottomPadding, `${route}: home indicator clearance`).toBeGreaterThanOrEqual(metrics.tabHeight);
+        expect(metrics.safeBottomDelta, `${route}: safe-area inset is ignored`).toBe(31);
         if (route === "history") {
+          await expect(page.locator("#app-main-content h1")).toHaveCount(1);
           await page.locator(".history-mobile-list").scrollIntoViewIfNeeded();
           await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-history-list.png` });
         }
@@ -77,6 +87,22 @@ for (const size of sizes) {
       await context.close();
     }
   });
+}
+
+for (const width of [844, 932]) {
+test(`a ${width}pt landscape iPhone keeps the touch shell`, async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width, height: 390 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await expect(page.locator(".mobile-tab-bar")).toBeVisible();
+    await expect(page.locator(".mobile-route-heading")).toBeVisible();
+    await expect(page.locator(".app-layout > aside")).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
 }
 
 test("history snapshots use touch rows and a detail sheet", async ({ browser }) => {
@@ -124,6 +150,9 @@ test("history swipe reveals delete, then confirm and undo restore the row", asyn
     await expect(page.getByRole("alertdialog", { name: /delete/i })).toBeVisible();
     await page.getByRole("alertdialog").getByRole("button", { name: "Confirm" }).click();
     await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+    const close = page.locator("[toast-close]").last();
+    await expect(close).toHaveCSS("opacity", "1");
+    await expect(close).toHaveAccessibleName("Close");
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(page.getByTestId("history-mobile-row")).toHaveCount(2);
   } finally {
@@ -335,6 +364,7 @@ test("large route titles collapse into the sticky header while scrolling", async
     await installTauriBridge(page);
     await page.goto("/#/overview");
     await expect(page.getByRole("button", { name: "Show More" })).toBeVisible();
+    await expect(page.locator("#app-top-bar .mr-4")).toHaveCount(0);
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeHidden();
     await page.evaluate(() => scrollTo(0, 180));
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeVisible();
@@ -351,9 +381,16 @@ test("back navigation returns to the previous page in the More tab", async ({ br
     await installTauriBridge(page);
     await page.goto("/#/more");
     await page.locator(".mobile-more-hub").getByRole("link", { name: "Settings" }).click();
+    await expect(page).toHaveURL(/#\/settings\/configuration$/);
+    await expect(page.locator(".mobile-route-heading h1")).toHaveText("Settings");
     await page.getByRole("navigation", { name: /settings sections/i }).getByRole("link", { name: "Appearance" }).click();
+    await expect(page).toHaveURL(/#\/settings\/appearance$/);
+    await expect(page.getByRole("navigation", { name: /settings sections/i }).getByRole("link", { name: "Appearance" }))
+      .toHaveAttribute("aria-current", "page");
     await page.locator(".mobile-route-heading").getByRole("button", { name: "Back" }).click();
-    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(page).toHaveURL(/#\/settings\/configuration$/);
+    await page.locator(".mobile-route-heading").getByRole("button", { name: "Back" }).click();
+    await expect(page).toHaveURL(/#\/more$/);
   } finally {
     await context.close();
   }
@@ -373,6 +410,24 @@ test("refresh source status rises from the bottom as a sheet", async ({ browser 
       const box = await sheet.boundingBox();
       return box ? box.y + box.height : 0;
     }).toBe(844);
+  } finally {
+    await context.close();
+  }
+});
+
+test("pulling down reveals the last refresh time", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await expect(page.getByRole("button", { name: "Show More" })).toBeVisible();
+    await page.evaluate(() => scrollTo(0, 0));
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 180, y: 140 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 180, y: 185 }] });
+    await expect(page.locator(".mobile-pull-indicator")).toContainText(/Last Refresh At:|Never Refresh Before/);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   } finally {
     await context.close();
   }

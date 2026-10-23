@@ -25,6 +25,7 @@
 .mobile-segment { min-height: 2.75rem; flex: 1; min-width: max-content; padding: .4rem .8rem; border-radius: .5rem; font-size: .875rem; }
 .mobile-segment[aria-checked="true"] { background: hsl(var(--card)); box-shadow: 0 1px 3px rgba(0,0,0,.14); font-weight: 600; }
 .mobile-pull-indicator { display: grid; place-items: center; color: hsl(var(--primary)); font-size: 1.5rem; }
+.mobile-pull-last-refresh { font-size: .75rem; line-height: 1.25; color: hsl(var(--muted-foreground)); }
 .mobile-inset-section { margin: 0 0 1.25rem; }
 .mobile-inset-heading { margin: 0 .75rem .45rem; font-size: .8rem; color: hsl(var(--muted-foreground)); text-transform: uppercase; letter-spacing: .04em; }
 .mobile-inset-group { overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: .85rem; background: hsl(var(--card)); }
@@ -39,7 +40,7 @@
 .mobile-tab-icon { position: relative; display: grid; place-items: center; }
 .mobile-tab-icon svg { height: 1.35rem; width: 1.35rem; }
 .mobile-tab-badge { position: absolute; top: -.4rem; left: .9rem; border-radius: 1rem; padding: .1rem .28rem; background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); font-size: .65rem; }
-@media (max-width: 640px) and (pointer: coarse) { .mobile-tab-bar { display: flex; } }
+@media (max-width: 950px) and (pointer: coarse) { .mobile-tab-bar { display: flex; } }
 .date-picker-mobile { display: none; }
 .mobile-date-input { min-height: 2.75rem; width: 100%; border: 1px solid hsl(var(--border)); border-radius: .6rem; padding: .5rem .75rem; background: hsl(var(--card)); color: hsl(var(--foreground)); }
 .mobile-date-snapshots { display: grid; gap: .5rem; }
@@ -52,7 +53,8 @@
 .mobile-record-field dd { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .mobile-coin-options { display: grid; }
 .mobile-coin-option { min-height: 2.75rem; width: 100%; border-bottom: 1px solid hsl(var(--border)); padding: .6rem; text-align: left; }
-@media (max-width: 640px) and (pointer: coarse) {
+@media (pointer: coarse) { .mobile-chart-touch, .mobile-chart-touch canvas { touch-action: pan-y; } }
+@media (max-width: 950px) and (pointer: coarse) {
   .date-picker-mobile { display: block; }
   .date-picker-desktop { display: none; }
   .comparison-metric-header { display: none !important; }
