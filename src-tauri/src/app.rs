@@ -220,6 +220,23 @@ fn get_database_url(database_path: tauri::State<'_, DatabasePath>) -> Result<Str
     sqlite_url(&database_path.0)
 }
 
+#[cfg(target_os = "ios")]
+#[tauri::command]
+async fn ios_key_recovery_needed(
+    handle: tauri::AppHandle,
+    database_path: tauri::State<'_, DatabasePath>,
+) -> Result<bool, String> {
+    let app_dir = handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    crate::startup_security::ios_key_recovery_needed(&database_path.0, &app_dir.join(".ent-key"))
+        .await
+}
+
+#[cfg(not(target_os = "ios"))]
+#[tauri::command]
+fn ios_key_recovery_needed() -> bool {
+    false
+}
+
 #[cfg(debug_assertions)]
 #[tauri::command]
 fn mark_frontend_ready(handle: tauri::AppHandle) -> Result<(), String> {
@@ -242,98 +259,89 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_shell::init());
+    let builder = builder.setup(|app| {
+        let app_version = app.package_info().version.to_string();
+        let resource_path = app.path();
+        let resource_dir = resource_path.resource_dir()?;
+        let app_data_dir = resource_path.app_data_dir()?;
+        let app_config_dir = resource_path.app_config_dir()?;
+        let instance_lock = acquire_app_instance_lock(&app_data_dir).map_err(io::Error::other)?;
+        app.manage(instance_lock);
+        #[cfg(target_os = "ios")]
+        crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
+            .map_err(io::Error::other)?;
+        let database_path =
+            tauri::async_runtime::block_on(resolve_database_path(&app_data_dir, &app_config_dir))
+                .map_err(io::Error::other)?;
+        #[cfg(target_os = "ios")]
+        let ios_key = crate::startup_security::load_or_create_ios_encryption_key(
+            &app_data_dir.join(".ent-key"),
+            !database_path.exists(),
+        )
+        .map_err(io::Error::other)?;
+        tauri::async_runtime::block_on(initialize_database_if_needed(
+            &database_path,
+            &app_version,
+            &resource_dir,
+        ))
+        .map_err(io::Error::other)?;
+        app.manage(DatabasePath(database_path.clone()));
+
+        #[cfg(not(target_os = "ios"))]
+        let enc_key = crate::startup_security::load_encryption_key(&app_data_dir.join(".ent-key"))
+            .map_err(io::Error::other)?;
+        #[cfg(target_os = "ios")]
+        let enc_key = ios_key;
+        ENT.set_key(enc_key).map_err(io::Error::other)?;
+
+        tauri::async_runtime::block_on(recover_pending_rotation(
+            &database_path,
+            &app_data_dir,
+            &ENT,
+        ))
+        .map_err(io::Error::other)?;
+        #[cfg(target_os = "ios")]
+        crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
+            .map_err(io::Error::other)?;
+
+        tauri::async_runtime::block_on(run_migrations(&database_path, &resource_dir, &app_version))
+            .map_err(io::Error::other)?;
+        Ok(())
+    });
+    #[cfg(debug_assertions)]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        query_coins_prices,
+        query_binance_balance,
+        encrypt,
+        decrypt,
+        download_coins_logos,
+        decrypt_with_key,
+        rotate_encryption_key,
+        persist_refresh,
+        import_sync_snapshot,
+        replace_sync_snapshot,
+        delete_sync_snapshot,
+        get_database_url,
+        ios_key_recovery_needed,
+        mark_frontend_ready,
+    ]);
+    #[cfg(not(debug_assertions))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        query_coins_prices,
+        query_binance_balance,
+        encrypt,
+        decrypt,
+        download_coins_logos,
+        decrypt_with_key,
+        rotate_encryption_key,
+        persist_refresh,
+        import_sync_snapshot,
+        replace_sync_snapshot,
+        delete_sync_snapshot,
+        get_database_url,
+        ios_key_recovery_needed,
+    ]);
     builder
-        .setup(|app| {
-            let app_version = app.package_info().version.to_string();
-            let resource_path = app.path();
-            let resource_dir = resource_path.resource_dir()?;
-            let app_data_dir = resource_path.app_data_dir()?;
-            let app_config_dir = resource_path.app_config_dir()?;
-            let instance_lock =
-                acquire_app_instance_lock(&app_data_dir).map_err(io::Error::other)?;
-            app.manage(instance_lock);
-            #[cfg(target_os = "ios")]
-            crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
-                .map_err(io::Error::other)?;
-            let database_path = tauri::async_runtime::block_on(resolve_database_path(
-                &app_data_dir,
-                &app_config_dir,
-            ))
-            .map_err(io::Error::other)?;
-            #[cfg(target_os = "ios")]
-            let ios_key = crate::startup_security::load_or_create_ios_encryption_key(
-                &app_data_dir.join(".ent-key"),
-                !database_path.exists(),
-            )
-            .map_err(io::Error::other)?;
-            tauri::async_runtime::block_on(initialize_database_if_needed(
-                &database_path,
-                &app_version,
-                &resource_dir,
-            ))
-            .map_err(io::Error::other)?;
-            app.manage(DatabasePath(database_path.clone()));
-
-            #[cfg(not(target_os = "ios"))]
-            let enc_key =
-                crate::startup_security::load_encryption_key(&app_data_dir.join(".ent-key"))
-                    .map_err(io::Error::other)?;
-            #[cfg(target_os = "ios")]
-            let enc_key = ios_key;
-            ENT.set_key(enc_key).map_err(io::Error::other)?;
-
-            tauri::async_runtime::block_on(recover_pending_rotation(
-                &database_path,
-                &app_data_dir,
-                &ENT,
-            ))
-            .map_err(io::Error::other)?;
-            #[cfg(target_os = "ios")]
-            crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
-                .map_err(io::Error::other)?;
-
-            tauri::async_runtime::block_on(run_migrations(
-                &database_path,
-                &resource_dir,
-                &app_version,
-            ))
-            .map_err(io::Error::other)?;
-            Ok(())
-        })
-        .invoke_handler({
-            #[cfg(debug_assertions)]
-            let handler = tauri::generate_handler![
-                query_coins_prices,
-                query_binance_balance,
-                encrypt,
-                decrypt,
-                download_coins_logos,
-                decrypt_with_key,
-                rotate_encryption_key,
-                persist_refresh,
-                import_sync_snapshot,
-                replace_sync_snapshot,
-                delete_sync_snapshot,
-                get_database_url,
-                mark_frontend_ready,
-            ];
-            #[cfg(not(debug_assertions))]
-            let handler = tauri::generate_handler![
-                query_coins_prices,
-                query_binance_balance,
-                encrypt,
-                decrypt,
-                download_coins_logos,
-                decrypt_with_key,
-                rotate_encryption_key,
-                persist_refresh,
-                import_sync_snapshot,
-                replace_sync_snapshot,
-                delete_sync_snapshot,
-                get_database_url,
-            ];
-            handler
-        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

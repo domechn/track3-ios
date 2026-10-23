@@ -7,6 +7,7 @@ import { themeLocalStorageKey } from "./middlelayers/configuration";
 import { renderRightClickMenu } from "./utils/hook";
 import { I18nProvider, useTranslation } from "@/i18n";
 import { isIOS, PlatformProvider } from "@/utils/platform";
+import IOSKeyRecoveryNotice from "@/components/ios-key-recovery-notice";
 
 export const ChartResizeContext = React.createContext<{
   needResize: number;
@@ -36,6 +37,7 @@ function Shell() {
         </a>
         <Toaster />
         <AutoUpdater />
+        <IOSKeyRecoveryNotice />
         <div>
           <ChartResizeContext.Provider value={{ needResize, setNeedResize }}>
             <IndexApp />

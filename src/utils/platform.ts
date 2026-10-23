@@ -9,7 +9,7 @@ export type Platform = {
   keyboardOpen: boolean;
 };
 
-export function detectPlatform(userAgent: string, platform: string, touchPoints: number, _width: number) {
+export function detectPlatform(userAgent: string, platform: string, touchPoints: number) {
   const isIOS = /iPhone|iPad|iPod/.test(userAgent) ||
     (platform === "MacIntel" && touchPoints > 1);
   return { isIOS, isMobile: isIOS };
@@ -21,7 +21,7 @@ export function keyboardHeight(windowHeight: number, viewportHeight: number, off
 
 export function isIOS() {
   return typeof navigator !== "undefined" &&
-    detectPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints, window.innerWidth).isIOS;
+    detectPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints).isIOS;
 }
 
 function readSafeArea(): SafeArea {
@@ -43,7 +43,7 @@ function snapshot(): Platform {
   if (typeof window === "undefined") {
     return { isIOS: false, isMobile: false, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, keyboardHeight: 0, keyboardOpen: false };
   }
-  const detected = detectPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints, window.innerWidth);
+  const detected = detectPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
   const viewport = window.visualViewport;
   const height = viewport ? keyboardHeight(window.innerHeight, viewport.height, viewport.offsetTop) : 0;
   return {
@@ -53,6 +53,15 @@ function snapshot(): Platform {
     keyboardOpen: height > 100,
   };
 }
+
+const fallbackPlatform: Platform = {
+  ...(typeof navigator === "undefined"
+    ? { isIOS: false, isMobile: false }
+    : detectPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints)),
+  safeArea: { top: 0, right: 0, bottom: 0, left: 0 },
+  keyboardHeight: 0,
+  keyboardOpen: false,
+};
 
 const PlatformContext = createContext<Platform | null>(null);
 
@@ -73,5 +82,5 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
 }
 
 export function usePlatform(): Platform {
-  return useContext(PlatformContext) ?? snapshot();
+  return useContext(PlatformContext) ?? fallbackPlatform;
 }

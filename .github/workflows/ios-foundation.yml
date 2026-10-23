@@ -32,6 +32,12 @@ jobs:
       - run: corepack yarn tsc --noEmit
       - run: corepack yarn vitest run
       - run: corepack yarn build
+      - name: Check desktop Rust library
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          cargo check --locked --lib
+        working-directory: src-tauri
       - run: cargo test --locked -p track3-pure-tests --lib
         working-directory: src-tauri
 
@@ -67,14 +73,7 @@ jobs:
           python3 scripts/ios/configure-project.py
           corepack yarn tauri icon src-tauri/app-icon.png --output generated-icons
           cp generated-icons/ios/*.png src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/
-          mkdir -p generated-project
-          rsync -a --exclude build --exclude Pods --exclude Externals --exclude '*.xcuserstate' src-tauri/gen/apple/ generated-project/
-      - name: Print Xcode project recovery copy
-        run: |
-          tar -czf /tmp/track3-xcode-project.tgz -C generated-project .
-          echo "TRACK3_XCODE_PROJECT_BEGIN"
-          base64 -i /tmp/track3-xcode-project.tgz | fold -w 3000 | sed 's/^/TRACK3_XCODE_PROJECT_CHUNK:/'
-          echo "TRACK3_XCODE_PROJECT_END"
+          git diff --exit-code -- src-tauri/gen/apple
       - name: Check the device Rust target
         run: cargo check --locked --target aarch64-apple-ios --lib
         working-directory: src-tauri
@@ -89,18 +88,24 @@ jobs:
           SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(d["udid"] for group in data["devices"].values() for d in group if d["name"].startswith("iPhone") and d["state"] == "Shutdown"))')
           xcrun simctl boot "$SIM_ID"
           xcrun simctl bootstatus "$SIM_ID" -b
-          APP=$(find src-tauri -type d -name '*.app' | head -n 1)
+          APP=$(find src-tauri -type d -name '*.app' -print -quit)
           test -n "$APP"
           test -n "$(find "$APP" -type f -path '*/migrations/init/assets_v2_up.sql' -print -quit)"
           EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
           mkdir -p artifacts
-          xcrun simctl install "$SIM_ID" "$APP"
+          for attempt in 1 2 3; do
+            if xcrun simctl install "$SIM_ID" "$APP"; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep 10
+          done
           APP_PID=$(xcrun simctl launch "$SIM_ID" dev.track3.ios 2>&1 | tee artifacts/simctl-launch.log | sed -n 's/.*: //p' || true)
           sleep 20
           xcrun simctl spawn "$SIM_ID" log show --last 1m --style compact --predicate "process ==[c] \"$EXECUTABLE\"" > artifacts/launch.log || true
           find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -iname "${EXECUTABLE}*" -mmin -2 -print > artifacts/crash-reports.log 2>/dev/null || true
           xcrun simctl io "$SIM_ID" screenshot artifacts/iphone-initial.png
-          ditto -c -k --keepParent "$APP" artifacts/Track3-simulator.app.zip
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            ditto -c -k --keepParent "$APP" artifacts/Track3-simulator.app.zip
+          fi
           cat artifacts/simctl-launch.log
           cat artifacts/launch.log
           cat artifacts/crash-reports.log
@@ -147,24 +152,25 @@ jobs:
             (cd artifacts/ipa && zip -qry ../Track3-unsigned.ipa Payload)
             rm -rf artifacts/ipa
           fi
-      - name: Upload generated Xcode project
+      - name: Check committed Xcode project
+        run: git diff --exit-code -- src-tauri/gen/apple
+      - name: Upload simulator screenshots and launch logs
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: xcode-project
-          path: generated-project/
-          include-hidden-files: true
-          retention-days: 1
-      - name: Upload iOS builds, screenshot, and launch log
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-foundation
+          name: ios-simulator
           path: |
             artifacts/*.png
             artifacts/*.log
+          retention-days: 1
+      - name: Upload unsigned iOS builds
+        if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-builds
+          path: |
             artifacts/*.zip
             artifacts/*.ipa
           retention-days: 1

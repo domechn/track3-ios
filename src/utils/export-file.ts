@@ -24,17 +24,25 @@ export async function exportFile(
   const source = `${(await appCacheDir()).replace(/\/+$/, "")}/${stagingName}`;
   const pickerSource = `${(await documentDir()).replace(/\/+$/, "")}/${stagingName}`;
   let selected: string | null = null;
+  let copied = false;
   try {
     await write(source);
     selected = await save({ ...options, defaultPath: stagingName });
-    if (selected) await copyFile(source, selected);
+    if (selected) {
+      await copyFile(source, selected);
+      copied = true;
+    }
     return !!selected;
   } finally {
     if (await exists(source)) {
       await remove(source);
     }
-    // shortcut: successful external exports may leave an empty Documents placeholder until URLs can be compared canonically.
-    if (!selected && await exists(pickerSource)) {
+    const selectedPath = selected?.startsWith("file:")
+      ? decodeURIComponent(new URL(selected).pathname)
+      : selected;
+    const normalizeIOSPath = (path: string) => path.replace(/^\/private(?=\/)/, "");
+    if ((!copied || !selectedPath || normalizeIOSPath(selectedPath) !== normalizeIOSPath(pickerSource)) &&
+        await exists(pickerSource)) {
       await remove(pickerSource);
     }
   }

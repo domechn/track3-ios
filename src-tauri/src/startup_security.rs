@@ -5,6 +5,7 @@ use std::{
 };
 
 use fs2::FileExt;
+use sqlx::{sqlite::SqliteConnectOptions, Connection, SqliteConnection};
 
 pub const LEGACY_ENCRYPTION_KEY: &str = "#t.3eis@hck,btr!a";
 const INSTANCE_LOCK_NAME: &str = ".track3-instance.lock";
@@ -156,6 +157,35 @@ pub fn load_or_create_ios_encryption_key(
         let _ = fs::remove_file(key_path);
     }
     result
+}
+
+pub async fn ios_key_recovery_needed(
+    database_path: &Path,
+    key_path: &Path,
+) -> Result<bool, String> {
+    if key_path.exists() {
+        return Ok(false);
+    }
+    let options = SqliteConnectOptions::new()
+        .filename(database_path)
+        .create_if_missing(false)
+        .read_only(true);
+    let mut database = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|error| format!("failed to inspect configuration: {error}"))?;
+    let encrypted: Vec<String> =
+        sqlx::query_scalar("SELECT data FROM configuration WHERE data LIKE '!ent:%'")
+            .fetch_all(&mut database)
+            .await
+            .map_err(|error| format!("failed to inspect configuration: {error}"))?;
+    database
+        .close()
+        .await
+        .map_err(|error| format!("failed to close configuration: {error}"))?;
+    let ent = crate::ent::Ent::new();
+    Ok(encrypted
+        .into_iter()
+        .any(|value| ent.decrypt_with_key(value, LEGACY_ENCRYPTION_KEY).is_err()))
 }
 
 fn open_key_file_no_follow(key_path: &Path) -> Result<File, std::io::Error> {
@@ -329,6 +359,62 @@ mod tests {
             LEGACY_ENCRYPTION_KEY
         );
         assert!(!key_path.exists());
+    }
+
+    #[test]
+    fn missing_ios_key_reports_unreadable_encrypted_configuration() {
+        use sqlx::{Connection, Executor, SqliteConnection};
+
+        let directory = TestDirectory::new();
+        let database_path = directory.0.join("track3.db");
+        let key_path = directory.0.join(".ent-key");
+        let ent = crate::ent::Ent::new();
+        let ciphertext = ent
+            .encrypt_with_key("exchange credential".to_string(), "missing-device-key")
+            .unwrap();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(async {
+            let mut db = SqliteConnection::connect(&format!(
+                "sqlite://{}?mode=rwc",
+                database_path.display()
+            ))
+            .await
+            .unwrap();
+            db.execute(include_str!("../migrations/init/configuration_up.sql"))
+                .await
+                .unwrap();
+            sqlx::query("INSERT INTO configuration (id, data) VALUES (10, ?)")
+                .bind(&ciphertext)
+                .execute(&mut db)
+                .await
+                .unwrap();
+            db.close().await.unwrap();
+
+            assert!(super::ios_key_recovery_needed(&database_path, &key_path)
+                .await
+                .unwrap());
+            fs::write(&key_path, "missing-device-key").unwrap();
+            assert!(!super::ios_key_recovery_needed(&database_path, &key_path)
+                .await
+                .unwrap());
+            fs::remove_file(&key_path).unwrap();
+            let mut db =
+                SqliteConnection::connect(&format!("sqlite://{}", database_path.display()))
+                    .await
+                    .unwrap();
+            let legacy = ent
+                .encrypt_with_key("legacy credential".to_string(), LEGACY_ENCRYPTION_KEY)
+                .unwrap();
+            sqlx::query("UPDATE configuration SET data = ? WHERE id = 10")
+                .bind(legacy)
+                .execute(&mut db)
+                .await
+                .unwrap();
+            db.close().await.unwrap();
+            assert!(!super::ios_key_recovery_needed(&database_path, &key_path)
+                .await
+                .unwrap());
+        });
     }
 
     #[test]

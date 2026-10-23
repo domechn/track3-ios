@@ -119,6 +119,8 @@
   "nav.comparison": "Comparison",
   "nav.history": "History",
   "nav.settings": "Settings",
+  "ios.keyRecovery.message": "This device's encryption key is missing. Saved credentials in the restored database cannot be read. Re-enter your exchange and service credentials in Settings.",
+  "ios.keyRecovery.openSettings": "Open settings",
   "common.showMore": "Show More",
   "common.showLess": "Show Less",
   "common.refresh": "Refresh",

@@ -48,6 +48,7 @@ describe("exportFile", () => {
     expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({
       defaultPath: expect.stringMatching(/^report-[0-9a-f-]+\.csv$/),
     }));
+    expect(mocks.remove).toHaveBeenCalledWith(expect.stringMatching(/^\/app\/Documents\/report-[0-9a-f-]+\.csv$/));
   });
 
   it("removes only its unique temporary files when export is canceled", async () => {
@@ -66,6 +67,17 @@ describe("exportFile", () => {
 
     expect(await exportFile("report.csv", ["csv"], async () => {})).toBe(true);
     expect(mocks.copyFile).toHaveBeenCalledOnce();
+    expect(mocks.remove).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^\/app\/Documents\/report-[0-9a-f-]+\.csv$/),
+    );
+  });
+
+  it("preserves the selected Documents export when the picker returns its path", async () => {
+    mocks.ios = true;
+    mocks.save.mockImplementation(async ({ defaultPath }: { defaultPath: string }) =>
+      `/app/Documents/${defaultPath}`);
+
+    expect(await exportFile("report.csv", ["csv"], async () => {})).toBe(true);
     expect(mocks.remove).not.toHaveBeenCalledWith(
       expect.stringMatching(/^\/app\/Documents\/report-[0-9a-f-]+\.csv$/),
     );

@@ -1,8 +1,9 @@
 # iOS build and signing
 
-The `iOS foundation` workflow builds an unsigned simulator `.app` bundle
-(uploaded as `Track3-simulator.app.zip`) and an unsigned device `.ipa`.
-It also uploads the simulator screenshot, launch log, and Xcode project.
+The `iOS foundation` workflow builds an unsigned simulator `.app` bundle and
+unsigned device `.ipa`. Routine runs attempt to upload simulator screenshots
+and launch logs. A manual `workflow_dispatch` run also attempts to upload
+`Track3-simulator.app.zip` and `Track3-unsigned.ipa`.
 The GitHub Actions artifact quota was exhausted in run `39926851914`;
 the repository owner must clear old artifacts before these uploads can succeed.
 Upload errors are nonfatal so the launch diagnostics still reach the run log.
@@ -21,21 +22,18 @@ Before testing device restore, set and retain a known encryption key in Data
 Management and export the configuration. The automatically generated iOS
 key is excluded from backups and cannot be recovered after a restore.
 
-CI runs `corepack yarn tauri ios init --ci` only when the project is absent.
-If the `xcode-project` artifact uploads successfully, download it with
-`gh run download <run-id> -n xcode-project -D src-tauri/gen/apple`. Otherwise
-recover the compressed project from the run log:
+CI runs `corepack yarn tauri ios init --ci` only when the committed project
+is absent. After configuration and icon generation, CI checks for drift from
+the committed project. Run `python3 scripts/ios/configure-project.py` when
+bumping the app version and commit the resulting Xcode project changes.
+
+If artifact upload is unavailable, recover the screenshot printed in the run
+log:
 
 ```bash
 gh run view <run-id> --log > /tmp/track3-ios-run.log
-mkdir -p src-tauri/gen/apple
-rg -o 'Z TRACK3_XCODE_PROJECT_CHUNK:[A-Za-z0-9+/=]+' /tmp/track3-ios-run.log | cut -d: -f2 | tr -d '\n' | base64 -d | tar -xz -C src-tauri/gen/apple
+rg -o 'Z TRACK3_SCREENSHOT_CHUNK:[A-Za-z0-9+/=]+' /tmp/track3-ios-run.log | cut -d: -f2 | tr -d '\n' | base64 -d > /tmp/track3-launch.png
 ```
 
-Use the same pipeline with
-`'Z TRACK3_SCREENSHOT_CHUNK:[A-Za-z0-9+/=]+'` and end it with
-`> /tmp/track3-launch.png` to inspect the rendered simulator screenshot.
-If the ready gate fails, use
-`'Z TRACK3_INITIAL_SCREENSHOT_CHUNK:[A-Za-z0-9+/=]+'` to inspect the
-earlier screenshot. The Xcode
-project and app icons are included in this worktree for the driver to commit.
+If the ready gate fails, use `TRACK3_INITIAL_SCREENSHOT_CHUNK` in the same
+pipeline to inspect the earlier screenshot.

@@ -40,6 +40,10 @@ temporary files and a journal. iOS marks those key artifacts with
 artifacts at startup. This prevents an iCloud or Finder backup from carrying
 the encryption key beside the encrypted configuration. After a device restore,
 configuration encrypted on iOS cannot be read from the restored database.
+When the key is absent, the app checks encrypted configuration against the
+legacy key. If it cannot decrypt, it displays a persistent notice linking to
+Settings so the user can re-enter exchange and service credentials. Existing
+legacy installations with readable configuration do not show the notice.
 The generated key is not shown to users, so an export encrypted with that
 default key is also unrecoverable after restore. For a recoverable
 configuration export, the user must first set a known key with Data
@@ -48,8 +52,9 @@ and keep that key separately. The import flow can decrypt with the supplied
 key. Device
 backup and restore behavior still needs validation on a signed build.
 
-`scripts/ios/configure-project.py` applies the Data Protection entitlement to
-the generated `project.yml` and entitlements file. `src-tauri/Info.ios.plist`
+`scripts/ios/configure-project.py` applies the Data Protection entitlement and
+syncs Xcode version settings from `tauri.conf.json`. The committed Info.plist
+reads those settings. `src-tauri/Info.ios.plist`
 supplies display name, permissions copy, file sharing, and orientations when
 Tauri generates or refreshes the project.
 
@@ -73,9 +78,9 @@ recovery behavior.
 The iOS document picker creates an empty file under a unique name in Documents.
 The frontend stages export content under the app cache, copies it to the
 selected path after the picker closes, and removes the cache file. It removes
-the empty Documents placeholder on cancellation; after a successful export
-to an external location the empty placeholder may remain because the
-returned URL cannot safely be compared with the sandbox Documents path.
+the empty Documents placeholder on cancellation or after a successful export
+to an external path. It keeps the selected Documents file when the picker
+returns that path with or without iOS's `/private` alias.
 This prevents an earlier Documents export from being overwritten or deleted
 when the user cancels. Desktop exports write directly to the selected path.
 Automatic

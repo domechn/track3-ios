@@ -8,10 +8,23 @@ afterEach(() => {
 
 describe("iOS platform state", () => {
   it("recognizes iPhone and touch iPad without treating desktop Safari as iOS", () => {
-    expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)", "iPhone", 0, 390).isIOS).toBe(true);
-    expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 5, 1024).isIOS).toBe(true);
-    expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 0, 1024).isIOS).toBe(false);
-    expect(detectPlatform("Mozilla/5.0 (Windows NT 10.0)", "Win32", 0, 390).isMobile).toBe(false);
+    expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)", "iPhone", 0).isIOS).toBe(true);
+    expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 5).isIOS).toBe(true);
+    expect(detectPlatform("Mozilla/5.0 (Macintosh)", "MacIntel", 0).isIOS).toBe(false);
+    expect(detectPlatform("Mozilla/5.0 (Windows NT 10.0)", "Win32", 0).isMobile).toBe(false);
+  });
+
+  it("reads platform state without a DOM probe when no provider is mounted", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const createElement = vi.spyOn(document, "createElement");
+    function ReadPlatform() {
+      const { isMobile } = usePlatform();
+      return <output>{String(isMobile)}</output>;
+    }
+    render(<ReadPlatform />, { container });
+    expect(screen.getByText("false")).toBeInTheDocument();
+    expect(createElement).not.toHaveBeenCalledWith("div");
   });
 
   it("reports visible keyboard overlap without negative heights", () => {
