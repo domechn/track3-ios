@@ -47,6 +47,7 @@ import {
 import { useTranslation } from "@/i18n";
 import { configuredSecretValues, redactSecrets } from "@/middlelayers/security/redact";
 import { isIOS } from "@/utils/platform";
+import { useSearchParams } from "react-router-dom";
 
 import { SummaryCards } from "./summary-cards";
 import { GeneralSettings } from "./general-settings";
@@ -132,6 +133,7 @@ const App = ({
 }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const warmStartPreferCurrency =
     initialPreferCurrency || getCachedPreferCurrency();
 
@@ -1172,7 +1174,7 @@ const App = ({
     markFormChanged();
   }
 
-  const mobileSection = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section");
+  const mobileSection = searchParams.get("section");
   if (isIOS()) {
     return mobileSection === "currency" ? (
       <GeneralSettings
@@ -1193,6 +1195,7 @@ const App = ({
     ) : (
       <div className="space-y-6">
       <MobileSources
+        formatError={safeError}
         exchanges={exchanges}
         wallets={wallets}
         brokers={stockBrokers}

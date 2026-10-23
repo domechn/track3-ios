@@ -1,8 +1,11 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor } from "@testing-library/react";
+import { HashRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SystemInfo from "@/components/system-info";
 import { isIOS } from "@/utils/platform";
+
+const render = (ui: React.ReactElement) => testingRender(<HashRouter>{ui}</HashRouter>);
 
 vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 

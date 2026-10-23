@@ -1098,6 +1098,8 @@
   "mobile.sources.empty": "No data sources yet",
   "mobile.sources.required": "{field} is required",
   "mobile.sources.validationFailed": "Could not validate this data source. Check the details and try again.",
+  "mobile.sources.duplicate": "This data source is already added.",
+  "mobile.sources.verifyFailed": "Could not verify this data source. Check your connection and retry.",
   "mobile.sources.pasteFailed": "Could not read the clipboard",
   "mobile.sources.paste": "Paste",
   "mobile.sources.toggle": "Toggle",

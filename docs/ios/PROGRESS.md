@@ -30,11 +30,12 @@ and signed build checks remain pending.
 
 ## S3 feature screens and native integrations
 
-The S3 exit condition is **not yet met**: the macOS iOS build has not been
-rerun after the linker fix, S2 navigation has not been merged here, and native
-behavior still needs device validation. The last pushed iOS run
-`39941369549` failed while linking the Rust cdylib because its Swift bridge
-symbols were unresolved.
+The S3 exit condition is **not yet met**: S2 navigation has not been merged
+here, and native behavior still needs simulator and device validation. The
+last pushed iOS run `39944680622` built the app but it exited during setup
+before the first frame. Its log confirms an iOS Keychain read failure; the
+old bridge hid the OSStatus, so the precise Security error is unknown.
+Artifact uploads also failed because the GitHub Actions storage quota was full.
 
 - iPhone Settings now opens focused pages for data sources, base currency,
   appearance, language, blacklist, Pro, assistant configuration, security,
@@ -64,14 +65,23 @@ symbols were unresolved.
   The rotation journal can temporarily contain key material during a crash
   recovery and remains protected and excluded from backup by S1's file policy.
 - The Swift lock prompts after entering the background, covers the app
-  switcher snapshot when activity resigns, and no longer reacts to keyboard
-  windows. A device without an available passcode policy disables the lock
+  switcher snapshot whenever activity resigns, even when app lock is off,
+  and no longer reacts to keyboard windows. A device without an available
+  passcode policy disables the lock
   and shows an explanation. The Rust iOS cdylib permits the Swift symbols to
-  resolve at the final app link. The Swift typecheck step is now appended
-  after the iOS build and artifact steps.
+  resolve at the final app link; the CI build now checks the final executable
+  for every native bridge symbol. The Swift typecheck step is appended after
+  the iOS build and artifact steps.
 - Editing a saved source keeps its attachment identity fixed. The alert
   editor has a Cancel button, and refresh hides old source results until the
   current run finishes.
+- The current S3 review fixes add ad hoc signing with explicit Keychain
+  entitlements to the CI simulator app, expose Keychain OSStatus in setup
+  failures, and write debug setup errors to the existing Caches error log.
+  A background Keychain read that is temporarily blocked waits for the app
+  to become active. Mobile source saving now distinguishes duplicate,
+  invalid, and provider failures and redacts submitted credentials. Settings
+  sections follow router query changes while mounted.
 
 ### Remaining S3 work and verification limits
 
@@ -82,7 +92,11 @@ symbols were unresolved.
   is not guaranteed; no BGTaskScheduler integration exists.
 - Keychain migration, native lock, privacy cover, badge, haptics, share sheet,
   Files visibility, and background behavior still need simulator and
-  physical-device checks. The iOS link fix is pending a new macOS CI run.
+  physical-device checks. The simulator signing and startup fixes are pending
+  a new macOS CI run; no rendered simulator screenshot is verified on this
+  worktree yet. A Keychain read failure while the app is already active still
+  stops setup to avoid opening encrypted data with the wrong key. The debug
+  startup log will report its OSStatus.
   Swift and the iOS app can only be compiled by the macOS CI job after the
   driver commits and pushes this worktree.
 - End-to-end reachability for the whole README feature list depends on
@@ -92,10 +106,11 @@ symbols were unresolved.
 ### S3 local checks
 
 - `corepack yarn tsc --noEmit` passed.
-- `corepack yarn vitest run` passed: 1,751 tests in 209 files, including
+- `corepack yarn vitest run` passed: 1,757 tests in 209 files, including
   English/Chinese catalog parity.
 - `E2E_PORT=1423 corepack yarn playwright test
   tests/e2e/ios-settings.spec.ts --workers=1` passed: 13 browser checks at
   375, 390, and 430 pixel widths. It now covers the remaining settings pages,
   assistant composer, alert editor, rebalance, and refresh sheet.
-- `cargo test --locked -p track3-pure-tests --lib` passed: 60 tests.
+- Previously, `cargo test --locked -p track3-pure-tests --lib` passed: 60
+  tests. It was not rerun for this review pass.

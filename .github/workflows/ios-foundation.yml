@@ -82,6 +82,30 @@ jobs:
         working-directory: src-tauri
       - name: Build unsigned simulator app
         run: VITE_TRACK3_IOS_READY_PROBE=1 corepack yarn tauri ios build --target aarch64-sim --debug --no-sign --ci
+      - name: Ad hoc sign simulator app for Keychain
+        run: |
+          set -euo pipefail
+          APP=$(find src-tauri -type d -name '*.app' -print -quit)
+          test -n "$APP"
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
+          python3 - "$APP/Info.plist" "src-tauri/gen/apple/track3_iOS/track3_iOS.entitlements" "$RUNNER_TEMP/track3-sim-entitlements.plist" <<'PY'
+          import plistlib
+          import sys
+          from pathlib import Path
+
+          bundle_id = plistlib.loads(Path(sys.argv[1]).read_bytes())["CFBundleIdentifier"]
+          identifier = f"ADHOCSIM01.{bundle_id}"
+          entitlements = plistlib.loads(Path(sys.argv[2]).read_bytes())
+          entitlements["application-identifier"] = identifier
+          entitlements["keychain-access-groups"] = [identifier]
+          Path(sys.argv[3]).write_bytes(plistlib.dumps(entitlements))
+          PY
+          codesign --force --sign - --entitlements "$RUNNER_TEMP/track3-sim-entitlements.plist" "$APP"
+          codesign --verify --strict "$APP"
+          nm -gU "$APP/$EXECUTABLE" > "$RUNNER_TEMP/track3-native-symbols.txt"
+          for symbol in track3_ios_install_native track3_ios_lock_enabled track3_ios_set_lock_enabled track3_ios_authenticate track3_ios_haptic track3_ios_set_badge track3_ios_share_file track3_ios_keychain_read track3_ios_keychain_write track3_ios_keychain_delete; do
+            grep -Fq " _$symbol" "$RUNNER_TEMP/track3-native-symbols.txt"
+          done
       - name: Launch in iPhone simulator
         run: |
           set -euxo pipefail

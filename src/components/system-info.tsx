@@ -23,6 +23,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "@/i18n";
 import { redactSecrets } from "@/middlelayers/security/redact";
 import { isIOS } from "@/utils/platform";
+import { useSearchParams } from "react-router-dom";
 
 type SubscriptionInfo = {
   planType: "monthly" | "yearly" | null;
@@ -39,6 +40,7 @@ const App = ({
 }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [version, setVersion] = useState<string>("0.1.0");
   const [activeLicense, setActiveLicense] = useState<string | undefined>();
   const [inputLicense, setInputLicense] = useState<string | undefined>();
@@ -319,7 +321,7 @@ const App = ({
   const monthlyPlan = getPlan("monthly");
   const yearlyPlan = getPlan("yearly");
   const yearlySavingsLabel = getYearlySavingsLabel(monthlyPlan, yearlyPlan);
-  const section = isIOS() ? new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") : null;
+  const section = isIOS() ? searchParams.get("section") : null;
 
   return (
     <div className="space-y-6">

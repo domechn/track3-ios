@@ -1,4 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as testingRender, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { HashRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Configuration from "@/components/configuration";
 import {
@@ -9,6 +11,8 @@ import {
   queryQuerySize,
 } from "@/middlelayers/configuration";
 import { isIOS } from "@/utils/platform";
+
+const render = (ui: ReactElement) => testingRender(<HashRouter>{ui}</HashRouter>);
 
 vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 

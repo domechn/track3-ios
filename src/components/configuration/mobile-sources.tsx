@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 import { maskSensitive, truncateAddress } from "@/utils/attach-to";
 import { iosHaptic } from "@/utils/ios-native";
+import { redactSecrets } from "@/middlelayers/security/redact";
 import { BottomSheet, MobilePage } from "@/components/mobile-compat";
 import type { ExchangeRow, StockBrokerRow, WalletRow, SelectOption } from "./types";
 
@@ -28,6 +29,7 @@ export type MobileSourcesProps = {
   onQuickLookExchange?: (value: ExchangeRow) => void;
   onQuickLookWallet?: (value: WalletRow) => void;
   onQuickLookBroker?: (value: StockBrokerRow) => void;
+  formatError?: (error: unknown) => string;
 };
 
 type Kind = "exchange" | "wallet" | "broker";
@@ -95,8 +97,21 @@ export function MobileSources(props: MobileSourcesProps) {
       if (kind === "broker") await props.onSaveBroker(draft as StockBrokerRow, original as StockBrokerRow | undefined);
       void iosHaptic("success").catch(() => {});
       close();
-    } catch {
-      setError(t("mobile.sources.validationFailed"));
+    } catch (failure) {
+      const message = failure instanceof Error ? failure.message : String(failure);
+      if (message.startsWith("Duplicate ")) {
+        setError(t("mobile.sources.duplicate"));
+      } else if (message.startsWith("Invalid ")) {
+        const invalidKey = kind === "exchange" ? "config.invalidApiKey"
+          : kind === "broker" ? "config.invalidStockConfig"
+          : "mobile.sources.validationFailed";
+        setError(t(navigator.onLine ? invalidKey : "mobile.sources.verifyFailed"));
+      } else {
+        const secrets = kind === "exchange" ? [(draft as ExchangeRow).apiKey, (draft as ExchangeRow).secret, (draft as ExchangeRow).password ?? "", (draft as ExchangeRow).passphrase ?? ""]
+          : kind === "wallet" ? [(draft as WalletRow).address]
+          : [(draft as StockBrokerRow).token, (draft as StockBrokerRow).queryId];
+        setError(`${t("mobile.sources.verifyFailed")} ${redactSecrets(props.formatError?.(failure) ?? message, secrets)}`);
+      }
       setErrorField(undefined);
     } finally {
       setSaving(false);

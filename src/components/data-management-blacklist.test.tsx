@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor, within } from "@testing-library/react";
+import { HashRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DataManagement from "@/components/data-management";
 import { Toast, ToastProvider, ToastViewport } from "@/components/ui/toast";
@@ -13,6 +14,8 @@ import {
 } from "@/middlelayers/encryption-write-gate";
 import { isIOS } from "@/utils/platform";
 import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
+
+const render = (ui: React.ReactElement) => testingRender(<HashRouter>{ui}</HashRouter>);
 
 vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 vi.mock("@/utils/ios-native", () => ({

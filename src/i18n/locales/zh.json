@@ -1098,6 +1098,8 @@
   "mobile.sources.empty": "尚无数据来源",
   "mobile.sources.required": "请填写{field}",
   "mobile.sources.validationFailed": "无法验证此数据来源，请检查信息后重试。",
+  "mobile.sources.duplicate": "此数据来源已添加。",
+  "mobile.sources.verifyFailed": "无法验证此数据来源。请检查网络连接后重试。",
   "mobile.sources.pasteFailed": "无法读取剪贴板",
   "mobile.sources.paste": "粘贴",
   "mobile.sources.toggle": "切换",

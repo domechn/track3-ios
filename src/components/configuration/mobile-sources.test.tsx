@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MobileSources } from "./mobile-sources";
 
@@ -45,6 +45,48 @@ describe("mobile data sources", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocapitalize", "off");
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocomplete", "off");
+  });
+
+  it.each([
+    ["Duplicate exchange", "already added"],
+    ["Invalid exchange", "Invalid api key or secret"],
+    ["Network is offline", "Network is offline"],
+  ])("shows a useful source save error for %s", async (failure, message) => {
+    render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error(failure))} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "key" } });
+    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message));
+  });
+
+  it("identifies an offline verification failure without exposing the submitted key", async () => {
+    const originalOnline = Object.getOwnPropertyDescriptor(navigator, "onLine");
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    try {
+      render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error("Invalid exchange"))} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "sensitive-key-123" } });
+      fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/connection/i));
+      expect(screen.getByRole("alert")).not.toHaveTextContent("sensitive-key-123");
+    } finally {
+      if (originalOnline) Object.defineProperty(navigator, "onLine", originalOnline);
+    }
+  });
+
+  it("redacts a provider error that repeats submitted credentials", async () => {
+    render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error("Request failed for sensitive-key-123"))} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "sensitive-key-123" } });
+    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/Request failed/));
+    expect(screen.getByRole("alert")).not.toHaveTextContent("sensitive-key-123");
   });
 
   it.each([

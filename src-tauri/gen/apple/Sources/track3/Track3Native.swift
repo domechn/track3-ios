@@ -30,7 +30,10 @@ private final class Track3PrivacyLock: NSObject {
 
     func setEnabled(_ value: Bool) {
         UserDefaults.standard.set(value, forKey: setting)
-        if !value { DispatchQueue.main.async { self.needsUnlock = false; self.uncover() } }
+        if !value { DispatchQueue.main.async {
+            self.needsUnlock = false
+            if UIApplication.shared.applicationState == .active { self.uncover() }
+        } }
     }
 
     private var windows: [UIWindow] {
@@ -74,7 +77,7 @@ private final class Track3PrivacyLock: NSObject {
         for window in windows { window.viewWithTag(overlayTag)?.removeFromSuperview() }
     }
 
-    @objc private func privacyCover() { if enabled { cover() } }
+    @objc private func privacyCover() { cover() }
 
     @objc private func background() {
         if enabled { unlockGeneration &+= 1; needsUnlock = true; cover() }
@@ -146,24 +149,29 @@ public func track3IOSKeychainRead(_ output: UnsafeMutablePointer<UInt8>?, _ capa
     query[kSecReturnData as String] = true
     query[kSecMatchLimit as String] = kSecMatchLimitOne
     var result: CFTypeRef?
-    let status = SecItemCopyMatching(query as CFDictionary, &result)
+    var status = SecItemCopyMatching(query as CFDictionary, &result)
+    while status == errSecInteractionNotAllowed && UIApplication.shared.applicationState != .active {
+        Thread.sleep(forTimeInterval: 0.5)
+        status = SecItemCopyMatching(query as CFDictionary, &result)
+    }
     if status == errSecItemNotFound { return -1 }
-    guard status == errSecSuccess, let data = result as? Data, data.count <= Int(capacity) else { return -2 }
+    guard status == errSecSuccess else { return Int32(status) }
+    guard let data = result as? Data, data.count <= Int(capacity) else { return -2 }
     for (index, byte) in data.enumerated() { output[index] = byte }
     return Int32(data.count)
 }
 
 @_cdecl("track3_ios_keychain_write")
-public func track3IOSKeychainWrite(_ input: UnsafePointer<UInt8>?, _ length: Int32) -> Bool {
-    guard let input, length > 0 else { return false }
+public func track3IOSKeychainWrite(_ input: UnsafePointer<UInt8>?, _ length: Int32) -> Int32 {
+    guard let input, length > 0 else { return -2 }
     let data = Data(bytes: input, count: Int(length))
     let status = SecItemUpdate(Track3Keychain.query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-    if status == errSecSuccess { return true }
-    guard status == errSecItemNotFound else { return false }
+    if status == errSecSuccess { return Int32(errSecSuccess) }
+    guard status == errSecItemNotFound else { return Int32(status) }
     var query = Track3Keychain.query
     query[kSecValueData as String] = data
     query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-    return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+    return Int32(SecItemAdd(query as CFDictionary, nil))
 }
 
 @_cdecl("track3_ios_keychain_delete")

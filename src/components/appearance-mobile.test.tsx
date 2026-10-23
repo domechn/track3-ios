@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { HashRouter, useNavigate } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import Appearance from "./appearance";
 import { isIOS } from "@/utils/platform";
@@ -12,16 +13,31 @@ vi.mock("@/middlelayers/configuration", () => ({
 vi.mock("@/utils/app", () => ({ reloadApp: vi.fn() }));
 
 describe("iPhone appearance settings", () => {
+  function NavigateToLanguage() {
+    const navigate = useNavigate();
+    return <button onClick={() => navigate("/settings/appearance?section=language")}>Open language</button>;
+  }
   it("keeps language selection separate from theme and offers system theme", () => {
     window.location.hash = "#/settings/appearance?section=theme";
-    const view = render(<Appearance />);
+    const view = render(<HashRouter><Appearance /></HashRouter>);
     expect(screen.getByText("Follow system")).toBeInTheDocument();
     expect(screen.queryByText("Language")).not.toBeInTheDocument();
     view.unmount();
     window.location.hash = "#/settings/appearance?section=language";
-    render(<Appearance />);
+    render(<HashRouter><Appearance /></HashRouter>);
     expect(screen.getByText("Language")).toBeInTheDocument();
     expect(screen.queryByText("Follow system")).not.toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
+  it("updates the visible section when the route query changes", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/appearance?section=theme";
+    render(<HashRouter><NavigateToLanguage /><Appearance /></HashRouter>);
+    expect(screen.queryByText("Language")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open language" }));
+    expect(await screen.findByText("Language")).toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
   });

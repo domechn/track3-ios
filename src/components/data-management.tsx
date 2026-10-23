@@ -56,10 +56,12 @@ import { chooseBackupLocation } from "@/utils/backup-location";
 import { isIOS } from "@/utils/platform";
 import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
 import { BottomSheet } from "@/components/mobile-compat";
+import { useSearchParams } from "react-router-dom";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [exportConfiguration, setExportConfiguration] = useState(false);
   const [showConflictResolverDialog, setShowConflictResolverDialog] =
     useState(false);
@@ -272,7 +274,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
     });
   }
 
-  const section = isIOS() ? new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") : null;
+  const section = isIOS() ? searchParams.get("section") : null;
   const showBackup = !section || section === "backup";
   const showBlacklist = !section || section === "blacklist";
   const showSecurity = !section || section === "security";

@@ -19,6 +19,7 @@ import {
   type Locale,
 } from "@/i18n";
 import { isIOS } from "@/utils/platform";
+import { useSearchParams } from "react-router-dom";
 
 const App = ({
   onQuoteColorChange,
@@ -31,6 +32,7 @@ const App = ({
   const [selectedLocale, setSelectedLocale] = useState<Locale>(locale);
   const originalThemeRef = useRef<Theme>("light");
   const currentTheme = useTheme();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     loadGeneralSettings();
@@ -70,7 +72,7 @@ const App = ({
     setLocale(next);
   }
 
-  const section = isIOS() ? new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("section") : null;
+  const section = isIOS() ? searchParams.get("section") : null;
   const showTheme = !section || section === "theme";
   const showLanguage = !section || section === "language";
 
