@@ -87,6 +87,25 @@ describe("mobile interactions", () => {
     expect(onRefresh).toHaveBeenCalledOnce();
   });
 
+  it("does not refresh when a touch starts inside a scrolled inner container", () => {
+    const onRefresh = vi.fn();
+    render(<PullToRefresh onRefresh={onRefresh}>
+      <div data-testid="inner-scroll" style={{ overflowY: "auto" }}><span>Older messages</span></div>
+    </PullToRefresh>);
+    const inner = screen.getByTestId("inner-scroll");
+    Object.defineProperties(inner, {
+      scrollHeight: { configurable: true, value: 240 },
+      clientHeight: { configurable: true, value: 80 },
+    });
+    inner.scrollTop = 50;
+    const target = screen.getByText("Older messages");
+    fireEvent.touchStart(target, { touches: [{ clientX: 100, clientY: 20 }] });
+    fireEvent.touchMove(target, { touches: [{ clientX: 100, clientY: 100 }] });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    fireEvent.touchEnd(target, { changedTouches: [{ clientX: 100, clientY: 100 }] });
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   it("shows the last refresh time while pulling down", () => {
     render(<PullToRefresh onRefresh={() => {}} lastRefreshText="Last refresh at 10:30"><div>Content</div></PullToRefresh>);
     const area = screen.getByTestId("pull-to-refresh");

@@ -278,11 +278,13 @@ describe("App data-changed version bumps on refresh and soft refresh", () => {
 
   it("shows the unread count on the Goals row in More", async () => {
     vi.mocked(countUnreadAlerts).mockResolvedValue(3);
+    vi.mocked(countUnreadAlerts).mockClear();
     window.location.hash = "#/more";
     const view = renderApp();
     const goals = view.container.querySelector('.mobile-more-hub a[href="#/goals"]');
     await waitFor(() => expect(goals).toHaveTextContent("3"));
     expect(goals).toHaveTextContent("Goals & Alerts");
+    expect(countUnreadAlerts).toHaveBeenCalledTimes(1);
   });
 
   it("finishes boot while startup alert evaluation is pending", async () => {

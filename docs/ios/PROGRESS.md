@@ -1,7 +1,36 @@
 # iOS port progress
 
-The earlier S1–S3 sections record their handoff results. The current state
-for this worktree is S4 below.
+The earlier S1–S4 sections record their handoff results. The current state
+for this worktree is S5 below.
+
+## S5 reviewer closeout
+
+- Pull to refresh now ignores gestures beginning inside a scrolled vertical
+  child and is disabled on assistant routes. Vitest and phone browser cases
+  cover inner scrolling and the assistant thread.
+- Comparison totals use unbroken values and stack the base and head dates
+  below 400px. Browser checks cover 320px and 375px widths.
+- The More hub receives the unread count from the shell's existing alert
+  subscription, avoiding a second badge query and native badge write.
+  The goal creation screenshot now scrolls the saved $50,000 rule fully
+  into view.
+- The round5 desktop density and Vite probe fixes were already present.
+  No feature was added in this closeout.
+- Local checks passed: both frontend and Playwright TypeScript checks,
+  1,803 Vitest tests in 218 files, 81 mobile-suite Playwright tests, and 61
+  Rust pure tests. The frontend production build passed. The three
+  regenerated goal screenshots show the saved $50,000 rule; the iPhone SE
+  image was visually inspected.
+- The latest successful iOS foundation run on the S4 head `660e9bf` was
+  `40002540819`: both web and iOS jobs passed. Run `39998981335` on the
+  same head also passed both jobs, with 1,802 Vitest tests, 77 phone and
+  77 desktop Playwright tests, and 61 Rust pure tests. Its simulator showed
+  a rendered empty Overview and a readiness marker, and it uploaded the
+  unsigned builds and 82 phone browser screenshots. An intervening attempt,
+  `40002534459`, timed out installing Ubuntu packages in the web job;
+  its iOS job passed. The separate `test-on-pr` run `40002541174` passed.
+  These are S4-head results; S5 has no pushed CI run yet.
+- Signed physical-device checks listed in S4 remain open.
 
 ## S4 integration, parity and release preparation
 
@@ -84,10 +113,10 @@ for this worktree is S4 below.
 - Run `39993408716` on head `49dc2f3` passed the macOS iOS job, including
   simulator launch, screenshots and unsigned IPA. Its web job failed in the
   desktop density test because Chromium measured a 36px tab as 36.000015px;
-  the later Rust checks were skipped. This follow-up reduces motion and
-  rounds pixel measurements in that test, and sets the Playwright server's
-  readiness probe variable to stop Vite's repeated warning. These changes
-  await another CI run after the driver commits and pushes. No signed-device
+  the later Rust checks were skipped. The S4 follow-up reduced motion and
+  rounded pixel measurements in that test, and set the Playwright server's
+  readiness probe variable to stop Vite's repeated warning. The later
+  successful runs on `660e9bf` are recorded in S5 above. No signed-device
   claim is made from the local checks.
 
 ## S1 foundation

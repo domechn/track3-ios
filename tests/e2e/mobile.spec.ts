@@ -617,3 +617,94 @@ test("pulling down reveals the last refresh time", async ({ browser }) => {
     await context.close();
   }
 });
+
+test("a scrolled inner area does not pull the page to refresh", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = watchPage(await context.newPage());
+  try {
+    const bridge = await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await expect(page.getByRole("button", { name: "Show More" })).toBeVisible();
+    const inner = page.getByTestId("pull-to-refresh").evaluate((main) => {
+      const area = document.createElement("div");
+      area.style.cssText = "height: 80px; overflow-y: auto";
+      area.innerHTML = '<div style="height: 240px">Inner content</div>';
+      main.prepend(area);
+      area.scrollTop = 50;
+      return area.scrollTop;
+    });
+    expect(await inner).toBe(50);
+    const target = page.getByText("Inner content");
+    await target.evaluate((element) => {
+      const touch = (y: number) => new Touch({ identifier: 1, target: element, clientX: 100, clientY: y });
+      for (const [type, y] of [["touchstart", 20], ["touchmove", 100]] as const) {
+        const point = touch(y);
+        element.dispatchEvent(new TouchEvent(type, {
+          bubbles: true, touches: [point], changedTouches: [point],
+        }));
+      }
+    });
+    await expect(page.locator(".mobile-pull-indicator")).toHaveCount(0);
+    await target.evaluate((element) => {
+      const point = new Touch({ identifier: 1, target: element, clientX: 100, clientY: 100 });
+      element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [point] }));
+    });
+    expect(bridge.persistedRefreshes()).toBe(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("pulling the assistant thread does not refresh the portfolio", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = watchPage(await context.newPage());
+  try {
+    const bridge = await installTauriBridge(page);
+    await page.goto("/#/assistant");
+    const thread = page.getByTestId("chat-thread");
+    await expect(thread).toBeVisible();
+    await thread.evaluate((element) => {
+      const touch = (y: number) => new Touch({ identifier: 1, target: element, clientX: 100, clientY: y });
+      for (const [type, y] of [["touchstart", 20], ["touchmove", 100]] as const) {
+        const point = touch(y);
+        element.dispatchEvent(new TouchEvent(type, {
+          bubbles: true, touches: [point], changedTouches: [point],
+        }));
+      }
+    });
+    await expect(page.locator(".mobile-pull-indicator")).toHaveCount(0);
+    await thread.evaluate((element) => {
+      const point = new Touch({ identifier: 1, target: element, clientX: 100, clientY: 100 });
+      element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [point] }));
+    });
+    expect(bridge.persistedRefreshes()).toBe(0);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const width of [320, 375]) {
+  test(`comparison totals stay on separate unbroken lines at ${width}px`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width, height: 667 }, isMobile: true, hasTouch: true });
+    const page = watchPage(await context.newPage());
+    try {
+      await installTauriBridge(page);
+      await page.goto("/#/comparison");
+      const totals = page.locator(".comparison-total-grid");
+      await expect(totals).toBeVisible();
+      const values = totals.locator("> div > p:nth-child(2)");
+      await expect(values).toHaveCount(3);
+      const [base, head] = await Promise.all([values.nth(0).boundingBox(), values.nth(2).boundingBox()]);
+      expect(head!.y).toBeGreaterThanOrEqual(base!.y + base!.height);
+      for (const value of [values.nth(0), values.nth(2)]) {
+        expect(await value.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
+        expect(await value.evaluate((node) => getComputedStyle(node).overflowWrap)).toBe("normal");
+        expect(await value.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(
+          await value.evaluate((node) => node.clientWidth),
+        );
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}

@@ -27,7 +27,7 @@ import PageLoadingOverlay from "../page-loading-overlay";
 import AutoBackupIndicator from "../auto-backup-indicator";
 import SyncStatusIndicator from "../sync-status-indicator";
 import "./index.css";
-import { Route, Routes, HashRouter, Outlet, Navigate, useLocation } from "react-router-dom";
+import { Route, Routes, HashRouter, Outlet, Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -67,7 +67,6 @@ import { markIOSReady } from "@/utils/ios-ready";
 import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
 import { useAlertBadge } from "@/components/use-alert-badge";
-import { useNavigate } from "react-router-dom";
 import { MobileHeaderTotal } from "@/components/mobile/header-total";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
@@ -359,7 +358,7 @@ function Layout({
             if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
           }}
           onPointerCancel={() => { swipeStart.current = null; }}>
-          <PullToRefresh disabled={!mobile} onRefresh={() => refreshAction.current?.()}
+          <PullToRefresh disabled={!mobile || /^\/assistant(\/|$)/.test(location.pathname)} onRefresh={() => refreshAction.current?.()}
             lastRefreshText={lastRefreshAt
               ? t("topbar.lastRefreshAt") + lastRefreshAt
               : t("topbar.neverRefreshBefore")}>
@@ -370,7 +369,7 @@ function Layout({
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
             >
-              <Outlet />
+              <Outlet context={unread} />
             </React.Suspense>
             {initializing && (
               <PageLoadingOverlay
@@ -392,7 +391,7 @@ function Layout({
 
 function MoreHub() {
   const { t } = useTranslation();
-  const unread = useAlertBadge();
+  const unread = useOutletContext<number>();
   const items = [
     { href: "#/rebalance", label: t("nav.rebalance") },
     { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined },

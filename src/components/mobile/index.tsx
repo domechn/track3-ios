@@ -236,6 +236,11 @@ export function PullToRefresh({ children, onRefresh, disabled, className, lastRe
     onTouchStart={(event) => {
       if (!event.currentTarget.contains(event.target as Node)) return;
       if (disabled || refreshing || window.scrollY > 0) return;
+      for (let element = event.target as Element | null; element; element = element.parentElement) {
+        if (element.scrollTop > 0 && element.scrollHeight > element.clientHeight &&
+          /^(auto|scroll|overlay)$/.test(getComputedStyle(element).overflowY)) return;
+        if (element === event.currentTarget) break;
+      }
       start.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
     }}
     onTouchMove={(event) => {

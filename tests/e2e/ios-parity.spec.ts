@@ -227,7 +227,18 @@ for (const phone of phones) {
     await goal.getByRole("spinbutton", { name: "Threshold" }).fill("50000");
     await goal.getByRole("button", { name: "Save rule" }).click();
     await expect(goal).not.toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit" }).first()).toBeVisible();
+    const createdRule = page.getByRole("button", { name: "Edit" }).first()
+      .locator("xpath=ancestor::div[contains(@class, 'rounded-md')][1]");
+    await expect(createdRule).toBeVisible();
+    await expect(createdRule).toContainText("$50,000");
+    await createdRule.evaluate((rule) => {
+      window.scrollTo({ top: window.scrollY + rule.getBoundingClientRect().top - 90, behavior: "auto" });
+    });
+    await expect.poll(async () => {
+      const rule = (await createdRule.boundingBox())!;
+      const tabs = (await page.getByRole("navigation", { name: "Tabs" }).boundingBox())!;
+      return rule.y >= 80 && rule.y + rule.height <= tabs.y;
+    }).toBe(true);
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-created-goal.png` });
     await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
     await page.getByRole("link", { name: "Rebalance" }).click();
