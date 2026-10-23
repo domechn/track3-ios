@@ -112,6 +112,8 @@
   "assistant.action.result.unavailable": "Action state unavailable. Reload this chat to check the result.",
   "app.skipToMainContent": "Skip to main content",
   "app.loadFailed": "Track3 could not open this page.",
+  "app.dataLoadFailed": "Could not load portfolio data",
+  "app.retryDataLoad": "Retry",
   "app.brand": "Track3",
   "app.proBadge": "PRO",
   "nav.overview": "Overview",

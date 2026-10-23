@@ -36,6 +36,12 @@ const mocks = vi.hoisted(() => ({
   getImageApiPath: vi.fn(),
   listWalletAliases: vi.fn(),
   markIOSReady: vi.fn(),
+  toast: vi.fn(),
+}));
+
+vi.mock("@/components/ui/use-toast", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/components/ui/use-toast")>(),
+  toast: mocks.toast,
 }));
 
 vi.mock("../settings", () => ({
@@ -272,6 +278,26 @@ describe("Coin Analytics data-changed integration", () => {
     try {
       renderApp();
       await waitFor(() => expect(mocks.markIOSReady).toHaveBeenCalledTimes(1));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("offers a retry when startup portfolio data fails to load", async () => {
+    window.location.hash = "#/overview";
+    mocks.queryLastRefreshAt.mockRejectedValueOnce(new Error("database unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      renderApp();
+      await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+      const alert = mocks.toast.mock.calls[0][0] as {
+        title: string;
+        action: React.ReactElement<{ onClick: () => void }>;
+      };
+      expect(alert.title).toBe("Could not load portfolio data");
+      alert.action.props.onClick();
+      await waitFor(() => expect(mocks.queryLastRefreshAt).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(screen.getByText("overview")).toBeInTheDocument());
     } finally {
       warn.mockRestore();
     }

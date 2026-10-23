@@ -24,6 +24,11 @@ for this worktree is S4 below.
   overlapping usage controls, and the shell shows one Back control.
   Wallet chart components import their analyzer directly, removing Rollup's
   circular chunk warning.
+- Reviewer follow-up removes duplicate shell safe-area padding. The header,
+  content and tab bar now own their insets, with a browser regression that
+  injects nonzero top and side insets. The More Goals row shows its unread
+  alert count. Startup portfolio read failures show a persistent retry toast.
+  Rebalance now uses the shell's touch-width signal for its phone controls.
 - [FEATURE_PARITY.md](FEATURE_PARITY.md) inventories the desktop routes,
   Settings controls, data sources, charts and assistant skills with iPhone
   locations and test references. The README and
@@ -39,20 +44,21 @@ for this worktree is S4 below.
   now supports iPhone only; iPad has no validated layout. It saves screenshots in
   `test-results/mobile/`. CI now installs cached Chromium and runs the
   mobile suites, browser typecheck and Rust pure tests.
-- Run `39981443802` on head `dde653d` passed both jobs. The simulator app
+- Run `39988241737` on head `5d5d18b` passed both jobs. The simulator app
   launched with a rendered empty Overview and a ready marker; native symbols,
   the committed Xcode project and unsigned IPA passed. The web job passed
-  TypeScript, 1,798 Vitest tests in 217 files, 75 iPhone Playwright tests
-  and 61 Rust pure tests. Screenshot and build artifacts uploaded, including
-  `iphone-launch.png` and 82 browser screenshots.
-- Review found the separate desktop browser suite failing and missing from
-  the iOS web job. This follow-up updates its phone assertions and adds the
-  suite to the web job. The updated workflow has not run on CI yet.
+  TypeScript, 1,800 Vitest tests in 218 files, 76 iPhone Playwright tests,
+  77 desktop Playwright tests and 61 Rust pure tests. Simulator screenshots
+  and build artifacts uploaded. Browser screenshots were not uploaded because
+  the desktop Playwright run cleared their output directory; the upload step
+  is now immediately after the iPhone run and awaits CI verification.
 - The README now discloses Aptabase telemetry on iPhone. The release
   checklist requires App Store privacy labels and an accurate
-  `PrivacyInfo.xcprivacy` manifest; both remain release tasks. Browser
-  tests now save an exchange and wallet at all three iPhone sizes and
-  collect page and console errors across the mobile route suite.
+  `PrivacyInfo.xcprivacy` manifest; both remain release tasks. The release
+  checklist also flags the existing Pro license-key flow as an unresolved
+  App Store Guideline 3.1.1 review risk. Browser tests now save an exchange
+  and wallet at all three iPhone sizes and collect page and console errors
+  across the mobile route suite.
 - A signed physical-device run remains necessary for Face ID/Touch ID
   and passcode fallback, Keychain migration and restore, app-switcher cover,
   notification delivery and badge, haptics, share sheet, Files/iCloud Drive,
@@ -62,20 +68,21 @@ for this worktree is S4 below.
 ### S4 local verification
 
 - `corepack yarn tsc --noEmit` and
-  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed after
-  this review follow-up. Full Vitest passed: 1,800 tests in 218 files.
-  The four desktop browser files passed 77/77, and the three iPhone
-  files passed 76/76 when run separately. The phone run saved 82 screenshots
-  in `test-results/mobile/`. The SE Overview, Rebalance and Profit Summary
-  captures were inspected: Overview has no loading overlay, the header title
-  is fully shown, and Profit Summary selects 2024 for the fixture.
-- `corepack yarn build` and the seven-route production preview passed before
-  this review follow-up. `cargo test --locked -p track3-pure-tests --lib`
+  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed in this
+  reviewer follow-up. Full Vitest passed: 1,802 tests in 218 files.
+  The three iPhone Playwright files passed 77/77, including the injected
+  nonzero safe-area regression. The narrow desktop rebalance browser check
+  passed 1/1. The full desktop browser suite passed 77/77 on the previous
+  head and has not been rerun after these fixes. Playwright saved phone
+  screenshots during the mobile run; the later desktop check cleared the
+  local `test-results/` directory as expected.
+- `corepack yarn build` passed after these fixes. The seven-route production
+  preview passed before this review follow-up. `cargo test --locked -p track3-pure-tests --lib`
   passed 61 tests before this follow-up; no Rust code changed in it.
   The full Vitest suite emits expected jsdom canvas and intentional
   error-boundary messages while exiting successfully. Workflow YAML parsed.
-- The last pushed head passed the macOS iOS workflow; this review follow-up
-  needs another CI run after the driver commits and pushes. No signed-device
+- The last pushed head passed the macOS iOS workflow; these reviewer fixes
+  need another CI run after the driver commits and pushes. No signed-device
   claim is made from the local checks.
 
 ## S1 foundation

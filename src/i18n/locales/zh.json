@@ -112,6 +112,8 @@
   "assistant.action.result.unavailable": "操作状态不可用。请重新加载聊天以查看结果。",
   "app.skipToMainContent": "跳到主内容",
   "app.loadFailed": "Track3 无法打开此页面。",
+  "app.dataLoadFailed": "无法加载投资组合数据",
+  "app.retryDataLoad": "重试",
   "app.brand": "Track3",
   "app.proBadge": "PRO",
   "nav.overview": "概览",

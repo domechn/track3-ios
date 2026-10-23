@@ -15,12 +15,21 @@ does not replace the signed physical-device checks below.
 The `iOS foundation` workflow builds an unsigned simulator `.app` bundle and
 unsigned device `.ipa`. Every run attempts to upload simulator screenshots,
 launch logs, `Track3-simulator.app.zip`, and `Track3-unsigned.ipa`.
-Artifact uploads succeeded in run `39981443802`. Upload errors are nonfatal
-so launch diagnostics still reach the run log.
+Run `39988241737` passed both jobs and uploaded simulator and build artifacts,
+but its browser screenshot upload found no files because the desktop Playwright
+run had cleared the phone output directory. The workflow now uploads phone
+screenshots immediately after the phone run; confirm the artifact on the next
+CI run. Upload errors are nonfatal so launch diagnostics still reach the run
+log.
 The unsigned device IPA will not install on a device without valid Apple
 signing and a provisioning profile.
 The Xcode target currently supports iPhone only (`TARGETED_DEVICE_FAMILY=1`);
 an iPad layout requires separate design and validation before enabling iPad.
+
+Existing license-key entry unlocks paid Pro features on iOS while external
+checkout is hidden. App Store Guideline 3.1.1 may still require in-app purchase
+or an applicable entitlement or exception. Treat App Review acceptance as
+unresolved: confirm a compliant purchase and license flow before submission.
 
 ## App Store privacy preparation
 

@@ -62,6 +62,7 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts, formatAlert } from "@/middlelayers/alert-notifications";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
 import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
@@ -391,14 +392,15 @@ function Layout({
 
 function MoreHub() {
   const { t } = useTranslation();
+  const unread = useAlertBadge();
   const items = [
     { href: "#/rebalance", label: t("nav.rebalance") },
-    { href: "#/goals", label: t("nav.goals") },
+    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined },
     { href: "#/assistant", label: t("nav.assistant") },
     { href: "#/settings", label: t("nav.settings") },
   ];
   return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
-    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
+    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>{item.label}</ListRow>)}
   </InsetGroup></div>;
 }
 
@@ -692,49 +694,57 @@ const App = () => {
   useEffect(() => {
     let active = true;
 
-    void Promise.all([
+    const loadStartupData = () => Promise.all([
       queryPreferCurrency().then((c) => {
-        if (active) {
-          setCurrentCurrency(c);
-        }
+        if (active) setCurrentCurrency(c);
       }),
       getLicenseIfIsPro().then((l) => {
-        if (active) {
-          setIsProUser(!!l);
-        }
+        if (active) setIsProUser(!!l);
       }),
       getQuoteColor().then((c) => {
-        if (active) {
-          setQuoteColor(c);
-        }
+        if (active) setQuoteColor(c);
       }),
-    ])
-      .then(() => loadAllData(active))
-      .then(() => {
-        if (!active) return;
-        void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
-          const text = formatAlert(alert, t);
-          toast({ title: text.title, description: text.message });
-        }, t)).catch(() => {
-          console.warn("startup alert evaluation failed");
-        });
-      })
-      .catch(() => {
-        console.warn("startup data loading failed");
-      })
-      .finally(() => {
-        if (active) {
-          setInitializing(false);
-          void markIOSReady().catch(() => {
-            console.warn("iOS readiness check failed");
+    ]).then(() => loadAllData(active));
+
+    const start = () => {
+      if (!active) return;
+      setInitializing(true);
+      void loadStartupData()
+        .then(() => {
+          if (!active) return;
+          void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
+            const text = formatAlert(alert, t);
+            toast({ title: text.title, description: text.message });
+          }, t)).catch(() => {
+            console.warn("startup alert evaluation failed");
           });
-          // Defer to the next tick so the boot overlay clears first;
-          // auto backup is intentionally off the critical path.
-          window.setTimeout(() => {
-            void runAutoBackupInBackground();
-          }, 0);
-        }
-      });
+        })
+        .catch(() => {
+          if (!active) return;
+          console.warn("startup data loading failed");
+          toast({
+            title: t("app.dataLoadFailed"),
+            duration: 86_400_000,
+            action: <ToastAction altText={t("app.retryDataLoad")} onClick={start} className="touch:min-h-11">
+              {t("app.retryDataLoad")}
+            </ToastAction>,
+          });
+        })
+        .finally(() => {
+          if (active) {
+            setInitializing(false);
+            void markIOSReady().catch(() => {
+              console.warn("iOS readiness check failed");
+            });
+            // Defer to the next tick so the boot overlay clears first;
+            // auto backup is intentionally off the critical path.
+            window.setTimeout(() => {
+              void runAutoBackupInBackground();
+            }, 0);
+          }
+        });
+    };
+    start();
 
     return () => {
       active = false;

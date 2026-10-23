@@ -59,8 +59,6 @@ jobs:
         run: corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit
       - name: Test iPhone flows
         run: corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts --workers=2
-      - name: Test desktop browser flows
-        run: corepack yarn playwright test tests/e2e/smoke.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/density.spec.ts tests/e2e/ai-setup.spec.ts --workers=2
       - name: Upload iPhone browser screenshots
         if: always()
         continue-on-error: true
@@ -69,6 +67,8 @@ jobs:
           name: ios-browser-screenshots
           path: test-results/mobile/*.png
           retention-days: 1
+      - name: Test desktop browser flows
+        run: corepack yarn playwright test tests/e2e/smoke.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/density.spec.ts tests/e2e/ai-setup.spec.ts --workers=2
       - name: Check desktop Rust library
         timeout-minutes: 15
         run: cargo check --locked --lib

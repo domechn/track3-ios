@@ -28,6 +28,45 @@ const phones = [
   { name: "pro-max", width: 430, height: 932 },
 ];
 
+test("the phone shell applies top and side safe-area insets once", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page);
+  await page.goto("/#/overview");
+  await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+  const positions = await page.evaluate(() => {
+    const root = document.documentElement;
+    const header = document.querySelector<HTMLElement>("#app-top-bar")!;
+    const toolbar = header.firstElementChild as HTMLElement;
+    const main = document.querySelector<HTMLElement>("#app-main-content")!;
+    const originalHeaderHeight = header.getBoundingClientRect().height;
+    const originalContentTop = main.getBoundingClientRect().top;
+    root.style.setProperty("--mobile-safe-top", "47px");
+    root.style.setProperty("--mobile-safe-left", "59px");
+    root.style.setProperty("--mobile-safe-right", "59px");
+    return {
+      headerTop: header.getBoundingClientRect().top,
+      headerLeft: header.getBoundingClientRect().left,
+      contentTop: main.getBoundingClientRect().top,
+      contentLeft: main.getBoundingClientRect().left,
+      contentRight: innerWidth - main.getBoundingClientRect().right,
+      headerHeightDelta: header.getBoundingClientRect().height - originalHeaderHeight,
+      contentTopDelta: main.getBoundingClientRect().top - originalContentTop,
+      toolbarPaddingLeft: parseFloat(getComputedStyle(toolbar).paddingLeft),
+      contentPaddingLeft: parseFloat(getComputedStyle(main).paddingLeft),
+      contentPaddingRight: parseFloat(getComputedStyle(main).paddingRight),
+    };
+  });
+  expect(positions.headerTop).toBe(0);
+  expect(positions.headerLeft).toBe(0);
+  expect(positions.headerHeightDelta).toBe(47);
+  expect(positions.contentTopDelta).toBe(47);
+  expect(positions.contentLeft).toBe(0);
+  expect(positions.contentRight).toBe(0);
+  expect(positions.toolbarPaddingLeft).toBe(59);
+  expect(positions.contentPaddingLeft).toBe(59);
+  expect(positions.contentPaddingRight).toBe(59);
+});
+
 for (const phone of phones) {
   test(`portfolio routes fit iPhone ${phone.name} with native controls`, async ({ page }) => {
     await page.setViewportSize({ width: phone.width, height: phone.height });
