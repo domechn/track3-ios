@@ -6,7 +6,7 @@ import { useTranslation } from "@/i18n";
 import { maskSensitive, truncateAddress } from "@/utils/attach-to";
 import { iosHaptic } from "@/utils/ios-native";
 import { redactSecrets } from "@/middlelayers/security/redact";
-import { BottomSheet, MobilePage } from "@/components/mobile-compat";
+import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
 import type { ExchangeRow, StockBrokerRow, WalletRow, SelectOption } from "./types";
 
 export type MobileSourcesProps = {
@@ -169,7 +169,7 @@ export function MobileSources(props: MobileSourcesProps) {
           </div>
         </section>
       ))}
-      {editor && <MobilePage title={t("mobile.sources.edit")} onDismiss={close}>
+      {editor && <ModalPage title={t("mobile.sources.edit")} onDismiss={close}>
         <div className="mx-auto max-w-xl space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -208,12 +208,12 @@ export function MobileSources(props: MobileSourcesProps) {
             <Button className="min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
           </>}
         </div>
-      </MobilePage>}
-      {removal && <BottomSheet title={t("config.removeDialogTitle")} onDismiss={() => setRemoval(undefined)}>
+      </ModalPage>}
+      {removal && <ConfirmSheet title={t("config.removeDialogTitle")} onDismiss={() => setRemoval(undefined)}>
           <p className="py-2 text-center">{t("config.removeDialogDesc")}</p>
           <Button variant="destructive" className="min-h-12 w-full" onClick={remove}>{t("common.delete")}</Button>
           <Button variant="outline" className="min-h-12 w-full" onClick={() => setRemoval(undefined)}>{t("common.cancel")}</Button>
-      </BottomSheet>}
+      </ConfirmSheet>}
     </div>
   );
 }

@@ -40,10 +40,13 @@ vi.mock("@/middlelayers/data", () => ({
   downloadCoinLogos: vi.fn(),
 }));
 
-vi.mock("@/middlelayers/charts", () => ({
+vi.mock("@/middlelayers/charts-refresh", () => ({
   WALLET_ANALYZER: {
     queryWalletAssetsChange,
   },
+}));
+
+vi.mock("@/middlelayers/charts", () => ({
   queryMaxTotalValue: vi.fn(),
   queryTotalValue: vi.fn(),
   queryTotalValues: vi.fn(),

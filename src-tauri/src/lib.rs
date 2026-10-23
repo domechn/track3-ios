@@ -10,6 +10,7 @@ pub mod info;
 pub mod ios_backup;
 #[cfg(target_os = "ios")]
 pub mod ios_native;
+pub mod ios_share_path;
 pub mod key_rotation;
 pub mod migration;
 pub mod refresh_persistence;

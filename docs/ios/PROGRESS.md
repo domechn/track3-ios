@@ -1,5 +1,72 @@
 # iOS port progress
 
+The earlier S1–S3 sections record their handoff results. The current state
+for this worktree is S4 below.
+
+## S4 integration, parity and release preparation
+
+- The S2 More tab now opens the S3 iPhone Settings hub. Its section links,
+  direct hash routes, Back stack, and page titles are exercised in browser
+  tests. Settings, Goals and Rebalance have one visible page heading. The
+  shared S2 phone row is used in Settings; S3's duplicate row was removed.
+  Full-screen editors and confirmation sheets share
+  `src/components/mobile/overlays.tsx`.
+- The iPhone haptic hook calls the S3 native bridge. The assistant composer
+  measures the space above the tab bar as the visual viewport changes. The
+  iOS share command accepts the UUID cache folder and export filename
+  created by the JavaScript export flow, while rejecting unrelated paths.
+  The main-content back swipe now uses touch pointer events so the gesture
+  survives Chromium's canceled touch sequence; swipes inside modal editors
+  leave the form open. The initial goals query no longer closes an editor
+  opened before loading finishes. The phone chat header wraps without
+  overlapping usage controls, and the shell shows one Back control.
+  Wallet chart components import their analyzer directly, removing Rollup's
+  circular chunk warning.
+- [FEATURE_PARITY.md](FEATURE_PARITY.md) inventories the desktop routes,
+  Settings controls, data sources, charts and assistant skills with iPhone
+  locations and test references. The README and
+  [RELEASE.md](RELEASE.md) describe builds, signing, privacy, platform
+  limits and device checks. Desktop updater, window controls, tray and
+  external digital subscription checkout have justified iOS exclusions.
+- The new Playwright suite checks iPhone SE, 14 and Pro Max viewports,
+  navigation, first launch, source creation, refresh, Files flows, goal
+  creation, rebalance, chat, language/theme, overflow, safe-area spacing,
+  tab touch targets and browser errors. It saves screenshots in
+  `test-results/mobile/`. CI now installs cached Chromium and runs the
+  mobile suites, browser typecheck and Rust pure tests.
+- Baseline macOS run `39963951440` on the previous head built the simulator
+  app and unsigned device IPA, checked native symbols and the committed
+  Xcode project, and launched the app with a rendered empty portfolio
+  screenshot. The job failed only in its final crash-report diagnostic step
+  because the Python heredoc marker was indented incorrectly. S4 fixes that
+  shell script. This worktree's changed head has **not** run on macOS CI
+  yet; the driver must commit and push, then report the new run. Artifact
+  upload remains limited by the repository's storage quota. The screenshot
+  is recoverable from the job log using [RELEASE.md](RELEASE.md).
+- A signed physical-device run remains necessary for Face ID/Touch ID
+  and passcode fallback, Keychain migration and restore, app-switcher cover,
+  notification delivery and badge, haptics, share sheet, Files/iCloud Drive,
+  keyboard movement and iOS background suspension. Browser mocks and the
+  unsigned simulator cannot establish those behaviors.
+
+### S4 local verification
+
+- `corepack yarn tsc --noEmit` and
+  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed.
+  `corepack yarn build` passed without the previous Rollup circular chunk
+  warning. The production preview passed the seven-route sweep at 375, 390
+  and 430 CSS pixels.
+- `cargo test --locked -p track3-pure-tests --lib` passed: 61 tests,
+  including the iOS share-path rule. Full Vitest passed: 1,797 tests in
+  217 files. The three mobile Playwright files passed: 57 tests. They saved
+  69 screenshots under `test-results/mobile/`, including first launch,
+  portfolio, history, profit, goal creation, assistant reply and dark theme.
+  Overview, History, profit, assistant and dark-theme screenshots were
+  inspected; the route sweep also checked browser errors, overflow,
+  safe-area spacing and primary 44px touch controls.
+- The changed head still needs the macOS iOS workflow after the driver
+  commits and pushes. No signed-device claim is made from the local checks.
+
 ## S1 foundation
 
 - Last pushed run `39932803896` failed in both jobs. The web job could not

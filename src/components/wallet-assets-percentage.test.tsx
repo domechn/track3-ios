@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   useWindowSize: vi.fn(() => ({ width: 1280, height: 800 })),
 }));
 
-vi.mock("@/middlelayers/charts", () => ({
+vi.mock("@/middlelayers/charts-refresh", () => ({
   WALLET_ANALYZER: {
     queryWalletAssetsPercentage: mocks.queryWalletAssetsPercentage,
   },

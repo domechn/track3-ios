@@ -55,7 +55,7 @@ import { redactSecrets } from "@/middlelayers/security/redact";
 import { chooseBackupLocation } from "@/utils/backup-location";
 import { isIOS } from "@/utils/platform";
 import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
-import { BottomSheet } from "@/components/mobile-compat";
+import { ConfirmSheet } from "@/components/mobile/overlays";
 import { useSearchParams } from "react-router-dom";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
@@ -281,7 +281,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
 
   return (
     <div className="space-y-6">
-      {showBackup && showImportConfirm && <BottomSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
+      {showBackup && showImportConfirm && <ConfirmSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
         setShowImportConfirm(false);
         setExportData(undefined);
       }}>
@@ -294,7 +294,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
           setShowImportConfirm(false);
           setExportData(undefined);
         }}>{t("common.cancel")}</Button>
-      </BottomSheet>}
+      </ConfirmSheet>}
       {showBackup && <Dialog
         open={showConflictResolverDialog}
         onOpenChange={setShowConflictResolverDialog}

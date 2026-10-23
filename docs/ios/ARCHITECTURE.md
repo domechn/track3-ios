@@ -24,33 +24,24 @@ once after reboot. SQLite assets and transactions rely on iOS Data Protection
 for at-rest protection; sensitive configuration and assistant content also
 use app-layer encryption.
 
-Fresh iOS installs create a random `.ent-key` before the database is
-initialized. It is stored with mode `0600` in app data under iOS Data
-Protection and excluded from iCloud and Finder backups. This is a protected
-random file rather than a Keychain item because the existing recoverable
-key rotation protocol atomically replaces `.ent-key` alongside database and
-session ciphertext; keeping another Keychain copy would require a second
-recovery transaction. Installs that already have a database but no key
-continue to use the legacy key, so an app update does not make existing
-secrets unreadable.
+Fresh iOS installs create a random encryption key before database setup and
+store it in a device-only Keychain item. An existing protected `.ent-key`
+is migrated to Keychain on launch. Installs that already have a database but
+no key retain legacy-key compatibility. A simulator without the needed
+Keychain entitlement uses a protected, backup-excluded key file. Other
+Keychain failures leave the portfolio locked and the database closed until
+retry succeeds.
 
-The recoverable rotation protocol atomically replaces `.ent-key` and uses
-temporary files and a journal. iOS marks those key artifacts with
-`NSURLIsExcludedFromBackupKey` as they are created and scans existing key
-artifacts at startup. This prevents an iCloud or Finder backup from carrying
-the encryption key beside the encrypted configuration. After a device restore,
-configuration encrypted on iOS cannot be read from the restored database.
-When the key is absent, the app checks encrypted configuration against the
-legacy key. If it cannot decrypt, it displays a persistent notice linking to
-Settings so the user can re-enter exchange and service credentials. Existing
-legacy installations with readable configuration do not show the notice.
-The generated key is not shown to users, so an export encrypted with that
-default key is also unrecoverable after restore. For a recoverable
-configuration export, the user must first set a known key with Data
-Management's Update Encryption Key control, then export the configuration
-and keep that key separately. The import flow can decrypt with the supplied
-key. Device
-backup and restore behavior still needs validation on a signed build.
+The recoverable rotation protocol updates Keychain and encrypted database
+and session content. Its crash-recovery journal can briefly contain key
+material; iOS Data Protection covers it, and the app excludes key artifacts
+from iCloud and Finder backups. A restored database can therefore lack its
+device-bound key. The startup recovery notice links to Settings when
+configuration is unreadable. A generated key is not shown to users, so a
+configuration export encrypted with it is also unrecoverable after restore.
+For a recoverable configuration export, set a known key in Security, export
+configuration, and keep that key separately. Device backup and restore still
+need validation on a signed build.
 
 `scripts/ios/configure-project.py` applies the Data Protection entitlement and
 syncs Xcode version settings from `tauri.conf.json`. The committed Info.plist
@@ -63,10 +54,9 @@ Tauri generates or refreshes the project.
 Desktop updater, process relaunch, shell, and right-click menu are omitted on
 iOS. Dialog, filesystem, HTTP, opener, notification, and SQL plugins remain
 available. The frontend platform provider exposes iOS and phone detection,
-safe-area insets, and visual-viewport keyboard overlap. The current desktop UI
-is still present; later steps replace its navigation and interactions for
-phones. The iOS default theme follows the system unless a saved preference
-overrides it.
+safe-area insets, and visual-viewport keyboard overlap. The iPhone interface
+uses bottom tabs, a back stack, sheets, and touch controls. The iOS default
+theme follows the system unless a saved preference overrides it.
 
 The desktop-only assistant chat export CLI uses a macOS home directory. It is
 not invoked by the mobile app or built as part of the mobile library target.

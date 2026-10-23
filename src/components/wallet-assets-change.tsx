@@ -26,7 +26,7 @@ import {
   useState,
 } from "react";
 import { useDataChangedVersion } from "@/contexts/data-changed";
-import { WALLET_ANALYZER } from "@/middlelayers/charts";
+import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
 import { getWalletLogo } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {

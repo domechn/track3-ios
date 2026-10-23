@@ -263,7 +263,7 @@ function Layout({
   const location = useLocation();
   const navigate = useNavigate();
   const currentTab = tabForPath(location.pathname);
-  const routePath = (location.pathname === "/settings" ? "/settings/configuration" : location.pathname) + location.search;
+  const routePath = location.pathname + location.search;
   const rootPath = tabRoots[currentTab];
   const tabStacks = useRef<Record<"overview" | "history" | "analytics" | "more", string[]>>({
     overview: [tabRoots.overview], history: [tabRoots.history],
@@ -283,7 +283,7 @@ function Layout({
   });
   const tabPaths = useRef<Record<"overview" | "history" | "analytics" | "more", string>>({ ...tabRoots });
   const tabSwitchCaptured = useRef(false);
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const refreshAction = useRef<(() => Promise<void>) | null>(null);
   useLayoutEffect(() => {
@@ -343,29 +343,28 @@ function Layout({
 
         {/* Main content */}
         <main id="app-main-content" tabIndex={-1} className="p-5"
-          onTouchStart={(event) => {
-            if (!mobile) return;
-            if (!event.currentTarget.contains(event.target as Node)) return;
-            const touch = event.touches[0];
-            swipeStart.current = touch.clientX < 24 ? { x: touch.clientX, y: touch.clientY } : null;
+          onPointerDown={(event) => {
+            if (!mobile || event.pointerType !== "touch") return;
+            swipeStart.current = event.clientX < 24 &&
+              !(event.target as Element).closest('[aria-modal="true"]')
+              ? { id: event.pointerId, x: event.clientX, y: event.clientY } : null;
           }}
-          onTouchEnd={(event) => {
-            if (!mobile) return;
-            if (!canGoBack || !swipeStart.current) return;
-            const touch = event.changedTouches[0];
-            const dx = touch.clientX - swipeStart.current.x;
-            const dy = touch.clientY - swipeStart.current.y;
+          onPointerUp={(event) => {
+            const start = swipeStart.current;
             swipeStart.current = null;
+            if (!mobile || !canGoBack || !start || event.pointerId !== start.id) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
             if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
-          }}>
+          }}
+          onPointerCancel={() => { swipeStart.current = null; }}>
           <PullToRefresh disabled={!mobile} onRefresh={() => refreshAction.current?.()}
             lastRefreshText={lastRefreshAt
               ? t("topbar.lastRefreshAt") + lastRefreshAt
               : t("topbar.neverRefreshBefore")}>
-          <div className="mobile-route-heading">
-            <MobilePage title={routeTitle(location.pathname, t)}
-              back={canGoBack ? () => navigate(backPath) : undefined} />
-          </div>
+          {!/^\/(settings|goals|rebalance)(\/|$)/.test(location.pathname) && <div className="mobile-route-heading">
+            <MobilePage title={routeTitle(location.pathname, t)} />
+          </div>}
           <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
@@ -396,7 +395,7 @@ function MoreHub() {
     { href: "#/rebalance", label: t("nav.rebalance") },
     { href: "#/goals", label: t("nav.goals") },
     { href: "#/assistant", label: t("nav.assistant") },
-    { href: "#/settings/configuration", label: t("nav.settings") },
+    { href: "#/settings", label: t("nav.settings") },
   ];
   return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
     {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}

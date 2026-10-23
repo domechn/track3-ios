@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -61,6 +61,20 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   expect(screen.getByRole("button", { name: "Save rule" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+});
+
+it("keeps the iPhone rule editor open when the initial rule query finishes", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  let finishRules!: (rules: AlertRule[]) => void;
+  vi.mocked(listAlertRules).mockImplementation(() => new Promise((resolve) => {
+    finishRules = resolve;
+  }));
+  render(<GoalsAlerts />);
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
+  expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
+  await act(async () => { finishRules([]); });
+  await screen.findByText("No rules yet");
+  expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
 });
 
 it("traps focus and locks background scroll while the iPhone rule editor is open", async () => {

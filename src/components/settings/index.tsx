@@ -18,7 +18,7 @@ import {
 } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
-import { InsetGroup, ListRow } from "@/components/mobile-compat";
+import { InsetGroup, ListRow } from "@/components/mobile";
 import AssistantSettings from "./assistant";
 
 const settingsTabs = [
@@ -115,9 +115,8 @@ const App = () => {
                 {mobileSettings.map((item) => (
                   <ListRow
                     key={item.href}
-                    to={item.href}
-                    title={t(item.key)}
-                  />
+                    href={`#${item.href}`}
+                  >{t(item.key)}</ListRow>
                 ))}
               </InsetGroup>
             </nav>

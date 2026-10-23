@@ -28,7 +28,7 @@ import {
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { insertEllipsis } from "@/utils/string";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { WALLET_ANALYZER } from "@/middlelayers/charts";
+import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
 import { ChartResizeContext } from "@/App";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import AssetLabel from "./common/asset-label";

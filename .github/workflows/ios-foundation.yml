@@ -32,6 +32,25 @@ jobs:
       - run: corepack yarn tsc --noEmit
       - run: corepack yarn vitest run
       - run: corepack yarn build
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-chromium-${{ hashFiles('yarn.lock') }}
+      - name: Install Playwright Chromium
+        run: corepack yarn playwright install --with-deps chromium
+      - name: Check browser tests
+        run: corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit
+      - name: Test iPhone flows
+        run: corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts --workers=2
+      - name: Upload iPhone browser screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-browser-screenshots
+          path: test-results/mobile/*.png
+          retention-days: 1
       - name: Check desktop Rust library
         run: |
           sudo apt-get update
@@ -201,7 +220,7 @@ jobs:
                       if any(word in line.lower() for word in ("exception", "termination", "panic", "abort")):
                           print(line[:1000])
               break
-            PY
+          PY
       - name: Upload simulator screenshots and launch logs
         if: always()
         continue-on-error: true

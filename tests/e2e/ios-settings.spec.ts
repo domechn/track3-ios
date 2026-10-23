@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { installTauriBridge } from "./tauri-bridge";
 
 test.use({
@@ -7,9 +7,114 @@ test.use({
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 });
 
+const browserErrors = new WeakMap<Page, string[]>();
+test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  browserErrors.set(page, errors);
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+});
+test.afterEach(async ({ page }) => {
+  expect(browserErrors.get(page)).toEqual([]);
+});
+
+test("More opens every iPhone settings section through the Settings hub", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page);
+  await page.goto("/#/more");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(page.locator("#app-main-content h1")).toHaveCount(1);
+  const sections = page.getByRole("navigation", { name: "Settings sections" });
+  for (const title of [
+    "Data sources", "Currency", "Appearance", "Language", "Blacklist",
+    "Pro and license", "AI assistant", "Security", "Backup", "Backup and sync", "About",
+  ]) {
+    const link = sections.getByRole("link", { name: title, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveClass(/mobile-list-row/);
+    expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
+  await sections.getByRole("link", { name: "Language" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
+  await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(/#\/more$/);
+});
+
+test("an edge swipe returns from a settings page to the Settings hub", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page);
+  await page.goto("/#/more");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "Settings sections" })
+    .getByRole("link", { name: "Language" }).click();
+  await expect(page).toHaveURL(/#\/settings\/appearance\?section=language$/);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart", touchPoints: [{ x: 20, y: 250 }],
+  });
+  for (const x of [40, 80, 120, 160]) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove", touchPoints: [{ x, y: 250 }],
+    });
+    await page.waitForTimeout(30);
+  }
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd", touchPoints: [],
+  });
+  await expect(page).toHaveURL(/#\/settings$/);
+});
+
+test("an edge swipe inside a source editor leaves the form open", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page);
+  await page.goto("/#/settings/configuration?section=sources");
+  await page.getByRole("button", { name: "Add exchange" }).click();
+  const editor = page.getByRole("dialog", { name: "Edit data source" });
+  await expect(editor).toBeVisible();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart", touchPoints: [{ x: 20, y: 250 }],
+  });
+  for (const x of [40, 80, 120, 160]) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove", touchPoints: [{ x, y: 250 }],
+    });
+    await page.waitForTimeout(30);
+  }
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchEnd", touchPoints: [],
+  });
+  await expect(editor).toBeVisible();
+  await expect(page).toHaveURL(/#\/settings\/configuration\?section=sources$/);
+});
+
+test("switching iPhone tabs uses the native haptic bridge", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bridge = await installTauriBridge(page);
+  await page.goto("/#/overview");
+  await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "History" }).click();
+  await expect(page).toHaveURL(/#\/history$/);
+  await expect.poll(bridge.haptics).toBe(1);
+});
+
+test("the chat composer stays above the tab bar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page);
+  await page.goto("/#/assistant");
+  const composer = page.getByRole("textbox", { name: "Ask the assistant..." });
+  await expect(composer).toBeVisible();
+  const tabTop = (await page.locator(".mobile-tab-bar").boundingBox())!.y;
+  const composerBottom = (await composer.boundingBox())!;
+  expect(composerBottom.y + composerBottom.height).toBeLessThanOrEqual(tabTop);
+});
+
 for (const width of [375, 390, 430]) {
   test(`iPhone settings and source forms stay within ${width}px`, async ({ page }) => {
-    page.on("pageerror", (error) => console.error("iPhone page error:", error.message));
     await page.setViewportSize({ width, height: 812 });
     await installTauriBridge(page);
     await page.goto("/#/settings");
@@ -45,6 +150,7 @@ for (const width of [375, 390, 430]) {
     ]) {
       await page.goto(`/#${path}`);
       await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+      await expect(page.locator("#app-main-content h1")).toHaveCount(1);
       await expect(page.getByText(content, { exact: true }).last()).toBeVisible();
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     }
@@ -58,11 +164,13 @@ for (const width of [375, 390, 430]) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto("/#/goals");
     await expect(page.getByRole("heading", { level: 1, name: "Goals & Alerts" })).toBeVisible();
+    await expect(page.locator("#app-main-content h1")).toHaveCount(1);
     await page.getByText("Add alert", { exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Add alert" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto("/#/rebalance");
     await expect(page.getByRole("heading", { level: 1, name: "Rebalance" })).toBeVisible();
+    await expect(page.locator("#app-main-content h1")).toHaveCount(1);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 

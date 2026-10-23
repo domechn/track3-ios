@@ -52,9 +52,9 @@ describe("Settings shell", () => {
       </MemoryRouter>
     );
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Data sources" })).toHaveAttribute("href", "/settings/configuration?section=sources");
-    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/settings/data?section=security");
-    expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("href", "/settings/data?section=backup");
+    expect(screen.getByRole("link", { name: "Data sources" })).toHaveAttribute("href", "#/settings/configuration?section=sources");
+    expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "#/settings/data?section=security");
+    expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("href", "#/settings/data?section=backup");
     vi.mocked(isIOS).mockReturnValue(false);
   });
 });

@@ -28,7 +28,7 @@ import {
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import { isIOS } from "@/utils/platform";
-import { MobilePage } from "./mobile-compat";
+import { ModalPage } from "./mobile/overlays";
 
 type Draft = {
   id: number; kind: AlertKind; assetType: AssetType; symbol: string;
@@ -83,7 +83,7 @@ export default function GoalsAlerts() {
       ).catch(() => []);
       setRules(nextRules);
       if (!manualInitialized.current) {
-        setManualOpen(!isIOS() && nextRules.length === 0);
+        if (!isIOS()) setManualOpen(nextRules.length === 0);
         manualInitialized.current = true;
       }
       setHistory(nextHistory);
@@ -260,10 +260,10 @@ export default function GoalsAlerts() {
       </Card>
       {isIOS() ? <>
         <Button type="button" variant="outline" className="order-last min-h-11" onClick={() => setManualOpen(true)}>{t("goals.mobile.add")}</Button>
-        {manualOpen && <MobilePage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
+        {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
           <Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button>
           {editor}
-        </MobilePage>}
+        </ModalPage>}
       </> : <details
         open={manualOpen}
         onToggle={(event) => setManualOpen(event.currentTarget.open)}

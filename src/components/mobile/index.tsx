@@ -3,6 +3,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronLeftIcon, ChevronRightIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/i18n";
+import { iosHaptic } from "@/utils/ios-native";
+import { isIOS } from "@/utils/platform";
 import "./mobile.css";
 
 export const MOBILE_MEDIA_QUERY = "(max-width: 950px) and (pointer: coarse)";
@@ -10,6 +12,10 @@ export const MOBILE_MEDIA_QUERY = "(max-width: 950px) and (pointer: coarse)";
 export function useHaptics() {
   return (kind: "selection" | "light" | "success" = "selection") => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    if (isIOS()) {
+      void iosHaptic(kind === "success" ? "success" : "light").catch(() => {});
+      return;
+    }
     navigator.vibrate?.(kind === "success" ? [12, 28, 12] : kind === "light" ? 8 : 5);
   };
 }

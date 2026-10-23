@@ -30,7 +30,8 @@ queries and mutations.
   has `{ id, title, subtitle?, fields, actions? }`; tapping a row opens a
   field list in a sheet. Use it for wide tables on phones.
 - `useHaptics()` returns a function taking `selection`, `light`, or `success`.
-  It uses vibration where the WebView supports it and respects reduced motion.
+  It calls the native haptic bridge on iOS, uses vibration on other supported
+  devices, and respects reduced motion.
 - `useIsMobile()` detects a coarse pointer at 950px or narrower, including an
   iPhone in landscape. Use it when
   a phone sheet replaces a Radix popover or dialog, so only one overlay is
@@ -39,3 +40,11 @@ queries and mutations.
 Mobile styles use existing semantic color variables and `rem` sizing. Keep
 wide tables on desktop only; present individual records as rows and detail
 sheets on phones. All new labels must be added to both locale catalogs.
+The shell recognizes an edge swipe from the left in the main content using
+touch pointer events. Its `pan-y` touch action keeps vertical scrolling
+available while allowing the back gesture to complete.
+
+The source and alert editors use `ModalPage` from
+`src/components/mobile/overlays.tsx` for a full-screen focus trap.
+`ConfirmSheet` in that file is an `alertdialog`. Grouped Settings links use
+the shared `InsetGroup` and `ListRow` above.

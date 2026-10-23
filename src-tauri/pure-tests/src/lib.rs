@@ -4,6 +4,8 @@ pub mod binance;
 pub mod ent;
 #[path = "../../src/info.rs"]
 pub mod info;
+#[path = "../../src/ios_share_path.rs"]
+pub mod ios_share_path;
 #[path = "../../src/migration.rs"]
 pub mod migration;
 #[path = "../../src/startup_security.rs"]

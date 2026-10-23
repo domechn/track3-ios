@@ -86,14 +86,7 @@ pub fn share_file(handle: &tauri::AppHandle, path: &str) -> Result<(), String> {
         .map_err(|_| "app cache is unavailable")?
         .canonicalize()
         .map_err(|_| "app cache is unavailable")?;
-    let name = source
-        .file_name()
-        .and_then(|value| value.to_str())
-        .ok_or("invalid export file name")?;
-    if !source.starts_with(cache)
-        || !name.starts_with("track3-export-data-")
-        || !name.ends_with(".json")
-    {
+    if !crate::ios_share_path::is_allowed_share_path(&source, &cache) {
         return Err("invalid export file".into());
     }
     let c_path = CString::new(source.to_string_lossy().as_bytes())

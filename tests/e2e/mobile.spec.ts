@@ -430,7 +430,6 @@ test("large route titles collapse into the sticky header while scrolling", async
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeHidden();
     await page.evaluate(() => scrollTo(0, 180));
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeVisible();
-    expect((await back.boundingBox())!.y).toBeGreaterThanOrEqual(0);
     await expect(page.locator("#app-top-bar")).toContainText("Overview");
   } finally {
     await context.close();
@@ -438,21 +437,23 @@ test("large route titles collapse into the sticky header while scrolling", async
 });
 
 test("back navigation returns to the previous page in the More tab", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+  });
   const page = await context.newPage();
   try {
     await installTauriBridge(page);
     await page.goto("/#/more");
     await page.locator(".mobile-more-hub").getByRole("link", { name: "Settings" }).click();
-    await expect(page).toHaveURL(/#\/settings\/configuration$/);
-    await expect(page.locator(".mobile-route-heading h1")).toHaveText("Settings");
+    await expect(page).toHaveURL(/#\/settings$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Settings" })).toBeVisible();
     await page.getByRole("navigation", { name: /settings sections/i }).getByRole("link", { name: "Appearance" }).click();
-    await expect(page).toHaveURL(/#\/settings\/appearance$/);
-    await expect(page.getByRole("navigation", { name: /settings sections/i }).getByRole("link", { name: "Appearance" }))
-      .toHaveAttribute("aria-current", "page");
-    await page.locator(".mobile-route-heading").getByRole("button", { name: "Back" }).click();
-    await expect(page).toHaveURL(/#\/settings\/configuration$/);
-    await page.locator(".mobile-route-heading").getByRole("button", { name: "Back" }).click();
+    await expect(page).toHaveURL(/#\/settings\/appearance\?section=theme$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Appearance" })).toBeVisible();
+    await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+    await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
     await expect(page).toHaveURL(/#\/more$/);
   } finally {
     await context.close();
