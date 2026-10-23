@@ -4,6 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { reloadApp } from "@/utils/app";
 import { useTranslation } from "@/i18n";
+import { isIOS } from "@/utils/platform";
 
 const maxInt = 2147483647;
 
@@ -11,6 +12,7 @@ const App = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   useEffect(() => {
+    if (isIOS()) return;
     void autoInstallLatestVersion().catch(() => {
       console.warn("Automatic update check failed");
     });

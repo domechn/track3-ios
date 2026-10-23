@@ -39,7 +39,23 @@ vi.mock("@tauri-apps/plugin-process", () => ({
   relaunch: vi.fn(),
 }));
 
-import { trackEventWithClientID } from "@/utils/app";
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
+
+import { trackEventWithClientID, reloadApp } from "@/utils/app";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { isIOS } from "@/utils/platform";
+
+describe("reloadApp", () => {
+  it("uses webview reload on iOS", () => {
+    vi.mocked(isIOS).mockReturnValueOnce(true);
+    const reload = vi.fn();
+    vi.stubGlobal("window", { location: { reload } });
+    reloadApp();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(relaunch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
 
 describe("trackEventWithClientID", () => {
   beforeEach(() => {

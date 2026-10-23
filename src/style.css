@@ -195,3 +195,7 @@
     box-shadow: var(--glass-shadow);
   }
 }
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+}

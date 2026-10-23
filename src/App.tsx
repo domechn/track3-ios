@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/common/theme";
 import { themeLocalStorageKey } from "./middlelayers/configuration";
 import { renderRightClickMenu } from "./utils/hook";
 import { I18nProvider, useTranslation } from "@/i18n";
+import { isIOS, PlatformProvider } from "@/utils/platform";
 
 export const ChartResizeContext = React.createContext<{
   needResize: number;
@@ -24,8 +25,8 @@ function Shell() {
   );
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey={themeLocalStorageKey}>
-      <div className="min-h-dvh" onContextMenu={renderRightClickMenu}>
+    <ThemeProvider defaultTheme={isIOS() ? "system" : "light"} storageKey={themeLocalStorageKey}>
+      <div className="min-h-dvh" onContextMenu={isIOS() ? undefined : renderRightClickMenu}>
         <a
           href="#app-main-content"
           onClick={focusMainContent}
@@ -48,7 +49,9 @@ function Shell() {
 function App() {
   return (
     <I18nProvider>
-      <Shell />
+      <PlatformProvider>
+        <Shell />
+      </PlatformProvider>
     </I18nProvider>
   );
 }

@@ -1,0 +1,116 @@
+name: iOS foundation
+
+on:
+  push:
+    branches: ["ios/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - run: corepack enable
+      - name: Find Yarn cache
+        id: yarn-cache
+        run: echo "dir=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+      - run: corepack yarn install --immutable
+      - run: corepack yarn tsc --noEmit
+      - run: corepack yarn vitest run
+      - run: corepack yarn build
+      - run: cargo test --locked -p track3-pure-tests --lib
+        working-directory: src-tauri
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - run: corepack enable
+      - name: Find Yarn cache
+        id: yarn-cache
+        run: echo "dir=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+      - run: corepack yarn install --immutable
+      - name: Initialize the Xcode project when absent
+        run: |
+          if [ ! -f src-tauri/gen/apple/project.yml ]; then
+            corepack yarn tauri ios init --ci
+          fi
+          python3 scripts/ios/configure-project.py
+          corepack yarn tauri icon src-tauri/app-icon.png --output generated-icons
+          cp generated-icons/ios/*.png src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/
+          mkdir -p generated-project
+          rsync -a --exclude build --exclude Pods --exclude Externals --exclude '*.xcuserstate' src-tauri/gen/apple/ generated-project/
+      - name: Check the device Rust target
+        run: cargo check --locked --target aarch64-apple-ios --lib
+        working-directory: src-tauri
+      - name: Check the simulator Rust target
+        run: cargo check --locked --target aarch64-apple-ios-sim --lib
+        working-directory: src-tauri
+      - name: Build unsigned simulator app
+        run: corepack yarn tauri ios build --target aarch64-sim --debug --no-sign --ci
+      - name: Launch in iPhone simulator
+        run: |
+          set -euo pipefail
+          SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next(d["udid"] for group in data["devices"].values() for d in group if d["name"].startswith("iPhone") and d["state"] == "Shutdown"))')
+          xcrun simctl boot "$SIM_ID"
+          xcrun simctl bootstatus "$SIM_ID" -b
+          APP=$(find src-tauri -type d -name '*.app' | head -n 1)
+          test -n "$APP"
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent "$APP" artifacts/Track3-simulator-app.zip
+          xcrun simctl install "$SIM_ID" "$APP"
+          APP_PID=$(xcrun simctl launch "$SIM_ID" dev.track3.ios | sed -n 's/.*: //p')
+          test -n "$APP_PID"
+          sleep 20
+          xcrun simctl spawn "$SIM_ID" log show --last 1m --style compact --predicate 'process == "Track3"' > artifacts/launch.log || true
+          find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'Track3*' -mmin -2 -print > artifacts/crash-reports.txt 2>/dev/null || true
+          xcrun simctl spawn "$SIM_ID" launchctl list | awk -v pid="$APP_PID" '$1 == pid {found=1} END {exit !found}'
+          xcrun simctl io "$SIM_ID" screenshot artifacts/iphone-launch.png
+          test ! -s artifacts/crash-reports.txt
+      - name: Build unsigned device IPA
+        run: |
+          corepack yarn tauri ios build --target aarch64 --debug --no-sign --ci
+          IPA=$(find src-tauri -type f -name '*.ipa' -path '*arm64*' | head -n 1)
+          test -n "$IPA"
+          cp "$IPA" artifacts/Track3-unsigned.ipa
+      - name: Upload generated Xcode project
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-project
+          path: generated-project/
+          include-hidden-files: true
+      - name: Upload simulator and IPA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-foundation
+          path: artifacts/
