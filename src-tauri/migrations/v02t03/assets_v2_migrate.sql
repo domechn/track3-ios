@@ -1,0 +1,1 @@
+ALTER TABLE assets_v2 ADD COLUMN wallet TEXT;

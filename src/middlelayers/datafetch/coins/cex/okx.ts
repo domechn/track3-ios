@@ -1,0 +1,343 @@
+import { recordOptionalSourceFailure } from "../../utils/source-failure";
+import CryptoJS from 'crypto-js'
+import { Exchanger } from './cex'
+import { sendHttpRequest } from '../../utils/http'
+import bluebird from 'bluebird'
+import { getMemoryCacheInstance } from '../../utils/cache'
+import { addToBalanceMap, mergeBalances, toNumber, toNumberOptional } from './balance-utils'
+
+type AccountBalanceResp = {
+	data: {
+		details: {
+			ccy: string
+			eq?: string
+			availEq?: string
+			frozenBal?: string
+			cashBal?: string
+			upl?: string
+			liabilities?: string
+			interest?: string
+		}[]
+	}[]
+}
+
+type SavingBalanceResp = {
+	data: {
+		ccy: string
+		amt: string
+	}[]
+}
+
+type FundingBalanceResp = {
+	data: {
+		ccy: string
+		bal: string
+	}[]
+}
+
+type ETHStakingBalanceResp = {
+	data: {
+		ccy: string
+		amt: string
+	}[]
+}
+
+type DualInvestmentOrderHistoryResp = {
+	data: {
+		ordId: string
+		state: string
+		notionalSz: string
+		notionalCcy: string
+	}[]
+}
+
+export class OkxExchange implements Exchanger {
+	private readonly apiKey: string
+	private readonly secret: string
+	private readonly password: string
+	private readonly alias?: string
+	private readonly dualInvestmentOrderHistoryIntervalMs = 1100
+
+	private readonly endpoint = "https://www.okx.com"
+	private readonly apiPrefix = "/api/v5"
+	private dualInvestmentOrderHistoryNextRequestAt = 0
+
+	constructor(
+		apiKey: string,
+		secret: string,
+		password: string,
+		alias?: string,
+	) {
+
+		this.apiKey = apiKey
+		this.secret = secret
+		this.password = password
+		this.alias = alias
+	}
+
+	getExchangeName(): string {
+		return "Okex"
+	}
+
+	getAlias(): string | undefined {
+		return this.alias
+	}
+
+	getIdentity(): string {
+		return "okex-" + this.apiKey
+	}
+
+	async fetchTotalBalance(): Promise<{ [k: string]: number }> {
+		const [sb, ssb, fb, esb, sdb, dib] = await bluebird.map([
+			this.fetchSpotBalance(),
+			this.fetchOptionalBalance("savings", () => this.fetchSavingBalance()),
+			this.fetchOptionalBalance("funding", () => this.fetchFundingBalance()),
+			this.fetchOptionalBalance("ETH staking", () => this.fetchETHStakingBalance()),
+			this.fetchOptionalBalance("DeFi staking", () => this.fetchStakingDefiBalance()),
+			this.fetchOptionalBalance("dual investment", () => this.fetchDualInvestmentBalance()),
+		], (v) => v)
+		const balance: { [k: string]: number } = mergeBalances([sb, ssb, fb, sdb, dib])
+		Object.entries(esb).forEach(([k, v]) => {
+			const bv = balance[k] || 0
+
+			// if in funding balance, means it is redeemed, no need to cal in eth balance
+			if (bv >= v || fb[k] !== undefined) {
+				balance[k] = bv - v
+			}
+		})
+
+		return mergeBalances([balance, esb])
+	}
+
+	async fetchCoinsPrice(): Promise<{ [k: string]: number }> {
+		// https://www.okx.com/api/v5/market/tickers?instType=SPOT
+		const allPrices = await sendHttpRequest<{
+			data: {
+				instId: string
+				last: string
+			}[]
+		}>("GET", `${this.endpoint}${this.apiPrefix}/market/tickers?instType=SPOT`)
+
+		const suffix = "-USDT"
+		return Object.fromEntries(
+			allPrices.data
+				.filter((p) => p.instId.endsWith(suffix))
+				.map((p) => [p.instId.replace(suffix, "").toUpperCase(), parseFloat(p.last)] as const)
+				.filter(([, price]) => Number.isFinite(price) && price > 0),
+		)
+	}
+
+	async verifyConfig(): Promise<boolean> {
+		return this.fetchTotalBalance().then(() => true).catch(() => false)
+	}
+
+	private async fetchSpotBalance(): Promise<{ [k: string]: number }> {
+		const path = "/account/balance"
+		const resp = await this.fetch<AccountBalanceResp>("GET", path, "")
+
+		const parseNetAsset = (detail: AccountBalanceResp['data'][number]['details'][number]): number => {
+			const eq = toNumberOptional(detail.eq)
+			if (eq !== undefined) {
+				return eq
+			}
+
+			const availEq = toNumberOptional(detail.availEq)
+			const frozenBal = toNumberOptional(detail.frozenBal)
+			if (availEq !== undefined || frozenBal !== undefined) {
+				return (availEq || 0) + (frozenBal || 0)
+			}
+
+			const cashBal = toNumber(detail.cashBal)
+			const upl = toNumber(detail.upl)
+			const liabilities = toNumber(detail.liabilities)
+			const interest = toNumber(detail.interest)
+			return cashBal + upl - liabilities - interest
+		}
+
+		const balances: { [k: string]: number } = {}
+		resp.data.flatMap(d => d.details).forEach(detail => {
+			const amount = parseNetAsset(detail)
+			addToBalanceMap(balances, detail.ccy, amount)
+		})
+
+		return balances
+	}
+
+	private async fetchSavingBalance(): Promise<{ [k: string]: number }> {
+		const path = "/finance/savings/balance"
+		const resp = await this.fetch<SavingBalanceResp>("GET", path, "")
+
+		const balances: { [k: string]: number } = {}
+		resp.data.forEach((v) => {
+			addToBalanceMap(balances, v.ccy, toNumber(v.amt))
+		})
+		return balances
+	}
+
+	private async fetchFundingBalance(): Promise<{ [k: string]: number }> {
+		const path = "/asset/balances"
+		const resp = await this.fetch<FundingBalanceResp>("GET", path, "")
+
+		const balances: { [k: string]: number } = {}
+		resp.data.flat().forEach((v) => {
+			addToBalanceMap(balances, v.ccy, toNumber(v.bal))
+		})
+		return balances
+	}
+
+	// this function will return the amount of BETH which get by ETH Staking
+	// but if beth amount will also be calculated in funding or spot balance if these BETH is not redeemed
+	private async fetchETHStakingBalance(): Promise<{ [k: string]: number }> {
+		const path = "/finance/staking-defi/eth/balance"
+		const resp = await this.fetch<ETHStakingBalanceResp>("GET", path, "")
+
+		const balances: { [k: string]: number } = {}
+		resp.data.forEach((v) => {
+			addToBalanceMap(balances, v.ccy, toNumber(v.amt))
+		})
+		return balances
+	}
+
+	// key is productId
+	private async fetchStakingDefiFastRedemptionDailyLimits(): Promise<{ [k: string]: number }> {
+		const cache = getMemoryCacheInstance()
+		const cacheKey = "okx-staking-defi-fast-redemption-daily-limit"
+		const cacheValue = cache.getCache<{ [k: string]: number }>(cacheKey)
+		if (cacheValue) {
+			return cacheValue
+		}
+		const path = "/finance/staking-defi/offers"
+		const resp = await this.fetch<{ data: { ccy: string, productId: string, fastRedemptionDailyLimit: string }[] }>("GET", path, "")
+
+		const limits = Object.fromEntries(
+			resp.data.map((v) => [v.productId, parseFloat(v.fastRedemptionDailyLimit) || 0]),
+		)
+
+		cache.setCache(cacheKey, limits)
+		return limits
+	}
+
+	// onchain staking
+	private async fetchStakingDefiBalance(): Promise<{ [k: string]: number }> {
+		const path = "/finance/staking-defi/orders-active"
+		const resp = await this.fetch<{ data: { productId: string, state: string, ccy: string, investData: { amt: string }[] }[] }>("GET", path, "")
+		const res: { [k: string]: number } = {}
+		const maxInstantRedeem = await this.fetchStakingDefiFastRedemptionDailyLimits()
+
+		resp.data.forEach(d => {
+			// 2 is redeeming, the instant redeem amount will be in funding wallet instantly
+			let sum = d.investData.reduce((acc, v) => acc + parseFloat(v.amt), 0)
+			if (d.state === '2') {
+				const limit = maxInstantRedeem[d.productId]
+				if (limit !== undefined) {
+					sum = Math.max(0, sum - limit)
+				}
+			}
+			addToBalanceMap(res, d.ccy, sum)
+		})
+
+		return res
+	}
+
+	private async fetchDualInvestmentBalance(): Promise<{ [k: string]: number }> {
+		const res: { [k: string]: number } = {}
+
+		const orders = await this.fetchDualInvestmentOrdersByState("live")
+		orders.forEach(order => {
+			const amount = parseFloat(order.notionalSz) || 0
+			if (!order.notionalCcy) {
+				return
+			}
+			addToBalanceMap(res, order.notionalCcy, amount)
+		})
+
+		return res
+	}
+
+	private async fetchOptionalBalance(
+		productName: string,
+		fetcher: () => Promise<{ [k: string]: number }>,
+	): Promise<{ [k: string]: number }> {
+		try {
+			return await fetcher()
+		} catch (error) {
+			console.error(`Fetch OKX ${productName} balance failed`)
+			recordOptionalSourceFailure(this, error, productName)
+			return {}
+		}
+	}
+
+	private async fetchDualInvestmentOrdersByState(state: "initial" | "live" | "pending_settle" | "pending_redeem"): Promise<DualInvestmentOrderHistoryResp["data"]> {
+		const orders: DualInvestmentOrderHistoryResp["data"] = []
+		const limit = 100
+		let endId: string | undefined
+
+		while (true) {
+			const queryParam = this.buildQueryParam({
+				state,
+				limit: limit.toString(),
+				endId,
+			})
+			const resp = await this.fetchDualInvestmentOrderHistory(queryParam)
+
+			orders.push(...resp.data)
+			if (resp.data.length < limit) {
+				break
+			}
+
+			endId = resp.data.at(-1)?.ordId
+			if (!endId) {
+				break
+			}
+		}
+
+		return orders
+	}
+
+	private async fetchDualInvestmentOrderHistory(queryParam: string): Promise<DualInvestmentOrderHistoryResp> {
+		const now = Date.now()
+		const waitMs = this.dualInvestmentOrderHistoryNextRequestAt - now
+		if (waitMs > 0) {
+			await bluebird.delay(waitMs)
+		}
+
+		this.dualInvestmentOrderHistoryNextRequestAt = Date.now() + this.dualInvestmentOrderHistoryIntervalMs
+		return this.fetch<DualInvestmentOrderHistoryResp>("GET", "/finance/sfp/dcd/order-history", queryParam)
+	}
+
+	private async fetch<T>(method: "GET", path: string, queryParam: string): Promise<T> {
+		const url = `${this.endpoint}${this.apiPrefix}${path}${queryParam}`
+
+		const sigHeader = this.generateSignature(method, this.apiPrefix + path, queryParam)
+
+		const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', ...sigHeader }
+
+		const resp = await sendHttpRequest<T>(method, url, 5000, headers)
+
+		return resp
+	}
+
+	private buildQueryParam(params: { [k: string]: string | undefined }): string {
+		const searchParams = new URLSearchParams()
+		Object.entries(params).forEach(([key, value]) => {
+			if (value !== undefined && value !== '') {
+				searchParams.append(key, value)
+			}
+		})
+
+		const query = searchParams.toString()
+		return query ? `?${query}` : ''
+	}
+
+	private generateSignature(method: string, path: string, queryParam: string): { [k: string]: string } {
+		const t = Date.now() / 1000
+		const hmac = CryptoJS.HmacSHA256(t + method.toUpperCase() + path + queryParam, this.secret)
+		const sign = CryptoJS.enc.Base64.stringify(hmac)
+		return {
+			'OK-ACCESS-SIGN': sign,
+			'OK-ACCESS-TIMESTAMP': t.toString(),
+			'OK-ACCESS-KEY': this.apiKey,
+			'OK-ACCESS-PASSPHRASE': this.password,
+		}
+	}
+}

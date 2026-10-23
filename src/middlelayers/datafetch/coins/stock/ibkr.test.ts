@@ -1,0 +1,159 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  IbkrBroker,
+  getIbkrFlexStatementUrl,
+  parseIbkrFlexOpenPositions,
+} from "./ibkr";
+import { sendHttpTextRequest } from "../../utils/http";
+import { listAllCurrencyRates } from "../../../configuration";
+
+vi.mock("../../utils/http", () => ({
+  sendHttpTextRequest: vi.fn(),
+}));
+
+vi.mock("../../../configuration", () => ({
+  listAllCurrencyRates: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("IBKR Flex parser", () => {
+  it("extracts stock positions and USD cash from CashReport XML", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse>
+  <FlexStatements>
+    <FlexStatement>
+      <CashReport>
+        <CashReportCurrency currency="BASE_SUMMARY" endingCash="100" />
+      </CashReport>
+      <OpenPositions>
+        <OpenPosition symbol="AAPL" assetCategory="STK" position="3" markPrice="200.50" />
+        <OpenPosition symbol="MSFT" assetCategory="STK" position="1.5" markPrice="410" />
+      </OpenPositions>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>`;
+
+    expect(parseIbkrFlexOpenPositions(xml)).toEqual([
+      {
+        symbol: "AAPL",
+        amount: 3,
+        price: 0,
+        currency: "USD",
+        market: "",
+      },
+      {
+        symbol: "MSFT",
+        amount: 1.5,
+        price: 0,
+        currency: "USD",
+        market: "",
+      },
+      {
+        symbol: "USD",
+        amount: 100,
+        price: 1,
+        currency: "USD",
+        market: "",
+      },
+    ]);
+  });
+
+  it("builds a GetStatement URL from the Flex reference code response", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<FlexStatementResponse>
+  <Status>Success</Status>
+  <ReferenceCode>abc123</ReferenceCode>
+  <url>https://gdcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement</url>
+</FlexStatementResponse>`;
+
+    expect(getIbkrFlexStatementUrl(xml, "token-1")).toBe(
+      "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService/GetStatement?t=token-1&q=abc123&v=3",
+    );
+  });
+
+  it("verifies required fields without fetching a Flex report", async () => {
+    await expect(
+      new IbkrBroker("token-1", "query-1").verifyConfig(),
+    ).resolves.toBe(true);
+
+    expect(sendHttpTextRequest).not.toHaveBeenCalled();
+  });
+
+  it("does not put the Flex token into a provider error", async () => {
+    vi.mocked(sendHttpTextRequest).mockResolvedValue(`<FlexStatementResponse><Status>Fail</Status><ErrorMessage>bad token custom-private-key</ErrorMessage></FlexStatementResponse>`);
+    await expect(new IbkrBroker("custom-private-key", "query-1").fetchPositions()).rejects.not.toThrow("custom-private-key");
+  });
+
+  it("polls GetStatement until the Flex report is ready", async () => {
+    vi.mocked(sendHttpTextRequest)
+      .mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
+<FlexStatementResponse>
+  <Status>Success</Status>
+  <ReferenceCode>abc123</ReferenceCode>
+</FlexStatementResponse>`)
+      .mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
+<FlexStatementResponse>
+  <Status>Fail</Status>
+  <ErrorCode>1019</ErrorCode>
+  <ErrorMessage>Statement generation in progress</ErrorMessage>
+</FlexStatementResponse>`)
+      .mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse>
+  <FlexStatements>
+    <FlexStatement>
+      <OpenPositions>
+        <OpenPosition symbol="AAPL" assetCategory="STK" position="3" markPrice="200.50" currency="USD" />
+      </OpenPositions>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>`);
+
+    const broker = new (IbkrBroker as any)("token-1", "query-1", undefined, {
+      statementPollDelayMs: 0,
+      initialStatementDelayMs: 0,
+      maxStatementPollAttempts: 3,
+    });
+
+    await expect(broker.fetchPositions()).resolves.toEqual({ AAPL: 3 });
+    expect(sendHttpTextRequest).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns CashReport cash and converts stock prices to USD", async () => {
+    vi.mocked(sendHttpTextRequest)
+      .mockResolvedValueOnce(`<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse>
+  <FlexStatements>
+    <FlexStatement>
+      <CashReport>
+        <CashReportCurrency currency="BASE_SUMMARY" endingCash="140" />
+      </CashReport>
+      <OpenPositions>
+        <OpenPosition symbol="AAPL" assetCategory="STK" position="3" markPrice="200" currency="USD" />
+        <OpenPosition symbol="SHOP" assetCategory="STK" position="4" markPrice="140" currency="CAD" />
+      </OpenPositions>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>`);
+    vi.mocked(listAllCurrencyRates).mockResolvedValue([
+      { currency: "USD", alias: "US dollar", symbol: "$", rate: 1 },
+      { currency: "CAD", alias: "Canadian dollar", symbol: "$", rate: 2 },
+    ] as never);
+
+    const broker = new IbkrBroker("token-1", "query-1");
+
+    await expect(broker.fetchPositions()).resolves.toEqual({
+      AAPL: 3,
+      USD: 140,
+      "SHOP.TRT": 4,
+    });
+
+    await expect(broker.fetchPositionsPrice()).resolves.toEqual({
+      AAPL: 0,
+      USD: 1,
+      "SHOP.TRT": 0,
+    });
+  });
+});

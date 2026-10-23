@@ -1,0 +1,363 @@
+use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
+use aes::Aes256;
+use aes_gcm_siv::aead::{Aead, KeyInit};
+use aes_gcm_siv::{Aes256GcmSiv, Nonce};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use sha2::{Digest as _, Sha256};
+use std::sync::Mutex;
+use uuid::Uuid;
+
+const ENT_V2_PREFIX: &str = "!ent:v2:";
+const LEGACY_IV_LEN: usize = 16;
+const NONCE_LEN: usize = 12;
+
+type LegacyAes256CbcDec = cbc::Decryptor<Aes256>;
+
+pub struct Ent {
+    salt: String,
+    ent_prefix: String,
+    key: Mutex<Option<String>>,
+}
+
+impl Ent {
+    pub fn new() -> Self {
+        Self {
+            salt: String::from_utf8(vec![
+                46, 51, 115, 116, 98, 101, 105, 64, 104, 107, 99, 97, 44, 116, 114, 33, 35,
+            ])
+            .unwrap(),
+            ent_prefix: String::from("!ent:"),
+            key: Mutex::new(None),
+        }
+    }
+
+    /// Set the encryption key (first-time initialisation).  Returns an error
+    /// if the key has already been set.  Must be called before any
+    /// encrypt/decrypt operation.
+    pub fn set_key(&self, key: String) -> Result<(), String> {
+        let mut lock = self.key.lock().map_err(|_| "lock error".to_string())?;
+        if lock.is_some() {
+            return Err("encryption key already initialized".to_string());
+        }
+        *lock = Some(key);
+        Ok(())
+    }
+
+    /// Replace the encryption key and return the old value.  Any subsequent
+    /// encrypt/decrypt call uses the new key.  Returns an error when no key
+    /// has been set yet.
+    pub fn change_key(&self, new_key: String) -> Result<String, String> {
+        let mut lock = self.key.lock().map_err(|_| "lock error".to_string())?;
+        lock.replace(new_key)
+            .ok_or("encryption key not set".to_string())
+    }
+
+    pub(crate) fn current_key(&self) -> Result<String, String> {
+        let lock = self.key.lock().map_err(|_| "mutex poisoned".to_string())?;
+        lock.clone()
+            .ok_or_else(|| "encryption key not set at startup".to_string())
+    }
+
+    fn get_key(&self) -> Result<String, Box<dyn std::error::Error>> {
+        self.current_key().map_err(Into::into)
+    }
+
+    fn key_hash(key: &str) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(key.as_bytes());
+        hasher.finalize().into()
+    }
+
+    fn get_nonce_bytes(&self) -> [u8; NONCE_LEN] {
+        let bytes = Uuid::new_v4().into_bytes();
+        bytes[..NONCE_LEN].try_into().unwrap()
+    }
+
+    pub fn encrypt(&self, data: String) -> Result<String, Box<dyn std::error::Error>> {
+        let key = self.get_key()?;
+        self.encrypt_with_key(data, &key)
+    }
+
+    pub fn encrypt_with_key(
+        &self,
+        data: String,
+        key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let key = Self::key_hash(key);
+        let cipher = Aes256GcmSiv::new_from_slice(&key)?;
+        let nonce = self.get_nonce_bytes();
+        let encrypted = cipher
+            .encrypt(Nonce::from_slice(&nonce), data.as_bytes())
+            .map_err(|_| "encrypt error")?;
+
+        let mut payload = Vec::with_capacity(NONCE_LEN + encrypted.len());
+        payload.extend_from_slice(&nonce);
+        payload.extend_from_slice(&encrypted);
+
+        Ok(format!("{ENT_V2_PREFIX}{}", STANDARD.encode(payload)))
+    }
+
+    fn decrypt_v2_with_key(
+        &self,
+        encrypted_data: &str,
+        key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let encoded = encrypted_data
+            .strip_prefix(ENT_V2_PREFIX)
+            .ok_or("not ent")?;
+        let payload = STANDARD.decode(encoded)?;
+        if payload.len() <= NONCE_LEN {
+            return Err("invalid encrypted payload".into());
+        }
+
+        let (nonce, ciphertext) = payload.split_at(NONCE_LEN);
+        let key = Self::key_hash(key);
+        let cipher = Aes256GcmSiv::new_from_slice(&key)?;
+        let decrypted = cipher
+            .decrypt(Nonce::from_slice(nonce), ciphertext)
+            .map_err(|_| "decrypt error")?;
+
+        Ok(String::from_utf8(decrypted)?)
+    }
+
+    /// Legacy AES-256-CBC decryption path (pre-v0.5.0 format with zero IV).
+    /// Only active when the payload starts with `!ent:` but not `!ent:v2:`.
+    fn decrypt_legacy_with_key(
+        &self,
+        encrypted_data: String,
+        key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        if !self.is_ent(&encrypted_data) {
+            return Err("not ent".into());
+        }
+
+        let data = encrypted_data
+            .strip_prefix(&self.ent_prefix)
+            .ok_or("not ent")?;
+
+        if data.len() <= LEGACY_IV_LEN {
+            return Err("invalid legacy encrypted payload".into());
+        }
+
+        let iv: [u8; LEGACY_IV_LEN] = data.as_bytes()[..LEGACY_IV_LEN].try_into()?;
+        let mut encrypted = STANDARD.decode(&data.as_bytes()[LEGACY_IV_LEN..])?;
+        let zero_iv = [0u8; LEGACY_IV_LEN];
+        let key = Self::key_hash(key);
+        let cipher = LegacyAes256CbcDec::new_from_slices(&key, &zero_iv)?;
+        let decrypted = cipher
+            .decrypt_padded_mut::<Pkcs7>(&mut encrypted)
+            .map_err(|_| "legacy decrypt error")?;
+        let mut decrypted = String::from_utf8(decrypted.to_vec())?;
+
+        if decrypted.len() < LEGACY_IV_LEN + self.salt.len() {
+            return Err("invalid legacy decrypted payload".into());
+        }
+        let decrypted_iv: [u8; LEGACY_IV_LEN] = decrypted.as_bytes()[..LEGACY_IV_LEN].try_into()?;
+        if decrypted_iv != iv {
+            return Err("iv not match".into());
+        }
+
+        decrypted.replace_range(0..LEGACY_IV_LEN, "");
+
+        let salt_len = self.salt.len();
+        let salt = decrypted
+            .chars()
+            .rev()
+            .take(salt_len)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>();
+        if salt != self.salt {
+            return Err("salt not match".into());
+        }
+
+        decrypted.replace_range(decrypted.len() - salt_len..decrypted.len(), "");
+
+        Ok(decrypted)
+    }
+
+    pub fn decrypt(&self, encrypted_data: String) -> Result<String, Box<dyn std::error::Error>> {
+        let key = self.get_key()?;
+        self.decrypt_with_key(encrypted_data, &key)
+    }
+
+    pub fn decrypt_with_key(
+        &self,
+        encrypted_data: String,
+        key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        if encrypted_data.starts_with(ENT_V2_PREFIX) {
+            return self.decrypt_v2_with_key(&encrypted_data, key);
+        }
+        self.decrypt_legacy_with_key(encrypted_data, key)
+    }
+
+    /// Decrypt with the current key, falling back to `fallback_key` for
+    /// payloads written before the current key existed (e.g. chat sessions
+    /// that were never re-encrypted). Writes always use the current key, so
+    /// such payloads heal the next time they are saved or the key is rotated.
+    pub fn decrypt_with_fallback(
+        &self,
+        encrypted_data: String,
+        fallback_key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let key = self.get_key()?;
+        match self.decrypt_with_key(encrypted_data.clone(), &key) {
+            Ok(plaintext) => Ok(plaintext),
+            Err(error) if key != fallback_key => self
+                .decrypt_with_key(encrypted_data, fallback_key)
+                .map_err(|_| error),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn is_ent(&self, data: &str) -> bool {
+        data.starts_with(&self.ent_prefix)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use aes::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
+    use aes::Aes256;
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use sha2::{Digest as _, Sha256};
+
+    type LegacyAes256CbcEnc = cbc::Encryptor<Aes256>;
+
+    const TEST_KEY: &str = "test-key-for-unit-tests";
+
+    fn make_ent() -> super::Ent {
+        let ent = super::Ent::new();
+        ent.set_key(TEST_KEY.to_string()).unwrap();
+        ent
+    }
+
+    fn legacy_encrypt(ent: &super::Ent, data: &str) -> String {
+        let iv = "1234567890abcdef";
+        let mut plaintext = String::from(iv);
+        plaintext.push_str(data);
+        plaintext.push_str(ent.salt.as_str());
+
+        let mut key_hasher = Sha256::new();
+        key_hasher.update(TEST_KEY.as_bytes());
+        let key: [u8; 32] = key_hasher.finalize().into();
+
+        let cipher =
+            LegacyAes256CbcEnc::new_from_slices(&key, &[0u8; super::LEGACY_IV_LEN]).unwrap();
+        let mut buffer = plaintext.into_bytes();
+        let message_len = buffer.len();
+        let padded_len = ((message_len / super::LEGACY_IV_LEN) + 1) * super::LEGACY_IV_LEN;
+        buffer.resize(padded_len, 0);
+        let encrypted = cipher
+            .encrypt_padded_mut::<Pkcs7>(&mut buffer, message_len)
+            .unwrap();
+
+        format!("{}{}{}", ent.ent_prefix, iv, STANDARD.encode(encrypted))
+    }
+
+    #[test]
+    fn test_encrypt_and_decrypt() {
+        let ent = make_ent();
+        let encrypted = ent.encrypt("hello".to_string()).unwrap();
+        assert_eq!(ent.is_ent(encrypted.as_str()), true);
+        assert!(encrypted.starts_with("!ent:v2:"));
+
+        let decrypted = ent.decrypt(encrypted).unwrap();
+        assert_eq!(decrypted, "hello".to_string());
+    }
+
+    #[test]
+    fn test_encrypt_and_decrypt_large_string() {
+        let ent = make_ent();
+        let encrypted = ent.encrypt("hello".repeat(10000).to_string()).unwrap();
+        assert_eq!(ent.is_ent(encrypted.as_str()), true);
+
+        let decrypted = ent.decrypt(encrypted).unwrap();
+        assert_eq!(decrypted, "hello".repeat(10000).to_string());
+    }
+
+    #[test]
+    fn test_decrypt_legacy_payload() {
+        let ent = make_ent();
+        let encrypted = legacy_encrypt(&ent, "hello");
+
+        let decrypted = ent.decrypt(encrypted).unwrap();
+
+        assert_eq!(decrypted, "hello".to_string());
+    }
+
+    #[test]
+    fn explicit_key_helpers_do_not_change_the_current_key() {
+        let ent = make_ent();
+        let other_key = "another-test-key";
+
+        let encrypted = ent
+            .encrypt_with_key("rotated".to_string(), other_key)
+            .unwrap();
+
+        assert_eq!(
+            ent.decrypt_with_key(encrypted.clone(), other_key).unwrap(),
+            "rotated"
+        );
+        assert!(ent.decrypt(encrypted).is_err());
+        assert_eq!(
+            ent.decrypt(ent.encrypt("current".to_string()).unwrap())
+                .unwrap(),
+            "current"
+        );
+    }
+
+    #[test]
+    fn decrypt_with_fallback_reads_payloads_written_under_the_fallback_key() {
+        let ent = make_ent();
+        let fallback_key = "pre-rotation-key";
+        let old_payload = ent
+            .encrypt_with_key("old session".to_string(), fallback_key)
+            .unwrap();
+        let current_payload = ent.encrypt("current".to_string()).unwrap();
+        let foreign_payload = ent
+            .encrypt_with_key("foreign".to_string(), "some-other-key")
+            .unwrap();
+
+        assert_eq!(
+            ent.decrypt_with_fallback(old_payload, fallback_key)
+                .unwrap(),
+            "old session"
+        );
+        assert_eq!(
+            ent.decrypt_with_fallback(current_payload, fallback_key)
+                .unwrap(),
+            "current"
+        );
+        assert!(ent
+            .decrypt_with_fallback(foreign_payload, fallback_key)
+            .is_err());
+    }
+
+    #[test]
+    fn explicit_key_helper_decrypts_legacy_payload() {
+        let ent = make_ent();
+        let encrypted = legacy_encrypt(&ent, "legacy");
+
+        assert_eq!(ent.decrypt_with_key(encrypted, TEST_KEY).unwrap(), "legacy");
+    }
+
+    #[test]
+    fn empty_and_unicode_payloads_round_trip() {
+        let ent = make_ent();
+        for plaintext in ["", "资产 🔐 café"] {
+            let encrypted = ent.encrypt(plaintext.to_string()).unwrap();
+            assert_eq!(ent.decrypt(encrypted).unwrap(), plaintext);
+        }
+    }
+
+    #[test]
+    fn wrong_key_and_truncated_payload_are_rejected() {
+        let ent = make_ent();
+        let encrypted = ent.encrypt("secret".to_string()).unwrap();
+        assert!(ent.decrypt_with_key(encrypted, "wrong-key").is_err());
+        assert!(ent.decrypt("!ent:v2:AAAA".to_string()).is_err());
+    }
+}

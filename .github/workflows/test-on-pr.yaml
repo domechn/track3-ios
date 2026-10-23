@@ -1,0 +1,130 @@
+name: "test-on-pr"
+on: [pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: enable corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@4.9.2 --activate
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - name: install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - name: install frontend dependencies
+        run: corepack yarn install --immutable
+      - name: test frontend
+        run: corepack yarn test
+      - name: check frontend coverage
+        run: corepack yarn test:coverage
+      - name: build frontend
+        run: corepack yarn build
+      - name: test Rust
+        run: cargo test --locked --all-targets
+        working-directory: src-tauri
+      - name: test Rust without GTK
+        run: cargo test --locked -p track3-pure-tests --lib
+        working-directory: src-tauri
+      - name: check Rust
+        run: cargo check --locked
+        working-directory: src-tauri
+
+  e2e:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: enable corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@4.9.2 --activate
+      - name: install frontend dependencies
+        run: corepack yarn install --immutable
+      - name: install Chromium
+        run: corepack yarn playwright install --with-deps chromium
+      - name: type-check browser tests
+        run: corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit
+      - name: smoke test
+        run: corepack yarn test:e2e
+
+  test-tauri:
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            args: ""
+          - os: macos-latest
+            args: --target x86_64-apple-darwin
+          - os: macos-latest
+            args: --target aarch64-apple-darwin
+          - os: windows-latest
+            args: ""
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: enable corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@4.9.2 --activate
+      - name: get yarn cache
+        id: yarn-cache
+        run: echo "dir=$(yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - name: cache yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - name: install dependencies (ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - name: install target (mac only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          rustup target add x86_64-apple-darwin
+      - name: install frontend dependencies
+        run: corepack yarn install --immutable
+
+      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: corepack yarn tauri
+          args: ${{ matrix.args }}

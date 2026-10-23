@@ -1,0 +1,94 @@
+import { Analyzer, TokenConfig, WalletCoin } from "../types";
+import { asyncMap } from "../utils/async";
+import { sendHttpRequest } from "../utils/http";
+import { getAddressList } from "../utils/address";
+
+interface BTCQuerier {
+  query(address: string): Promise<number>;
+}
+
+export class BTCAnalyzer implements Analyzer {
+  private readonly config: Pick<TokenConfig, "btc">;
+
+  private btcQueriers: BTCQuerier[];
+
+  constructor(config: Pick<TokenConfig, "btc">) {
+    this.config = config;
+    this.btcQueriers = [new BlockCypher(), new Blockchain()];
+  }
+
+  async preLoad(): Promise<void> {}
+
+  async postLoad(): Promise<void> {}
+
+  async verifyConfigs(): Promise<boolean> {
+    const regex = /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}$/;
+
+    const valid = getAddressList(this.config.btc).every((address) => regex.test(address));
+    return valid;
+  }
+
+  getAnalyzeName(): string {
+    return "BTC Analyzer";
+  }
+
+  async query(address: string): Promise<number> {
+    for (const btcQuerier of this.btcQueriers) {
+      try {
+        const res = await btcQuerier.query(address);
+        return res;
+      } catch (e) {
+        console.error("Source provider failed");
+      }
+    }
+    throw new Error("All BTC queriers failed");
+  }
+
+  async loadPortfolio(): Promise<WalletCoin[]> {
+    const addresses = getAddressList(this.config.btc);
+    const coinLists = await asyncMap(
+      addresses,
+      async (wallet) => {
+        const amount = await this.query(wallet);
+        return {
+          amount,
+          wallet,
+        };
+      },
+      1,
+      addresses.length > 1 ? 1000 : 0,
+    );
+    return coinLists.map((c) => ({
+      ...c,
+      chain: "bitcoin",
+      assetType: "crypto" as const,
+      symbol: "BTC",
+    }));
+  }
+}
+
+class Blockchain implements BTCQuerier {
+  private readonly queryUrl = "https://blockchain.info/q/addressbalance/";
+
+  async query(address: string): Promise<number> {
+    const balance = await sendHttpRequest<string>(
+      "GET",
+      this.queryUrl + address,
+    );
+    const amount = Number(balance) / 1e8;
+    return amount;
+  }
+}
+
+class BlockCypher implements BTCQuerier {
+  private readonly queryUrl = "https://api.blockcypher.com/v1/btc/main/addrs/";
+
+  async query(address: string): Promise<number> {
+    const resp = await sendHttpRequest<{ final_balance: number }>(
+      "GET",
+      this.queryUrl + address,
+    );
+
+    return resp.final_balance / 1e8;
+  }
+}

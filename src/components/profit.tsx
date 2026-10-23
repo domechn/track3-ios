@@ -1,0 +1,335 @@
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+  CurrencyRateDetail,
+  QuoteColor,
+  TDateRange,
+} from "@/middlelayers/types";
+import {
+  currencyWrapper,
+  prettyNumberKeepNDigitsAfterDecimalPoint,
+  prettyNumberToLocaleString,
+} from "@/utils/currency";
+import { calculateTotalProfit } from "@/middlelayers/charts";
+import { appCacheDir as getAppCacheDir } from "@tauri-apps/api/path";
+import { Table, TableBody, TableCell, TableRow } from "./ui/table";
+import bluebird from "bluebird";
+import { getImageApiPath } from "@/utils/app";
+import { positiveNegativeColor, positiveNegativeTextClass } from "@/utils/color";
+import { Link } from "react-router-dom";
+import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
+import { OverviewLoadingContext } from "@/contexts/overview-loading";
+import { useTranslation } from "@/i18n";
+import AssetLabel from "@/components/common/asset-label";
+import {
+  buildAssetDetailsPath,
+  formatAssetLabel,
+  getAssetLogoKey,
+  resolveAssetLogoSrc,
+  shouldDownloadCryptoLogo,
+} from "@/utils/assets";
+import { useDataChangedVersion } from "@/contexts/data-changed";
+import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
+import ProfitAttribution from "./profit-attribution";
+
+function getToneBadgeClass(value: number, quoteColor: QuoteColor) {
+  const tone = positiveNegativeColor(value, quoteColor);
+  if (tone === "green") {
+    return "bg-emerald-500/15 text-emerald-500";
+  }
+  if (tone === "red") {
+    return "bg-rose-500/15 text-rose-500";
+  }
+  return "bg-muted text-muted-foreground";
+}
+
+const App = ({
+  currency,
+  dateRange,
+  showCoinsProfitPercentage,
+  quoteColor,
+}: {
+  currency: CurrencyRateDetail;
+  showCoinsProfitPercentage?: boolean;
+  dateRange: TDateRange;
+  quoteColor: QuoteColor;
+}) => {
+  const { t } = useTranslation();
+  const [profit, setProfit] = useState(0);
+  // note: undefined means infinite
+  const [profitPercentage, setProfitPercentage] = useState<
+    number | undefined
+  >();
+  const [coinsProfit, setCoinsProfit] = useState<
+    {
+      symbol: string;
+      assetType: "crypto" | "stock";
+      percentage?: number;
+      value: number;
+    }[]
+  >([]);
+  const [logoMap, setLogoMap] = useState<{ [x: string]: string }>({});
+  const [view, setView] = useState<"summary" | "attribution">("summary");
+  const { reportLoaded } = useContext(OverviewLoadingContext);
+  const loadGenRef = useRef(0);
+  const logoPathCacheRef = useRef<Map<string, string>>(new Map());
+
+  const rangeKey = useMemo(
+    () => `${dateRange.start.getTime()}-${dateRange.end.getTime()}`,
+    [dateRange.start, dateRange.end],
+  );
+  const dataChangedVersion = useDataChangedVersion();
+
+  useEffect(() => {
+    const gen = ++loadGenRef.current;
+
+    calculateTotalProfit(dateRange)
+      .then((res) => {
+        if (gen !== loadGenRef.current) {
+          return;
+        }
+
+        const sortedCoins = res.coins.sort((a, b) => a.value - b.value);
+        setProfit(res.total);
+        setProfitPercentage(res.percentage);
+        setCoinsProfit(sortedCoins);
+      })
+      .finally(() => {
+        if (gen === loadGenRef.current) {
+          reportLoaded();
+        }
+      });
+  }, [rangeKey, dataChangedVersion]);
+
+  useEffect(() => {
+    const gen = loadGenRef.current;
+    const seen = new Set();
+    const assets = [...coinsProfit.slice(0, 5), ...coinsProfit.slice(-5)].filter((coin) => {
+      const key = getAssetLogoKey(coin);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    if (assets.length === 0) {
+      return;
+    }
+
+    void getLogoMap(assets).then((m) => {
+      if (gen !== loadGenRef.current) {
+        return;
+      }
+      setLogoMap((prev) => ({ ...prev, ...m }));
+    });
+  }, [coinsProfit]);
+
+  const topProfitData = useMemo(
+    () => coinsProfit.slice(-5).reverse(),
+    [coinsProfit],
+  );
+  const topLossData = useMemo(
+    () => coinsProfit.slice(0, 5),
+    [coinsProfit],
+  );
+
+  const totalToneClass = useMemo(
+    () => positiveNegativeTextClass(profit, quoteColor, 500),
+    [profit, quoteColor],
+  );
+  const totalToneBadgeClass = useMemo(
+    () => getToneBadgeClass(profit, quoteColor),
+    [profit, quoteColor],
+  );
+  const positiveCount = useMemo(
+    () => coinsProfit.filter((coin) => coin.value > 0).length,
+    [coinsProfit],
+  );
+  const negativeCount = useMemo(
+    () => coinsProfit.filter((coin) => coin.value < 0).length,
+    [coinsProfit],
+  );
+
+  async function getLogoMap(
+    assets: { symbol: string; assetType: "crypto" | "stock" }[],
+  ) {
+    const acd = await getAppCacheDir();
+    const assetsNeedLoad = assets.filter(
+      (asset) =>
+        shouldDownloadCryptoLogo(asset) &&
+        !logoPathCacheRef.current.has(getAssetLogoKey(asset)),
+    );
+
+    if (assetsNeedLoad.length === 0) {
+      return assets.reduce(
+        (acc, asset) => {
+          const key = getAssetLogoKey(asset);
+          const path = logoPathCacheRef.current.get(key);
+          if (path) {
+            acc[key] = path;
+          }
+          return acc;
+        },
+        {} as { [x: string]: string },
+      );
+    }
+
+    const kvs = await bluebird.map(
+      assetsNeedLoad,
+      async (asset) => {
+        const path = await getImageApiPath(acd, asset.symbol);
+        const key = getAssetLogoKey(asset);
+        logoPathCacheRef.current.set(key, path);
+        return { [key]: path };
+      },
+      { concurrency: 6 },
+    );
+
+    const cachedMap = assets.reduce(
+      (acc, asset) => {
+        const key = getAssetLogoKey(asset);
+        const path = logoPathCacheRef.current.get(key);
+        if (path) {
+          acc[key] = path;
+        }
+        return acc;
+      },
+      {} as { [x: string]: string },
+    );
+
+    return Object.assign({}, ...kvs, cachedMap);
+  }
+
+  const renderRows = (
+    rows: {
+      symbol: string;
+      assetType: "crypto" | "stock";
+      percentage?: number;
+      value: number;
+    }[],
+    rankStart = 1,
+  ) =>
+    rows.map((d, idx) => (
+      <TableRow key={getAssetLogoKey(d)} className="h-[42px]">
+        <TableCell className="w-[36px] py-1.5 text-xs text-muted-foreground font-mono">
+          #{rankStart + idx}
+        </TableCell>
+        <TableCell className="py-1.5 touch:py-0">
+          <Link
+            to={buildAssetDetailsPath(d)}
+            className="group inline-flex touch:min-h-11 flex-row items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="sr-only">{t("common.openAssetDetails").replace(
+              "{asset}",
+              formatAssetLabel(d),
+            )}</span>
+            <img
+              className="inline-block w-[18px] h-[18px] mr-2 rounded-full"
+              src={resolveAssetLogoSrc(d, logoMap[getAssetLogoKey(d)])}
+              alt=""
+            />
+            <AssetLabel
+              asset={d}
+              className="min-w-0"
+              labelClassName="font-medium text-sm"
+            />
+            <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block text-muted-foreground" />
+          </Link>
+        </TableCell>
+        <TableCell className="text-right py-1.5">
+          <div className={`text-sm ${positiveNegativeTextClass(d.value, quoteColor, 500)}`}>
+            {(d.value < 0 ? "-" : "+") +
+              currency.symbol +
+              prettyNumberToLocaleString(
+                currencyWrapper(currency)(Math.abs(d.value)),
+              )}
+          </div>
+          {showCoinsProfitPercentage && (
+            <div className="text-xs text-muted-foreground">
+              {(d.percentage || 0) < 0 ? "" : "+"}
+              {d.percentage === undefined
+                ? t("common.infinity")
+                : prettyNumberKeepNDigitsAfterDecimalPoint(d.percentage, 2)}
+              %
+            </div>
+          )}
+        </TableCell>
+      </TableRow>
+    ));
+
+  return (
+    <Card>
+      <CardHeader className="space-y-2 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t("profit.title")}
+          </CardTitle>
+          {view === "summary" && <div className="text-xs text-muted-foreground">
+            {t("profit.totalLabel")
+              .replace("{n}", String(coinsProfit.length))
+              .replace("{up}", String(positiveCount))
+              .replace("{down}", String(negativeCount))}
+          </div>}
+          <ButtonGroup value={view} onValueChange={(value) => setView(value as "summary" | "attribution")} aria-label={t("profit.title")} className="h-auto">
+            <ButtonGroupItem value="summary" className="touch:min-h-11 px-2 text-xs sm:px-3">{t("profit.attribution.summary")}</ButtonGroupItem>
+            <ButtonGroupItem value="attribution" className="touch:min-h-11 px-2 text-xs sm:px-3">{t("profit.attribution.tab")}</ButtonGroupItem>
+          </ButtonGroup>
+        </div>
+        {view === "summary" && <>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <div className={`text-xl font-semibold tracking-tight ${totalToneClass}`}>
+              {(profit < 0 ? "-" : "+") +
+                currency.symbol +
+                prettyNumberToLocaleString(
+                  currencyWrapper(currency)(Math.abs(profit)),
+                )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {t("profit.netPnl")}
+            </div>
+          </div>
+          <div
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${totalToneBadgeClass}`}
+          >
+            {profitPercentage === undefined
+              ? t("common.infinity")
+              : prettyNumberKeepNDigitsAfterDecimalPoint(profitPercentage, 2)}
+            %
+          </div>
+        </div>
+        </>}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {view === "attribution" ? (
+          <ProfitAttribution currency={currency} dateRange={dateRange} quoteColor={quoteColor} />
+        ) : <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground font-medium">
+              {t("profit.topProfit")}
+            </div>
+            <Table>
+              <TableBody>{renderRows(topProfitData)}</TableBody>
+            </Table>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground font-medium">
+              {t("profit.topLoss")}
+            </div>
+            <Table>
+              <TableBody>{renderRows(topLossData)}</TableBody>
+            </Table>
+          </div>
+        </div>
+        {coinsProfit.length === 0 && (
+          <div className="flex items-center justify-center text-lg text-muted-foreground py-6">
+            {t("profit.noData")}
+          </div>
+        )}
+        </>}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default App;

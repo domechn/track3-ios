@@ -1,0 +1,71 @@
+{
+  "build": {
+    "beforeDevCommand": "yarn dev -- --host",
+    "beforeBuildCommand": "yarn build",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "bundle": {
+    "active": true,
+    "category": "DeveloperTool",
+    "copyright": "",
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "longDescription": "",
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    },
+    "resources": ["migrations/**/*"],
+    "shortDescription": "",
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "createUpdaterArtifacts": false
+  },
+  "productName": "track3",
+  "mainBinaryName": "track3",
+  "version": "0.9.0",
+  "identifier": "dev.track3.track3",
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBMzU0MjMxMDZEQjFERDIKUldUU0hkc0dNVUkxNnFUc21rSnVZVnd2c0JRa2t2dHA0ZEJ5M0hWZTJ3U3NFR2NsZWZha1JFTTEK",
+      "endpoints": [
+        "https://github.com/domechn/track3/releases/latest/download/latest.json"
+      ]
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 900,
+        "resizable": true,
+        "title": "Track3 - Unlock the insights of your crypto assets.",
+        "width": 1400
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "scope": ["$RESOURCE/**", "$APPCACHE/**"],
+        "enable": true
+      }
+    }
+  }
+}

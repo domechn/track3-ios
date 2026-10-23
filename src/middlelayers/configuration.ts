@@ -1,0 +1,808 @@
+import { invoke } from "@tauri-apps/api/core";
+import {
+  getDatabase,
+  executeWrite,
+  executeWriteWork,
+  WriteDatabase,
+} from "./database";
+import { GlobalConfig, StockConfig } from "./datafetch/types";
+import {
+  AIAdvancedOptions,
+  AIConfig,
+  ConfigurationModel,
+  CurrencyRateDetail,
+} from "./types";
+import yaml from "yaml";
+import { CURRENCY_RATE_HANDLER } from "./entities/currency";
+import { ASSET_HANDLER } from "./entities/assets";
+import { DateRange } from "react-day-picker";
+import { Theme } from "@/components/common/theme";
+import { runWithEncryptionWriteGate } from "./encryption-write-gate";
+import type { CostBasisMethod } from "./cost-basis";
+
+// todo: update to dedicated domain
+export const PRO_API_ENDPOINT = "https://track3-pro-api.domc.me";
+
+const prefix = "!ent:";
+const generalFixId = "1";
+
+const exchangesConfigId = "10";
+const walletsConfigId = "11";
+const generalConfigId = "12";
+const stockConfigId = "20";
+const activeConfigurationIds = [
+  exchangesConfigId,
+  walletsConfigId,
+  generalConfigId,
+  stockConfigId,
+] as const;
+
+const walletKeys = [
+  "btc",
+  "erc20",
+  "sol",
+  "doge",
+  "trc20",
+  "ton",
+  "sui",
+] as const;
+
+const autoBackupId = "3";
+const lastAutoBackupAtId = "4";
+const lastAutoImportAtId = "5";
+const querySizeId = "6";
+const preferCurrencyId = "7";
+const quoteColorId = "8";
+const importedPartHashesId = "9";
+const clientInfoFixId = "998";
+const licenseFixId = "997";
+const stableCoinsId = "996";
+const blacklistCoinsId = "995";
+const aiConfigId = "994";
+const insightCardId = "992";
+const costBasisMethodId = "993";
+const preferCurrencyLocalStorageKey = "track3-prefer-currency";
+
+export const themeLocalStorageKey = "track3-ui-theme";
+
+let portfolioInputGeneration = 0;
+
+export function getPortfolioInputGeneration(): number {
+  return portfolioInputGeneration;
+}
+
+export function markPortfolioInputChanged(): void {
+  portfolioInputGeneration += 1;
+}
+
+async function runPortfolioInputWrite<T>(
+  operation: (writeDatabase: WriteDatabase) => Promise<T>,
+): Promise<T> {
+  return executeWriteWork(async (writeDatabase) => {
+    // Bracket the mutation so queries started before or during it both go stale.
+    markPortfolioInputChanged();
+    try {
+      return await operation(writeDatabase);
+    } finally {
+      markPortfolioInputChanged();
+    }
+  });
+}
+
+// Thrown by loadAIConfig / saveAIConfig when no AI configuration is persisted
+// yet. The chat page catches this and renders the "configure first" empty state.
+export class AIConfigMissingError extends Error {
+  constructor(message = "AI configuration is not set") {
+    super(message);
+    this.name = "AIConfigMissingError";
+  }
+}
+
+export const DEFAULT_AI_CONTEXT_SIZE = 8192;
+
+function validateAIConfig(cfg: AIConfig): void {
+  if (!cfg || typeof cfg !== "object") {
+    throw new AIConfigMissingError("AI configuration is not set");
+  }
+  if (!cfg.endpoint || !cfg.endpoint.trim()) {
+    throw new AIConfigMissingError("AI configuration is missing endpoint");
+  }
+  if (typeof cfg.apiKey !== "string") {
+    throw new AIConfigMissingError("AI configuration is missing apiKey");
+  }
+  if (!cfg.model || !cfg.model.trim()) {
+    throw new AIConfigMissingError("AI configuration is missing model");
+  }
+  if (
+    typeof cfg.contextSize !== "number" ||
+    !Number.isFinite(cfg.contextSize) ||
+    cfg.contextSize <= 0
+  ) {
+    throw new AIConfigMissingError("AI configuration is missing contextSize");
+  }
+  if ([cfg.pricePerMillionTokens, cfg.inputPricePerMillionTokens, cfg.outputPricePerMillionTokens].some((price) =>
+      price !== undefined && (typeof price !== "number" || !Number.isFinite(price) || price < 0))) {
+    throw new AIConfigMissingError("AI configuration has an invalid token price");
+  }
+  if (cfg.proactiveInsightsSummary !== undefined && typeof cfg.proactiveInsightsSummary !== "boolean") {
+    throw new AIConfigMissingError("AI configuration has an invalid insights preference");
+  }
+}
+
+// loadAIConfig returns the persisted AI configuration. Throws
+// AIConfigMissingError when nothing has been saved yet so the UI can
+// branch on the empty state.
+export async function loadAIConfig(): Promise<AIConfig> {
+  // Migration: legacy AI config was stored at id "999", which conflicted
+  // with the Rust backend's VERSION_CONFIGURATION_ID (also 999).
+  // If the new id (994) is empty, read from 999 and migrate it forward.
+  // Only migrate if the data looks like valid AI config JSON (not the version string
+  // that prepare_required_data may have written to id=999).
+  const legacyModel = await getConfigurationById("999");
+  if (legacyModel && legacyModel.data) {
+    let isAIConfig = false;
+    try {
+      const parsed = JSON.parse(legacyModel.data);
+      isAIConfig = parsed && typeof parsed === "object" && typeof parsed.endpoint === "string";
+    } catch {
+      // not valid JSON — probably the app version string, skip migration
+    }
+    if (isAIConfig) {
+      await saveConfigurationById(aiConfigId, legacyModel.data, true);
+      await deleteConfigurationById("999");
+    }
+  }
+
+  const model = await getConfigurationById(aiConfigId);
+  if (!model || !model.data) {
+    throw new AIConfigMissingError();
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(model.data);
+  } catch (e) {
+    throw new AIConfigMissingError(
+      `AI configuration is not valid JSON: ${(e as Error).message}`,
+    );
+  }
+  const cfg = parsed as AIConfig;
+  validateAIConfig(cfg);
+  return { ...cfg, allowActions: cfg.allowActions !== false };
+}
+
+// saveAIConfig validates the input and persists it encrypted under the
+// aiConfigId slot. Throws AIConfigMissingError when a required field is
+// missing so the UI can surface the error consistently.
+export async function saveAIConfig(cfg: AIConfig): Promise<void> {
+  validateAIConfig(cfg);
+  const sanitized: AIConfig = {
+    endpoint: cfg.endpoint.trim().replace(/\/+$/, ""),
+    apiKey: cfg.apiKey,
+    model: cfg.model.trim(),
+    contextSize: Math.max(1, Math.floor(cfg.contextSize)),
+    allowActions: cfg.allowActions !== false,
+    pricePerMillionTokens: cfg.pricePerMillionTokens,
+    inputPricePerMillionTokens: cfg.inputPricePerMillionTokens,
+    outputPricePerMillionTokens: cfg.outputPricePerMillionTokens,
+    advanced: cfg.advanced ? sanitizeAIAdvanced(cfg.advanced) : undefined,
+    proactiveInsightsSummary: cfg.proactiveInsightsSummary === true,
+  };
+  await saveConfigurationById(aiConfigId, JSON.stringify(sanitized), true);
+}
+
+// cleanAIConfig removes the AI configuration slot.
+export async function cleanAIConfig(): Promise<void> {
+  return deleteConfigurationById(aiConfigId);
+}
+
+export async function loadInsightCardData(): Promise<string | undefined> {
+  return (await getConfigurationById(insightCardId))?.data;
+}
+
+export async function saveInsightCardData(data: string): Promise<void> {
+  await saveConfigurationById(insightCardId, data, true);
+}
+
+const RESERVED_HEADERS = new Set([
+  "authorization",
+  "host",
+  "cookie",
+  "content-length",
+  "transfer-encoding",
+  "connection",
+  "expect",
+  "upgrade",
+]);
+
+function sanitizeAIAdvanced(advanced: AIAdvancedOptions): AIAdvancedOptions {
+  const out: AIAdvancedOptions = {};
+  if (typeof advanced.temperature === "number") {
+    out.temperature = advanced.temperature;
+  }
+  if (typeof advanced.top_p === "number") {
+    out.top_p = advanced.top_p;
+  }
+  if (advanced.headers && typeof advanced.headers === "object") {
+    out.headers = Object.fromEntries(
+      Object.entries(advanced.headers).filter(
+        ([k, v]) => typeof v === "string" && !RESERVED_HEADERS.has(k.toLowerCase()),
+      ),
+    );
+  }
+  if (advanced.extraBody && typeof advanced.extraBody === "object") {
+    out.extraBody = { ...advanced.extraBody };
+  }
+  if (
+    advanced.provider === "openai" ||
+    advanced.provider === "anthropic" ||
+    advanced.provider === "custom"
+  ) {
+    out.provider = advanced.provider;
+  }
+  return out;
+}
+
+export async function getConfiguration(): Promise<GlobalConfig | undefined> {
+  const activeModels = await getConfigurationModelsByIds(
+    activeConfigurationIds,
+  );
+  const modelsById = new Map(
+    activeModels.map((model) => [String(model.id), model]),
+  );
+  const [exchangesModel, walletsModel, stockModel] = await Promise.all([
+    decryptConfigurationModel(modelsById.get(exchangesConfigId)),
+    decryptConfigurationModel(modelsById.get(walletsConfigId)),
+    decryptConfigurationModel(modelsById.get(stockConfigId)),
+  ]);
+  const generalModel = modelsById.get(generalConfigId);
+  const stockConfig = stockModel?.data
+    ? (yaml.parse(stockModel.data) as StockConfig)
+    : { brokers: [] };
+
+  // new-format exists: merge and return
+  if (exchangesModel || walletsModel || generalModel) {
+    const exchanges = exchangesModel
+      ? yaml.parse(exchangesModel.data)
+      : { exchanges: [] };
+    const wallets = walletsModel ? yaml.parse(walletsModel.data) : {};
+    const general = generalModel
+      ? yaml.parse(generalModel.data)
+      : { configs: { groupUSD: false }, others: [] };
+
+    return {
+      ...exchanges,
+      ...wallets,
+      ...general,
+      stockConfig,
+    } as GlobalConfig;
+  }
+
+  // fallback: legacy id=1
+  const legacyModel = await getConfigurationById(generalFixId);
+  if (!legacyModel) {
+    return;
+  }
+
+  const cfg = yaml.parse(legacyModel.data) as GlobalConfig;
+  cfg.stockConfig = stockConfig;
+  await migrateConfigurationToSplit(cfg);
+  return cfg;
+}
+
+type PreparedConfigurationWrite = {
+  rows: { id: string; data: string }[];
+};
+type ConfigurationWithCostBasisMethod = GlobalConfig & { costBasisMethod?: CostBasisMethod };
+
+function splitConfiguration(cfg: GlobalConfig) {
+  const exchangesData = yaml.stringify({ exchanges: cfg.exchanges });
+  const walletsData = yaml.stringify(
+    Object.fromEntries(
+      walletKeys.filter((key) => key in cfg).map((key) => [key, cfg[key]]),
+    ),
+  );
+  const generalData = yaml.stringify({
+    configs: cfg.configs,
+    others: cfg.others,
+  });
+  const stockData = yaml.stringify(cfg.stockConfig ?? { brokers: [] });
+
+  return { exchangesData, walletsData, generalData, stockData };
+}
+
+async function prepareConfigurationWrite(
+  cfg: GlobalConfig,
+): Promise<PreparedConfigurationWrite> {
+  const costBasisMethod = (cfg as ConfigurationWithCostBasisMethod).costBasisMethod;
+  if (costBasisMethod !== undefined && !["FIFO", "LIFO", "HIFO", "AVERAGE"].includes(costBasisMethod)) {
+    throw new Error("Invalid cost basis method in configuration");
+  }
+  const { exchangesData, walletsData, generalData, stockData } =
+    splitConfiguration(cfg);
+  const [encryptedExchanges, encryptedWallets, encryptedStock] =
+    await Promise.all([
+      invoke<string>("encrypt", { data: exchangesData }),
+      invoke<string>("encrypt", { data: walletsData }),
+      invoke<string>("encrypt", { data: stockData }),
+    ]);
+
+  return {
+    rows: [
+      { id: exchangesConfigId, data: encryptedExchanges },
+      { id: walletsConfigId, data: encryptedWallets },
+      { id: generalConfigId, data: generalData },
+      { id: stockConfigId, data: encryptedStock },
+      ...(costBasisMethod ? [{ id: costBasisMethodId, data: costBasisMethod }] : []),
+    ],
+  };
+}
+
+async function writePreparedConfiguration(
+  writeDatabase: WriteDatabase,
+  prepared: PreparedConfigurationWrite,
+  deleteLegacy: boolean,
+): Promise<void> {
+  const valuesClause = prepared.rows.map(() => "(?, ?)").join(", ");
+  await writeDatabase.execute(
+    `INSERT INTO configuration (id, data) VALUES ${valuesClause} ON CONFLICT(id) DO UPDATE SET data = excluded.data`,
+    prepared.rows.flatMap(({ id, data }) => [id, data]),
+  );
+  if (deleteLegacy) {
+    await writeDatabase.execute(`DELETE FROM configuration WHERE id = ?`, [
+      generalFixId,
+    ]);
+  }
+}
+
+export async function runWithPreparedConfigurationWrite<T>(
+  cfg: GlobalConfig,
+  operation: (
+    writeDatabase: WriteDatabase,
+    writeConfiguration: (deleteLegacy?: boolean) => Promise<void>,
+  ) => Promise<T>,
+): Promise<T> {
+  return runWithEncryptionWriteGate(async () => {
+    const prepared = await prepareConfigurationWrite(cfg);
+    return runPortfolioInputWrite((writeDatabase) =>
+      operation(writeDatabase, (deleteLegacy = false) =>
+        writePreparedConfiguration(writeDatabase, prepared, deleteLegacy),
+      ),
+    );
+  });
+}
+
+export async function saveConfiguration(cfg: GlobalConfig) {
+  return runWithPreparedConfigurationWrite(
+    cfg,
+    (_writeDatabase, writeConfiguration) => writeConfiguration(),
+  );
+}
+
+export async function getStockConfig(): Promise<StockConfig> {
+  const model = await getConfigurationById(stockConfigId);
+  if (!model?.data) {
+    return { brokers: [] };
+  }
+  return yaml.parse(model.data) as StockConfig;
+}
+
+export async function saveStockConfig(cfg: StockConfig) {
+  return savePortfolioInputConfigurationById(
+    stockConfigId,
+    yaml.stringify(cfg),
+  );
+}
+
+export async function parseRawConfiguration(data: string) {
+  let raw = data;
+  if (raw.startsWith(prefix)) {
+    try {
+      raw = await invoke<string>("decrypt", { data: raw });
+    } catch {
+      // The data was encrypted with a different key — ask the user for
+      // the original export key so we can still import it.
+      const customKey = window.prompt?.(
+        "The imported configuration was encrypted with a different key.\n" +
+        "Please enter the encryption key that was used when exporting:",
+      );
+      if (!customKey) throw new Error("Import cancelled: no decryption key provided");
+      raw = await invoke<string>("decrypt_with_key", { data: raw, key: customKey });
+    }
+  }
+  return yaml.parse(raw) as ConfigurationWithCostBasisMethod;
+}
+
+// used for import data
+export async function importRawConfiguration(data: string) {
+  const cfg = await parseRawConfiguration(data);
+  await runWithPreparedConfigurationWrite(
+    cfg,
+    (_writeDatabase, writeConfiguration) => writeConfiguration(true),
+  );
+}
+
+async function migrateConfigurationToSplit(cfg: GlobalConfig) {
+  await runWithPreparedConfigurationWrite(
+    cfg,
+    (_writeDatabase, writeConfiguration) => writeConfiguration(true),
+  );
+}
+
+async function saveConfigurationById(
+  id: string,
+  cfg: string,
+  encrypt = true,
+  portfolioInput = false,
+) {
+  await runWithEncryptionWriteGate(async () => {
+    const saveStr = encrypt
+      ? await invoke<string>("encrypt", { data: cfg })
+      : cfg;
+
+    const write = (writeDatabase: WriteDatabase) =>
+      writeDatabase.execute(
+        `INSERT OR REPLACE INTO configuration (id, data) VALUES (?, ?)`,
+        [id, saveStr],
+      );
+    if (portfolioInput) {
+      await runPortfolioInputWrite(write);
+    } else {
+      await executeWrite(
+        `INSERT OR REPLACE INTO configuration (id, data) VALUES (?, ?)`,
+        [id, saveStr],
+      );
+    }
+  });
+}
+
+async function deleteConfigurationById(id: string, portfolioInput = false) {
+  await runWithEncryptionWriteGate(async () => {
+    if (portfolioInput) {
+      await runPortfolioInputWrite((writeDatabase) =>
+        writeDatabase.execute(`DELETE FROM configuration WHERE id = ?`, [id]),
+      );
+    } else {
+      await executeWrite(`DELETE FROM configuration WHERE id = ?`, [id]);
+    }
+  });
+}
+
+async function savePortfolioInputConfigurationById(
+  id: string,
+  data: string,
+  encrypt = true,
+) {
+  await saveConfigurationById(id, data, encrypt, true);
+}
+
+async function deletePortfolioInputConfigurationById(id: string) {
+  await deleteConfigurationById(id, true);
+}
+
+export async function exportConfigurationString(): Promise<string | undefined> {
+  const cfg = await getConfiguration();
+  if (!cfg) {
+    return;
+  }
+  const data = yaml.stringify({ ...cfg, costBasisMethod: await getCostBasisMethod() });
+  return invoke<string>("encrypt", { data });
+}
+
+async function getConfigurationById(
+  id: string,
+): Promise<ConfigurationModel | undefined> {
+  const model = await getConfigurationModelById(id);
+  return decryptConfigurationModel(model);
+}
+
+async function decryptConfigurationModel(
+  model?: ConfigurationModel,
+): Promise<ConfigurationModel | undefined> {
+  if (!model) {
+    return;
+  }
+
+  const cfg = model.data;
+
+  // legacy logic
+  if (!cfg.startsWith(prefix)) {
+    return model;
+  }
+
+  // decrypt data
+  return invoke<string>("decrypt", { data: cfg })
+    .then((res) => {
+      return {
+        ...model,
+        data: res,
+      };
+    })
+    .catch((err) => {
+      if ((typeof err === "string" && err.includes("not ent")) || (err instanceof Error && err.message.includes("not ent"))) {
+        return model;
+      }
+      throw err;
+    });
+}
+
+export async function getInitialQueryDateRange(): Promise<{
+  size: number;
+  dr: DateRange;
+}> {
+  const size = await queryQuerySize();
+
+  const days = await ASSET_HANDLER.getHasDataCreatedAtDates(size);
+  const from = new Date(Math.min(...days.map((d) => d.getTime())));
+  const to = new Date(Math.max(...days.map((d) => d.getTime())));
+
+  return {
+    size,
+    dr: {
+      from,
+      to,
+    },
+  };
+}
+
+export async function queryQuerySize(): Promise<number> {
+  const model = await getConfigurationById(querySizeId);
+  return model?.data ? parseInt(model.data) : 10;
+}
+
+export async function saveQuerySize(size: number) {
+  await saveConfigurationById(querySizeId, size.toString(), false);
+}
+
+export async function getCostBasisMethod(): Promise<CostBasisMethod> {
+  const method = (await getConfigurationById(costBasisMethodId))?.data;
+  return method === "LIFO" || method === "HIFO" || method === "AVERAGE"
+    ? method
+    : "FIFO";
+}
+
+export async function saveCostBasisMethod(method: CostBasisMethod): Promise<void> {
+  if (!["FIFO", "LIFO", "HIFO", "AVERAGE"].includes(method)) {
+    throw new Error("Invalid cost basis method");
+  }
+  await saveConfigurationById(costBasisMethodId, method, false);
+}
+
+export async function updateAllCurrencyRates() {
+  return CURRENCY_RATE_HANDLER.updateAllCurrencyRates();
+}
+
+export async function listAllCurrencyRates() {
+  return CURRENCY_RATE_HANDLER.listCurrencyRates();
+}
+
+export function getDefaultCurrencyRate() {
+  return CURRENCY_RATE_HANDLER.getDefaultCurrencyRate();
+}
+
+export async function queryPreferCurrency(): Promise<CurrencyRateDetail> {
+  const model = await getConfigurationById(preferCurrencyId);
+  const pc = model?.data;
+
+  if (!pc) {
+    const defaultRate = CURRENCY_RATE_HANDLER.getDefaultCurrencyRate();
+    cachePreferCurrency(defaultRate.currency);
+    return defaultRate;
+  }
+
+  const rate = await CURRENCY_RATE_HANDLER.getCurrencyRateByCurrency(pc);
+  cachePreferCurrency(rate.currency);
+  return rate;
+}
+
+export async function savePreferCurrency(currency: string) {
+  cachePreferCurrency(currency);
+  await saveConfigurationById(preferCurrencyId, currency, false);
+}
+
+export function getCachedPreferCurrency(): string | undefined {
+  try {
+    const cached = localStorage.getItem(preferCurrencyLocalStorageKey)?.trim();
+    return cached ? cached.toUpperCase() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function cachePreferCurrency(currency: string | null) {
+  if (!currency) {
+    try {
+      localStorage.removeItem(preferCurrencyLocalStorageKey);
+    } catch {
+      // Ignore cache write failures, persisted configuration remains source of truth.
+    }
+    return;
+  }
+
+  try {
+    localStorage.setItem(preferCurrencyLocalStorageKey, currency.toUpperCase());
+  } catch {
+    // Ignore cache write failures, persisted configuration remains source of truth.
+  }
+}
+
+export async function getClientIDConfiguration(): Promise<string | undefined> {
+  const model = await getConfigurationById(clientInfoFixId);
+  return model?.data;
+}
+
+async function getConfigurationModelById(
+  id: string,
+): Promise<ConfigurationModel | undefined> {
+  const configurations = await getConfigurationModelsByIds([id]);
+  return configurations[0];
+}
+
+async function getConfigurationModelsByIds(
+  ids: readonly string[],
+): Promise<ConfigurationModel[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+  const db = await getDatabase();
+  return db.select<ConfigurationModel[]>(
+    `SELECT * FROM configuration WHERE id IN (${ids.map(() => "?").join(", ")})`,
+    [...ids],
+  );
+}
+
+export async function getStableCoins(): Promise<string[]> {
+  const model = await getConfigurationById(stableCoinsId);
+  return model?.data ? model.data.split(",") : [];
+}
+
+export async function saveStableCoins(stableCoins: string[]) {
+  return saveConfigurationById(stableCoinsId, stableCoins.join(","), false);
+}
+
+// blacklist
+function normalizeBlacklistSymbols(symbols: string[]): string[] {
+  return Array.from(
+    new Set(
+      symbols.map((s) => s.trim().toUpperCase()).filter((s) => s.length > 0),
+    ),
+  );
+}
+
+export async function getBlacklistCoins(): Promise<string[]> {
+  const model = await getConfigurationById(blacklistCoinsId);
+  return model?.data ? normalizeBlacklistSymbols(model.data.split(",")) : [];
+}
+
+export async function saveBlacklistCoins(symbols: string[]) {
+  return savePortfolioInputConfigurationById(
+    blacklistCoinsId,
+    normalizeBlacklistSymbols(symbols).join(","),
+    false,
+  );
+}
+
+export async function addToBlacklist(symbol: string) {
+  const current = await getBlacklistCoins();
+  await saveBlacklistCoins([...current, symbol]);
+}
+
+export async function removeFromBlacklist(symbol: string) {
+  const upper = symbol.trim().toUpperCase();
+  const current = await getBlacklistCoins();
+  await saveBlacklistCoins(current.filter((s) => s.toUpperCase() !== upper));
+}
+
+// license
+export async function saveLicense(license: string) {
+  return savePortfolioInputConfigurationById(licenseFixId, license);
+}
+
+// license
+export async function cleanLicense() {
+  return deletePortfolioInputConfigurationById(licenseFixId);
+}
+
+// auto backup
+export async function getAutoBackupDirectory(): Promise<string | undefined> {
+  return getConfigurationModelById(autoBackupId).then((m) => m?.data);
+}
+
+// auto backup
+export async function saveAutoBackupDirectory(d: string) {
+  return saveConfigurationById(autoBackupId, d, false);
+}
+
+// auto backup
+export async function cleanAutoBackupDirectory() {
+  return deleteConfigurationById(autoBackupId);
+}
+
+// if user has pro license, return license string
+export async function getLicenseIfIsPro(): Promise<string | undefined> {
+  const model = await getConfigurationById(licenseFixId);
+  return model?.data;
+}
+
+// get last auto backup time, if never backup, return 1970-01-01
+export async function getLastAutoBackupAt(): Promise<Date> {
+  const model = await getConfigurationById(lastAutoBackupAtId);
+  return model?.data
+    ? new Date(model.data)
+    : new Date("1970-01-01T00:00:00.000Z");
+}
+
+// if d is undefined, use latest time
+export async function saveLastAutoBackupAt(d?: Date) {
+  return saveConfigurationById(
+    lastAutoBackupAtId,
+    d ? d.toISOString() : new Date().toISOString(),
+    false,
+  );
+}
+
+// get last auto import time, if never backup, return 1970-01-01
+export async function getLastAutoImportAt(): Promise<Date> {
+  const model = await getConfigurationById(lastAutoImportAtId);
+  return model?.data
+    ? new Date(model.data)
+    : new Date("1970-01-01T00:00:00.000Z");
+}
+
+// if d is undefined, use latest time
+export async function saveLastAutoImportAt(d?: Date) {
+  return saveConfigurationById(
+    lastAutoImportAtId,
+    d ? d.toISOString() : new Date().toISOString(),
+    false,
+  );
+}
+
+export async function getImportedPartHashes(): Promise<
+  Record<string, Record<string, string>>
+> {
+  const model = await getConfigurationById(importedPartHashesId);
+  if (!model?.data) return {};
+  try {
+    const hashes: unknown = JSON.parse(model.data);
+    return hashes && typeof hashes === "object" && !Array.isArray(hashes)
+      ? (hashes as Record<string, Record<string, string>>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function saveImportedPartHash(
+  client: string,
+  month: string,
+  sha256: string,
+) {
+  const hashes = await getImportedPartHashes();
+  hashes[client] = { ...hashes[client], [month]: sha256 };
+  await saveConfigurationById(
+    importedPartHashesId,
+    JSON.stringify(hashes),
+    false,
+  );
+}
+
+export async function saveQuoteColor(
+  qc: "green-up-red-down" | "red-up-green-down",
+) {
+  const val = qc === "green-up-red-down" ? 0 : 1;
+
+  return saveConfigurationById(quoteColorId, val.toString(), false);
+}
+
+export async function getQuoteColor(): Promise<
+  "green-up-red-down" | "red-up-green-down"
+> {
+  const model = await getConfigurationById(quoteColorId);
+  const val = model?.data ? parseInt(model.data) : 0;
+
+  return val === 0 ? "green-up-red-down" : "red-up-green-down";
+}
+
+export function saveTheme(theme: Theme) {
+  localStorage.setItem(themeLocalStorageKey, theme);
+}

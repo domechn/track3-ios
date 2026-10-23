@@ -1,0 +1,101 @@
+<p align="center">
+    <img src="src-tauri/app-icon.png" width="150">
+</p>
+
+<h1 align="center">Track3</h1>
+
+<div align="center">
+
+### Track crypto and stock assets across exchanges, brokers and wallets
+
+[![author][author-image]][author-url]
+[![license][license-image]][license-url]
+[![release][release-image]][release-url]
+[![last commit][last-commit-image]][last-commit-url]
+[![wiki][wiki-image]][wiki-url]
+
+[author-image]: https://img.shields.io/badge/author-domechn-blue.svg
+[author-url]: https://github.com/domechn
+[license-image]: https://img.shields.io/github/license/domechn/track3?color=blue
+[license-url]: https://github.com/domechn/track3/blob/main/LICENSE
+[release-image]: https://img.shields.io/github/v/release/domechn/track3?color=blue
+[release-url]: https://github.com/domechn/track3/releases/latest
+[last-commit-image]: https://img.shields.io/github/last-commit/domechn/track3?label=last%20commit
+[last-commit-url]: https://github.com/domechn/track3/commits
+[wiki-image]: https://img.shields.io/badge/wiki-by%20deepwiki-green?style=flat
+[wiki-url]: https://deepwiki.com/domechn/track3
+
+</div>
+
+## Features
+
+1. **Local-first desktop app. Portfolio assets and transactions are stored in a local SQLite database by default; no Track3 account is required.**
+2. Support Binance, OKX, Bitget, Kraken, Gate.io, Coinbase, Bybit, HTX and MEXC. **Readonly access is enough**. API key setup references: [Binance](https://www.binance.com/en-BH/support/faq/how-to-create-api-360002502072), [OKX](https://use.autoview.com/hc/en-us/articles/360004576632-OKEx-Creating-an-API), [Gate.io](https://www.gate.io/help/guide/common/17521/how-to-utilize-api), [MEXC](https://www.mexc.com/user/openapi)
+3. Support BTC, ETH, BNB, SOL and Doge ( Base Users ).
+4. Support stock broker positions from Interactive Brokers (IBKR) through Flex Web Service imports with Query ID and Token.
+5. Support dozens of charts to analyze data such as asset allocation, wallet proportion, position changes, profit and loss, and more.
+6. Support data backup and restore. Users can export data to local files and import them to other devices, or share them between multiple devices by cloud drive ( e.g. iCloud ).
+
+### Automatic backup format
+
+Automatic backups use `<autoBackupDir>/track3-backup/<clientID>/`. Each client has its own `metadata.json` and a `data/` directory with one JSON part per UTC month (`YYYY-MM.<hash8>.json`). Metadata lists each part's record count, UTF-8 byte length, and SHA-256 hash of the exact part text. Its `metaHash` is SHA-256 of the JSON without `metaHash`, with object keys sorted. Track3 writes changed parts first and replaces metadata last; imports verify hashes before loading each part.
+
+Manual exports remain single JSON files. Upgraded installations still import the older `track3-auto-backup.json` when its client has no valid v2 backup. This sharing is one-way: older installations must upgrade to receive new automatic backups.
+
+## Supported Sources
+
+- Centralized exchanges: Binance, OKX, Bitget, Kraken, Gate.io, Coinbase, Bybit, HTX, MEXC
+- Wallets: BTC, ETH, BNB, SOL, Doge
+- Stock brokers: Interactive Brokers (IBKR)
+
+## Pro Users
+
+1. Support 85+ EVM compatible Chains: Ethereum, BSC, Polygon, Fantom, Arbitrum, Avalanche, Gnosis, Celo, OKC, Cronos, Optimism, Cardano, Terra 2.0, Cosmos, Osmosis, Base, and most ERC20 tokens on these chains.
+2. Support TRON wallets and TRC20 assets.
+3. Support per-exchange and per-wallet asset views.
+4. Support real-time portfolio value in the top bar.
+5. Support real-time prices for all tracked assets during refresh.
+
+## Installation
+
+[Download In Release Page](https://github.com/domechn/track3/releases)
+
+## Screenshots
+
+![sc1](./images/demo/sc1.jpg)
+![sc2](./images/demo/sc2.jpg)
+![sc3](./images/demo/sc3.jpg)
+![sc4](./images/demo/sc4.jpg)
+![sc5](./images/demo/sc5.jpg)
+![sc6](./images/demo/sc6.jpg)
+![sc7](./images/demo/sc7.jpg)
+
+### Notice
+
+**Privacy and storage:** Track3 stores portfolio assets and transactions locally in a standard SQLite database; these records are not encrypted by the application. Sensitive configuration values, including exchange credentials and wallet addresses, and chat message content are encrypted by the application before storage. Track3 does not automatically sync configuration data to a Track3 cloud service. Backups, exports, and requests to user-configured services leave the device only when you choose or configure those features.
+
+## Sponsor
+
+- Use this [referral link](https://accounts.binance.com/register?ref=123810997) to register on Binance, both you and i will get 20% discount on trading fees or reward.
+- Use this [referral link](https://www.okx.com/join/7161626) to register on OKX, both you and i will get mystery boxes.
+- Use this [referral link](https://www.gate.io/signup/UAdFU18N?ref_type=103) to register on Gate.io, you will get 10% discount on trading fees or reward.
+
+## Thanks
+
+Thanks for these platform who provide powerful APIs without API Key. Fuck API Key.
+
+- https://blockchain.info
+- https://blockcypher.com
+- https://ankr.com
+- https://helius-rpc.com
+- https://coingecko.com
+- https://solana.com
+- https://jup.ag
+
+# Note
+
+1. If the following error occurs when you open the app for the first time on `Mac`, please execute this command `xattr -cr /Applications/track3.app/` to fix it.
+
+```text
+“track3” is damaged and can’t be opened. You should move it to the Trash.
+```
