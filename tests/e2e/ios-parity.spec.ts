@@ -88,88 +88,133 @@ for (const phone of phones) {
       }
     }
   });
+
+  test(`rebalance disclosures have 44px targets on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page, undefined, false, true);
+    await page.goto("/#/rebalance");
+    await expect(page.getByText("Manual setup", { exact: true })).toBeVisible();
+    for (const title of ["Manual setup", "Details"]) {
+      const summary = page.locator("summary").filter({ hasText: title });
+      if (title === "Details") await summary.scrollIntoViewIfNeeded();
+      const box = (await summary.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test(`first launch adds a holding and refreshes on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page, undefined, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.getByText("There is not enough data")).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-first-launch.png` });
+    await page.getByRole("button", { name: "Go to settings" }).click();
+    await expect(page).toHaveURL(/#\/settings$/);
+    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Data sources" }).click();
+    await page.getByRole("button", { name: "Add Symbol" }).click();
+    const form = page.getByRole("dialog", { name: "Edit custom asset" });
+    await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");
+    await form.getByRole("textbox", { name: "Amount" }).fill("2");
+    await form.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("button", { name: "Edit ETH" })).toBeVisible();
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+  });
+
+  test(`Files export restores on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    const bridge = await installTauriBridge(page);
+    await page.goto("/#/settings/data?section=backup");
+    await page.getByRole("button", { name: "Share JSON" }).click();
+    await expect.poll(bridge.shares).toBe(1);
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await expect(page.getByText("Export data successfully", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Import", exact: true }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Restore data?" });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Restore" }).click();
+    const conflicts = page.getByRole("dialog", { name: "Conflicts Found" });
+    await expect(conflicts).toBeVisible();
+    await conflicts.getByRole("button", { name: "Ignore" }).click();
+    await expect(page.getByText("Import data successfully", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+  });
+
+  test(`a goal, rebalance targets, and assistant reply work from More on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page, undefined, false, true);
+    await page.goto("/#/more");
+    await page.getByRole("link", { name: "Goals & Alerts" }).click();
+    await page.getByRole("button", { name: "Add alert" }).click();
+    const goal = page.getByRole("dialog", { name: "Add alert" });
+    await goal.getByRole("spinbutton", { name: "Threshold" }).fill("50000");
+    await goal.getByRole("button", { name: "Save rule" }).click();
+    await expect(goal).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit" }).first()).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-created-goal.png` });
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
+    await page.getByRole("link", { name: "Rebalance" }).click();
+    await page.getByText("Manual setup", { exact: true }).click();
+    await page.getByRole("button", { name: "Save targets" }).click();
+    await expect(page.getByText("Targets saved.")).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-rebalance.png` });
+    await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
+    await page.getByRole("link", { name: "Assistant" }).click();
+    await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(1);
+    await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.getByText("Hello from SSE")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+    const titleRow = (await page.getByTestId("sidebar-toggle").locator("..").boundingBox())!;
+    const settings = (await page.getByTestId("chat-open-settings").boundingBox())!;
+    expect(settings.y).toBeGreaterThanOrEqual(titleRow.y + titleRow.height);
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-assistant.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+  });
+
+  test(`language and theme choices persist on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page);
+    await page.goto("/#/settings/appearance?section=language");
+    await page.getByRole("radio", { name: "中文" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh");
+    await page.goto("/#/settings/appearance?section=theme");
+    await page.getByText("深色", { exact: true }).click();
+    await page.getByRole("button", { name: "应用修改" }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1, name: "外观" })).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-dark-theme.png` });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+  });
+
+  test(`settings checkboxes and radios have labeled tap areas on iPhone ${phone.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await installTauriBridge(page);
+    for (const [route, ids] of [
+      ["/settings/configuration?section=currency", ["groupUSD", "hideInactive"]],
+      ["/settings/appearance?section=theme", ["system", "light", "dark", "green-up-red-down", "red-up-green-down"]],
+      ["/settings/appearance?section=language", ["language-en", "language-zh"]],
+      ["/settings/data?section=backup", ["exportConfigurationCheckbox", "exportDataCheckbox"]],
+    ] as const) {
+      await page.goto(`/#${route}`);
+      for (const id of ids) {
+        const label = page.locator(`label[for="${id}"]`);
+        await expect(label).toBeVisible();
+        const box = (await label.boundingBox())!;
+        expect(box.width, `${route} ${id} width`).toBeGreaterThanOrEqual(44);
+        expect(box.height, `${route} ${id} height`).toBeGreaterThanOrEqual(44);
+      }
+      const idToTap = route.includes("currency") ? "groupUSD"
+        : route.includes("theme") ? "dark"
+          : route.includes("language") ? "language-zh" : "exportConfigurationCheckbox";
+      const control = page.locator(`[id="${idToTap}"]`);
+      const before = await control.getAttribute("data-state");
+      await page.locator(`label[for="${idToTap}"]`).click();
+      await expect(control).not.toHaveAttribute("data-state", before ?? "");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+    }
+  });
 }
-
-test("first launch leads to adding a custom holding and refreshing", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await installTauriBridge(page, undefined, false, false, true);
-  await page.goto("/#/overview");
-  await expect(page.getByText("There is not enough data")).toBeVisible();
-  await page.screenshot({ path: "test-results/mobile/ios-first-launch.png" });
-  await page.getByRole("button", { name: "Go to settings" }).click();
-  await expect(page).toHaveURL(/#\/settings$/);
-  await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Data sources" }).click();
-  await page.getByRole("button", { name: "Add Symbol" }).click();
-  const form = page.getByRole("dialog", { name: "Edit custom asset" });
-  await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");
-  await form.getByRole("textbox", { name: "Amount" }).fill("2");
-  await form.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("button", { name: "Edit ETH" })).toBeVisible();
-  await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
-});
-
-test("Files export can be restored through the iPhone confirmation flow", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  const bridge = await installTauriBridge(page);
-  await page.goto("/#/settings/data?section=backup");
-  await page.getByRole("button", { name: "Share JSON" }).click();
-  await expect.poll(bridge.shares).toBe(1);
-  await page.getByRole("button", { name: "Export", exact: true }).click();
-  await expect(page.getByText("Export data successfully", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Import", exact: true }).click();
-  const confirm = page.getByRole("alertdialog", { name: "Restore data?" });
-  await expect(confirm).toBeVisible();
-  await confirm.getByRole("button", { name: "Restore" }).click();
-  const conflicts = page.getByRole("dialog", { name: "Conflicts Found" });
-  await expect(conflicts).toBeVisible();
-  await conflicts.getByRole("button", { name: "Ignore" }).click();
-  await expect(page.getByText("Import data successfully", { exact: true })).toBeVisible();
-});
-
-test("a goal, rebalance targets, and assistant reply work from More", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await installTauriBridge(page, undefined, false, true);
-  await page.goto("/#/more");
-  await page.getByRole("link", { name: "Goals & Alerts" }).click();
-  await page.getByRole("button", { name: "Add alert" }).click();
-  const goal = page.getByRole("dialog", { name: "Add alert" });
-  await goal.getByRole("spinbutton", { name: "Threshold" }).fill("50000");
-  await goal.getByRole("button", { name: "Save rule" }).click();
-  await expect(goal).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" }).first()).toBeVisible();
-  await page.screenshot({ path: "test-results/mobile/ios-created-goal.png" });
-  await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
-  await page.getByRole("link", { name: "Rebalance" }).click();
-  await page.getByText("Manual setup", { exact: true }).click();
-  await page.getByRole("button", { name: "Save targets" }).click();
-  await expect(page.getByText("Targets saved.")).toBeVisible();
-  await page.screenshot({ path: "test-results/mobile/ios-rebalance.png" });
-  await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
-  await page.getByRole("link", { name: "Assistant" }).click();
-  await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(1);
-  await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Hello from SSE")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
-  const titleRow = (await page.getByTestId("sidebar-toggle").locator("..").boundingBox())!;
-  const settings = (await page.getByTestId("chat-open-settings").boundingBox())!;
-  expect(settings.y).toBeGreaterThanOrEqual(titleRow.y + titleRow.height);
-  await page.screenshot({ path: "test-results/mobile/ios-assistant.png" });
-});
-
-test("language and theme choices persist across iPhone settings pages", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await installTauriBridge(page);
-  await page.goto("/#/settings/appearance?section=language");
-  await page.getByRole("radio", { name: "中文" }).click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "zh");
-  await page.goto("/#/settings/appearance?section=theme");
-  await page.getByText("深色", { exact: true }).click();
-  await page.getByRole("button", { name: "应用修改" }).click();
-  await expect(page.locator("html")).toHaveClass(/dark/);
-  await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1, name: "外观" })).toBeVisible();
-  await page.screenshot({ path: "test-results/mobile/ios-dark-theme.png" });
-});

@@ -10,7 +10,9 @@ for this worktree is S4 below.
   tests. Settings, Goals and Rebalance have one visible page heading. The
   shared S2 phone row is used in Settings; S3's duplicate row was removed.
   Full-screen editors and confirmation sheets share
-  `src/components/mobile/overlays.tsx`.
+  `src/components/mobile/overlays.tsx` and mount at the document root, so
+  the shell header cannot sit above a source editor. Focused Settings pages
+  rely on the shell's single Back button.
 - The iPhone haptic hook calls the S3 native bridge. The assistant composer
   measures the space above the tab bar as the visual viewport changes. The
   iOS share command accepts the UUID cache folder and export filename
@@ -31,18 +33,19 @@ for this worktree is S4 below.
 - The new Playwright suite checks iPhone SE, 14 and Pro Max viewports,
   navigation, first launch, source creation, refresh, Files flows, goal
   creation, rebalance, chat, language/theme, overflow, safe-area spacing,
-  tab touch targets and browser errors. It saves screenshots in
+  tab touch targets and browser errors. The primary flows run at all three
+  sizes, and disclosure and form-label targets are checked at 44px.
+  A configured but locked sync pill clears the More tab. The Xcode target
+  now supports iPhone only; iPad has no validated layout. It saves screenshots in
   `test-results/mobile/`. CI now installs cached Chromium and runs the
   mobile suites, browser typecheck and Rust pure tests.
-- Baseline macOS run `39963951440` on the previous head built the simulator
-  app and unsigned device IPA, checked native symbols and the committed
-  Xcode project, and launched the app with a rendered empty portfolio
-  screenshot. The job failed only in its final crash-report diagnostic step
-  because the Python heredoc marker was indented incorrectly. S4 fixes that
-  shell script. This worktree's changed head has **not** run on macOS CI
-  yet; the driver must commit and push, then report the new run. Artifact
-  upload remains limited by the repository's storage quota. The screenshot
-  is recoverable from the job log using [RELEASE.md](RELEASE.md).
+- macOS run `39969080654` on head `9a1dc47` passed: the simulator app built
+  and launched with a rendered empty Overview, native symbols and the
+  committed Xcode project passed their checks, and an unsigned IPA built.
+  The web job passed TypeScript, 1,797 Vitest tests, 57 Playwright tests,
+  and 61 Rust pure tests. Artifact uploads failed because the repository
+  storage quota is full; the launch screenshot was recovered from the log.
+  The fixes in this worktree have **not** run on macOS CI yet.
 - A signed physical-device run remains necessary for Face ID/Touch ID
   and passcode fallback, Keychain migration and restore, app-switcher cover,
   notification delivery and badge, haptics, share sheet, Files/iCloud Drive,
@@ -57,14 +60,16 @@ for this worktree is S4 below.
   warning. The production preview passed the seven-route sweep at 375, 390
   and 430 CSS pixels.
 - `cargo test --locked -p track3-pure-tests --lib` passed: 61 tests,
-  including the iOS share-path rule. Full Vitest passed: 1,797 tests in
-  217 files. The three mobile Playwright files passed: 57 tests. They saved
-  69 screenshots under `test-results/mobile/`, including first launch,
+  including the iOS share-path rule, before this follow-up; Rust was not
+  rerun because this follow-up changes no Rust code. Full Vitest passed:
+  1,798 tests in 217 files. The three mobile Playwright files passed:
+  72 tests. They saved 79 screenshots under `test-results/mobile/`, including first launch,
   portfolio, history, profit, goal creation, assistant reply and dark theme.
-  Overview, History, profit, assistant and dark-theme screenshots were
-  inspected; the route sweep also checked browser errors, overflow,
-  safe-area spacing and primary 44px touch controls.
-- The changed head still needs the macOS iOS workflow after the driver
+  The earlier S4 review inspected Overview, History, profit, assistant and
+  dark-theme screenshots. The current browser run checked console errors,
+  overflow, safe-area spacing, 44px labels and disclosures, and the locked
+  sync pill's clearance above the tab bar.
+- The current worktree still needs the macOS iOS workflow after the driver
   commits and pushes. No signed-device claim is made from the local checks.
 
 ## S1 foundation
@@ -191,16 +196,13 @@ and signed build checks remain pending.
 ## S3 feature screens and native integrations
 
 The S2 shell and S3 screens are now combined in this worktree. Native behavior
-still needs simulator and device validation. The last S3 iOS run
-`39951716004` reached the final committed-project check, which failed because
-Tauri rewrote the Xcode product name and plist versions. The combined project
-restores the committed values before that check; CI has not rerun it yet.
+still needs signed-device validation. The S3 iOS run `39951716004` failed
+the committed-project check; the later S4 run `39969080654` passed it.
 
 - iPhone Settings now opens focused pages for data sources, base currency,
   appearance, language, blacklist, Pro, assistant configuration, security,
   backup, sync, and About. Desktop settings retain their existing layout.
-  `src/components/mobile-compat/` provides the page and dialog patterns used
-  by these screens alongside the S2 mobile components.
+  `src/components/mobile/` provides the page, row, and overlay patterns.
 - Exchanges, wallets, IBKR Flex, and custom holdings have phone source lists
   and full-screen add/edit forms. Provider selection precedes credentials;
   credential fields suppress autocorrection and mask secrets. Existing source
@@ -261,19 +263,12 @@ restores the committed values before that check; CI has not rerun it yet.
   WKWebView work in the background, so scheduled execution after suspension
   is not guaranteed; no BGTaskScheduler integration exists.
 - Keychain migration, native lock, privacy cover, badge, haptics, share sheet,
-  Files visibility, and background behavior still need simulator and
-  physical-device checks. In particular, cold-start lock coverage must be
-  checked on a device after launch with lock enabled. The current native and
-  project-file fixes are pending a macOS CI run;
-  no rendered simulator screenshot is verified on this worktree yet. A
-  Keychain failure leaves the portfolio locked; the debug startup log reports
-  its OSStatus.
-  Swift and the iOS app can only be compiled by the macOS CI job after the
-  driver commits and pushes this worktree.
-- End-to-end reachability for the whole README feature list needs validation
-  with the combined S2 navigation and S3 settings pages.
-- The assistant chat height still uses a fixed shell offset. It must be
-  checked against the combined header and tab bar.
+  Files visibility, and background behavior still need physical-device
+  checks. In particular, cold-start lock coverage must be
+  checked on a device after launch with lock enabled. The S4 simulator
+  screenshot verifies launch and empty Overview, but cannot establish the
+  signed-device behaviors above. A Keychain failure leaves the portfolio
+  locked; the debug startup log reports its OSStatus.
 
 ### S3 local checks
 

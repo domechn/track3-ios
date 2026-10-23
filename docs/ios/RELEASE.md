@@ -12,14 +12,15 @@ the ready marker, no crash report, and an unsigned device IPA. A CI success
 does not replace the signed physical-device checks below.
 
 The `iOS foundation` workflow builds an unsigned simulator `.app` bundle and
-unsigned device `.ipa`. Routine runs attempt to upload simulator screenshots
-and launch logs. A manual `workflow_dispatch` run also attempts to upload
-`Track3-simulator.app.zip` and `Track3-unsigned.ipa`.
+unsigned device `.ipa`. Every run attempts to upload simulator screenshots,
+launch logs, `Track3-simulator.app.zip`, and `Track3-unsigned.ipa`.
 The GitHub Actions artifact quota was exhausted in run `39926851914`;
 the repository owner must clear old artifacts before these uploads can succeed.
 Upload errors are nonfatal so the launch diagnostics still reach the run log.
 The unsigned device IPA will not install on a device without valid Apple
 signing and a provisioning profile.
+The Xcode target currently supports iPhone only (`TARGETED_DEVICE_FAMILY=1`);
+an iPad layout requires separate design and validation before enabling iPad.
 
 ## Signed device checks before TestFlight
 

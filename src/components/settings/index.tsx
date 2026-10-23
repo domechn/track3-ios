@@ -14,7 +14,6 @@ import {
   InfoCircledIcon,
   RocketIcon,
   UpdateIcon,
-  ChevronLeftIcon,
 } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
@@ -124,10 +123,6 @@ const App = () => {
         ) : (
           <>
             <header className="space-y-3 px-1 pt-1">
-              <Link to="/settings" className="inline-flex min-h-11 items-center gap-1 text-primary">
-                <ChevronLeftIcon aria-hidden="true" className="h-5 w-5" />
-                {t("settings.title")}
-              </Link>
               <h1 className="text-3xl font-bold tracking-tight">{t(title ?? "settings.title")}</h1>
             </header>
             <Outlet />

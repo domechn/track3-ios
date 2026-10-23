@@ -35,8 +35,8 @@ iPhone control.
 
 The Playwright iPhone suite saves viewport images in `test-results/mobile/`,
 including `ios-se-overview.png`, `ios-14-history.png`,
-`ios-pro-max-summary.png`, `ios-pro-max-profit.png`, `ios-first-launch.png`,
-`ios-created-goal.png`, and `ios-assistant.png`. These are generated test
+`ios-pro-max-summary.png`, `ios-pro-max-profit.png`, `ios-se-first-launch.png`,
+`ios-14-created-goal.png`, and `ios-pro-max-assistant.png`. These are generated test
 artifacts, so run the browser suite to create them locally. The macOS CI
 simulator job saves `artifacts/iphone-initial.png` and
 `artifacts/iphone-launch.png` and attempts to upload them with its run.
@@ -99,6 +99,7 @@ backup files live in Track3's Documents folder in Files. An iCloud Drive copy
 must be moved there by the user. Camera address scanning is not implemented;
 wallet addresses can be typed or pasted. Desktop window controls, tray
 features, keyboard shortcuts and the in-app updater have no iPhone control.
+The Xcode target supports iPhone only; an iPad layout has not been designed or tested.
 External digital subscription checkout links are excluded from the iPhone
 app; existing license entry remains available.
 

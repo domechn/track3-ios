@@ -39,6 +39,8 @@ test("More opens every iPhone settings section through the Settings hub", async 
   }
   await sections.getByRole("link", { name: "Language" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(1);
   await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
   await expect(page).toHaveURL(/#\/settings$/);
   await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
@@ -76,6 +78,8 @@ test("an edge swipe inside a source editor leaves the form open", async ({ page,
   await page.getByRole("button", { name: "Add exchange" }).click();
   const editor = page.getByRole("dialog", { name: "Edit data source" });
   await expect(editor).toBeVisible();
+  expect((await editor.boundingBox())!.y).toBe(0);
+  expect(await page.evaluate(() => document.elementFromPoint(100, 15)?.closest('[role="dialog"]')?.getAttribute("aria-label"))).toBe("Edit data source");
   const cdp = await context.newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", {
     type: "touchStart", touchPoints: [{ x: 20, y: 250 }],
@@ -91,6 +95,19 @@ test("an edge swipe inside a source editor leaves the form open", async ({ page,
   });
   await expect(editor).toBeVisible();
   await expect(page).toHaveURL(/#\/settings\/configuration\?section=sources$/);
+});
+
+test("locked sync status stays clear of the More tab and tab bar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page, undefined, false, false, false, true);
+  await page.goto("/#/overview");
+  const pill = page.getByRole("button", { name: "Sync locked" });
+  await expect(pill).toBeVisible();
+  const pillBox = (await pill.boundingBox())!;
+  const tabBox = (await page.locator(".mobile-tab-bar").boundingBox())!;
+  expect(pillBox.y + pillBox.height).toBeLessThanOrEqual(tabBox.y);
+  await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "More" }).click();
+  await expect(page).toHaveURL(/#\/more$/);
 });
 
 test("switching iPhone tabs uses the native haptic bridge", async ({ page }) => {

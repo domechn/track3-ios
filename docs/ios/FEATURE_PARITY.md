@@ -8,6 +8,7 @@ or native iOS services. Tests listed here cover the named behavior or its
 shared data path; a browser test with mocked Tauri IPC does not prove a
 physical device integration. Native checks are recorded in
 [PROGRESS.md](PROGRESS.md).
+The Xcode target is iPhone only. iPad layouts are outside this parity claim.
 
 ## Navigation and portfolio pages
 

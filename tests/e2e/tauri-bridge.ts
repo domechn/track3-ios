@@ -9,7 +9,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -35,6 +35,11 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   db.run("INSERT INTO configuration (id, data) VALUES (11, ?)", [
     "btc: {addresses: []}\nerc20: {addresses: []}\nsol: {addresses: []}\ndoge: {addresses: []}\ntrc20: {addresses: []}\nton: {addresses: []}\nsui: {addresses: []}\n",
   ]);
+  if (seedLockedSync) {
+    db.run("INSERT INTO configuration (id, data) VALUES (991, ?)", [
+      `!ent:e2e:${JSON.stringify({ enabled: true, endpoint: "https://s3.example.test", bucket: "track3", region: "us-east-1", accessKeyId: "e2e-access", secretAccessKey: "e2e-secret" })}`,
+    ]);
+  }
   if (emptyPortfolio) db.run("DELETE FROM assets_v2");
   if (seedReviewContent) {
     db.run(`INSERT INTO chat_sessions (id, title, createdAt, updatedAt, pinned, messageCount, preview)

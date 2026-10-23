@@ -24,3 +24,10 @@ it("dismisses a sheet when its backdrop is tapped", () => {
   fireEvent.click(screen.getByRole("alertdialog"));
   expect(dismiss).toHaveBeenCalledTimes(1);
 });
+
+it("mounts full-screen overlays at the document root", () => {
+  render(<div><ModalPage title="Edit" onDismiss={() => {}}>Edit form</ModalPage>
+    <ConfirmSheet title="Delete" onDismiss={() => {}}>Delete form</ConfirmSheet></div>);
+  expect(screen.getByRole("dialog", { name: "Edit" }).parentElement).toBe(document.body);
+  expect(screen.getByRole("alertdialog", { name: "Delete" }).parentElement).toBe(document.body);
+});

@@ -250,7 +250,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
         <>
           {!holdings.length && <p className="text-sm text-muted-foreground">{t("rebalance.noData")}</p>}
           <details open={manualOpen} onToggle={(event) => setManualOpen(event.currentTarget.open)} className="order-last rounded-lg border bg-card">
-            <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.manual")}</summary>
+            <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">{t("aiSetup.manual")}</summary>
           <Card className="border-0 shadow-none">
             <CardHeader className="px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -430,7 +430,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
               <Card>
                 <CardContent className="px-0 pb-3 pt-0">
                   <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
-                    <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.details")}</summary>
+                    <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">{t("aiSetup.details")}</summary>
                   {isIOS() ? <ul aria-label={t("rebalance.suggestions")} className="space-y-3 px-4">
                     {result.rows.map((row) => (
                       <li key={`${row.assetType ?? "cash"}:${row.symbol}`} aria-label={row.symbol} className="min-w-0 space-y-3 rounded-2xl border bg-card p-4 text-sm tabular-nums">
