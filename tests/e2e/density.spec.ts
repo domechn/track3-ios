@@ -1,33 +1,37 @@
 import { expect, test } from "@playwright/test";
 import { installTauriBridge } from "./tauri-bridge";
 
-test("mouse layout stays compact at narrow and wide desktop widths", async ({ page }) => {
-  await installTauriBridge(page);
-  for (const width of [600, 800, 1280]) {
-    await page.setViewportSize({ width, height: 800 });
-    await page.goto("/#/settings/sync");
-    expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
-    const settingsTab = page.getByRole("link", { name: "Sync", exact: true }).last();
-    await expect(settingsTab).toBeVisible();
-    expect((await settingsTab.boundingBox())!.height).toBeLessThanOrEqual(36);
-    const track = page.getByRole("switch", { name: "Path style addressing" });
-    expect((await track.boundingBox())!.height).toBe(20);
-    expect((await page.getByRole("button", { name: "Enable sync" }).boundingBox())!.height).toBe(36);
-    const sidebar = page.locator("aside").getByRole("link", { name: "Overview" });
-    expect((await sidebar.boundingBox())!.height).toBeLessThanOrEqual(38);
-    expect((await page.locator("aside").boundingBox())!.width).toBe(200);
-    await page.goto("/#/settings/configuration");
-    const labels = page.locator('label[for="groupUSD"], label[for="hideInactive"]');
-    await expect(labels).toHaveCount(2);
-    const switchRowPitch = await labels.evaluateAll(
-      (labels) => labels[1].getBoundingClientRect().top - labels[0].getBoundingClientRect().top,
-    );
-    expect(switchRowPitch).toBeLessThanOrEqual(width === 600 ? 60 : 40);
-    await page.goto("/#/assistant");
-    const send = page.getByTestId("chat-send");
-    await expect(send).toBeVisible();
-    expect((await send.boundingBox())!.height).toBe(36);
-  }
+test.describe("desktop layout measurements", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("mouse layout stays compact at narrow and wide desktop widths", async ({ page }) => {
+    await installTauriBridge(page);
+    for (const width of [600, 800, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/#/settings/sync");
+      expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(false);
+      const settingsTab = page.getByRole("link", { name: "Sync", exact: true }).last();
+      await expect(settingsTab).toBeVisible();
+      expect(Math.round((await settingsTab.boundingBox())!.height)).toBeLessThanOrEqual(36);
+      const track = page.getByRole("switch", { name: "Path style addressing" });
+      expect(Math.round((await track.boundingBox())!.height)).toBe(20);
+      expect(Math.round((await page.getByRole("button", { name: "Enable sync" }).boundingBox())!.height)).toBe(36);
+      const sidebar = page.locator("aside").getByRole("link", { name: "Overview" });
+      expect((await sidebar.boundingBox())!.height).toBeLessThanOrEqual(38);
+      expect((await page.locator("aside").boundingBox())!.width).toBe(200);
+      await page.goto("/#/settings/configuration");
+      const labels = page.locator('label[for="groupUSD"], label[for="hideInactive"]');
+      await expect(labels).toHaveCount(2);
+      const switchRowPitch = await labels.evaluateAll(
+        (labels) => labels[1].getBoundingClientRect().top - labels[0].getBoundingClientRect().top,
+      );
+      expect(switchRowPitch).toBeLessThanOrEqual(width === 600 ? 60 : 40);
+      await page.goto("/#/assistant");
+      const send = page.getByTestId("chat-send");
+      await expect(send).toBeVisible();
+      expect(Math.round((await send.boundingBox())!.height)).toBe(36);
+    }
+  });
 });
 
 test("composer has one visible focus style that clears on blur", async ({ page }) => {

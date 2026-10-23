@@ -72,17 +72,22 @@ for this worktree is S4 below.
   reviewer follow-up. Full Vitest passed: 1,802 tests in 218 files.
   The three iPhone Playwright files passed 77/77, including the injected
   nonzero safe-area regression. The narrow desktop rebalance browser check
-  passed 1/1. The full desktop browser suite passed 77/77 on the previous
-  head and has not been rerun after these fixes. Playwright saved phone
-  screenshots during the mobile run; the later desktop check cleared the
-  local `test-results/` directory as expected.
+  passed 1/1. After the density test fix, its 12 tests passed three times
+  each, and the CI desktop browser command passed 77/77 locally.
+  Playwright saved phone screenshots during the mobile run; the later
+  desktop check cleared the local `test-results/` directory as expected.
 - `corepack yarn build` passed after these fixes. The seven-route production
   preview passed before this review follow-up. `cargo test --locked -p track3-pure-tests --lib`
-  passed 61 tests before this follow-up; no Rust code changed in it.
+  passed 61 tests in this follow-up; no Rust code changed in it.
   The full Vitest suite emits expected jsdom canvas and intentional
   error-boundary messages while exiting successfully. Workflow YAML parsed.
-- The last pushed head passed the macOS iOS workflow; these reviewer fixes
-  need another CI run after the driver commits and pushes. No signed-device
+- Run `39993408716` on head `49dc2f3` passed the macOS iOS job, including
+  simulator launch, screenshots and unsigned IPA. Its web job failed in the
+  desktop density test because Chromium measured a 36px tab as 36.000015px;
+  the later Rust checks were skipped. This follow-up reduces motion and
+  rounds pixel measurements in that test, and sets the Playwright server's
+  readiness probe variable to stop Vite's repeated warning. These changes
+  await another CI run after the driver commits and pushes. No signed-device
   claim is made from the local checks.
 
 ## S1 foundation
