@@ -1,0 +1,38 @@
+# Mobile UI contract
+
+`src/components/mobile/index.tsx` exports the shared phone components. Use these
+inside the existing `HashRouter` routes; each screen keeps its middlelayer
+queries and mutations.
+
+- `MobilePage({ title, back?, actions?, children })` provides a large title and
+  optional 44pt back action. The shell owns the tab bar, compact total header,
+  and safe areas, so pages should not add their own viewport padding.
+- `BottomSheet({ open, onOpenChange, title, detents?, initialDetent?, children })`
+  uses Radix's focus trap and Escape/backdrop dismissal. The handle switches
+  between `medium` and `large` detents by dragging. Use it for details and
+  forms. Put long content inside the sheet body; it scrolls.
+- `ActionSheet({ open, onOpenChange, title, actions })` displays labeled
+  actions and Cancel. Each action has `{ label, onClick, destructive?,
+  disabled? }`.
+- `SwipeableRow({ actions, children })` reveals trailing buttons after a
+  left swipe. Every action remains an accessible button. Wrap the visible row
+  content in a button when it opens a detail.
+- `SegmentedControl({ options, value, onChange, label? })` is a labeled radio
+  group for short range choices.
+- `PullToRefresh({ onRefresh, disabled?, children })` calls refresh after a
+  downward gesture that begins at the top. Put the existing refresh trigger in
+  `onRefresh`, so source status, alerts, and sync continue to use one flow.
+- `InsetGroup({ title?, children })` and `ListRow({ value?, href?, onClick?,
+  trailing?, children })` provide grouped lists with 44pt or larger rows.
+- `MobileRecordList({ records })` renders records as grouped rows. Each record
+  has `{ id, title, subtitle?, fields, actions? }`; tapping a row opens a
+  field list in a sheet. Use it for wide tables on phones.
+- `useHaptics()` returns a function taking `selection`, `light`, or `success`.
+  It uses vibration where the WebView supports it and respects reduced motion.
+- `useIsMobile()` detects a coarse pointer at 640px or narrower. Use it when
+  a phone sheet replaces a Radix popover or dialog, so only one overlay is
+  mounted at a time.
+
+Mobile styles use existing semantic color variables and `rem` sizing. Keep
+wide tables on desktop only; present individual records as rows and detail
+sheets on phones. All new labels must be added to both locale catalogs.

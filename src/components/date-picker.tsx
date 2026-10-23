@@ -6,6 +6,8 @@ import { CalendarIcon } from "@radix-ui/react-icons";
 import { endOfDay, isSameDay, startOfDay } from "date-fns";
 import { useMemo, useState } from "react";
 import { useTranslation } from "@/i18n";
+import { BottomSheet, useIsMobile } from "./mobile";
+import { format } from "date-fns";
 
 const App = ({
   availableDates,
@@ -18,6 +20,7 @@ const App = ({
   onDateChange: (selectedTimes: number, date?: DateRange) => void;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [calendarOpen, setCalendarOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateRange | undefined>(value);
   // whether need to use start or end of selected dates
@@ -83,6 +86,39 @@ const App = ({
   }
 
   return (
+    <>
+    {isMobile && <div className="date-picker-mobile">
+      <button type="button" aria-label={t("datePicker.open")} onClick={() => setCalendarOpen(true)}
+        className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <CalendarIcon aria-hidden="true" className="h-6 w-6" />
+      </button>
+      <BottomSheet open={calendarOpen} onOpenChange={setCalendarOpen} title={t("datePicker.open")}>
+        <div className="space-y-4">
+          <div className="grid gap-3">
+            <label className="grid gap-1 text-sm">{t("datePicker.from")}
+              <input type="date" className="mobile-date-input" value={date?.from ? format(date.from, "yyyy-MM-dd") : ""}
+                min={availableDates[0] ? format(availableDates[0], "yyyy-MM-dd") : undefined}
+                max={availableDates.at(-1) ? format(availableDates.at(-1)!, "yyyy-MM-dd") : undefined}
+                onChange={(event) => setDataRange({ from: event.target.value ? new Date(`${event.target.value}T00:00:00`) : undefined, to: date?.to }, false)} />
+            </label>
+            <label className="grid gap-1 text-sm">{t("datePicker.to")}
+              <input type="date" className="mobile-date-input" value={date?.to ? format(date.to, "yyyy-MM-dd") : ""}
+                min={availableDates[0] ? format(availableDates[0], "yyyy-MM-dd") : undefined}
+                max={availableDates.at(-1) ? format(availableDates.at(-1)!, "yyyy-MM-dd") : undefined}
+                onChange={(event) => setDataRange({ from: date?.from, to: event.target.value ? new Date(`${event.target.value}T00:00:00`) : undefined }, false)} />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {([10, 30, 50, 100, -1] as const).map((amount) => <button type="button" key={amount}
+              className="min-h-11 rounded-lg bg-muted px-3 text-sm"
+              onClick={() => handlePredefinedTimesClick(amount)}>{t(amount < 0 ? "datePicker.all" : `datePicker.last${amount}`)}</button>)}
+          </div>
+          <p className="text-sm text-muted-foreground">{t("datePicker.selected")} {selectTimes} {t("common.times")}</p>
+          <Button className="min-h-11 w-full" disabled={selectTimes === 0} onClick={handleSubmitClick}>{t("common.submit")}</Button>
+        </div>
+      </BottomSheet>
+    </div>}
+    {!isMobile && <div className="date-picker-desktop">
     <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
       <PopoverTrigger asChild>
         <button type="button" aria-label={t("datePicker.open")}
@@ -164,6 +200,8 @@ const App = ({
         </div>
       </PopoverContent>
     </Popover>
+    </div>}
+    </>
   );
 };
 

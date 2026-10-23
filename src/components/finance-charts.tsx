@@ -12,6 +12,8 @@ import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
 
 const palette = ["#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#14b8a6", "#f97316", "#ec4899", "#94a3b8"];
+const touchChartEvents: Array<"mousemove" | "mouseout" | "click" | "touchstart" | "touchmove"> =
+  ["mousemove", "mouseout", "click", "touchstart", "touchmove"];
 const tone = (positive: boolean, quoteColor: QuoteColor) =>
   (positive === (quoteColor === "green-up-red-down")) ? "#10b981" : "#f43f5e";
 function useChartOptions() {
@@ -20,6 +22,9 @@ function useChartOptions() {
   const text = dark ? "#cbd5e1" : "#475569";
   return {
     responsive: true, maintainAspectRatio: false,
+    events: touchChartEvents,
+    interaction: { mode: "index" as const, intersect: false },
+    animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
       x: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },

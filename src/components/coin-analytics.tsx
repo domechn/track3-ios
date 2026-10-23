@@ -87,6 +87,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useTranslation } from "@/i18n";
+import { BottomSheet, MobileRecordList, useIsMobile } from "./mobile";
 
 function formatEditablePrice(value: number): string {
   if (!Number.isFinite(value)) {
@@ -214,6 +215,7 @@ const App = ({
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const pageSize = 20;
   const LOAD_COUNT = 3; // loadSymbolData, CoinsAmountAndValueChange, WalletAssetsPercentage
   const assetType = parseAssetTypeSearchParam(searchParams.get("assetType"));
@@ -708,6 +710,7 @@ const App = ({
   }
 
   function HistoryTable() {
+    const isMobile = useIsMobile();
     const historicalData = useMemo(() => transactions, [transactions]);
 
     const maxDataPage = useMemo(() => {
@@ -776,7 +779,24 @@ const App = ({
               <ChevronRightIcon />
             </Button>
           </div>
-          <Table>
+          {isMobile && <MobileRecordList className="coin-mobile-transactions"
+            records={historicalData.slice(dataPage * pageSize, (dataPage + 1) * pageSize).map((act) => ({
+              id: String(act.id), title: `${symbol} · ${timeToDateStr(new Date(act.txnCreatedAt).getTime(), true)}`,
+              subtitle: getValueStr(act),
+              fields: [
+                { label: t("coin.col.amount"), value: getAmountStr(act) },
+                { label: t("coin.col.type"), value: t(`coin.txnType.${act.txnType}`) },
+                { label: t("coin.col.price"), value: `${currency.symbol}${prettyPriceNumberToLocaleString(currencyWrapper(currency)(act.price))}` },
+                { label: t("coin.col.value"), value: getValueStr(act) },
+                { label: t("coin.col.time"), value: timeToDateStr(new Date(act.txnCreatedAt).getTime(), true) },
+                { label: t("coin.col.wallet"), value: act.wallet ? walletAliasMap[act.wallet] || "" : "" },
+              ],
+              actions: [
+                { label: t("coin.updatePrice"), onClick: () => openUpdatePriceDialog(act) },
+                { label: t("coin.updateTxnType"), onClick: () => openUpdateTxnTypeDialog(act) },
+              ],
+            }))} />}
+          {!isMobile && <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>{t("coin.col.amount")}</TableHead>
@@ -848,7 +868,7 @@ const App = ({
                   </TableRow>
                 ))}
             </TableBody>
-          </Table>
+          </Table>}
 
           {!tableHasData && (
             <div className="flex items-center justify-center">
@@ -924,7 +944,31 @@ const App = ({
                       src={resolveAssetLogoSrc({ symbol, assetType }, logo)}
                       alt={formatAssetLabel({ symbol, assetType })}
                     />
-                    <div className="w-[100%] h-[32px] overflow-hidden">
+                    <div className="w-[100%] min-w-0 h-[32px] mobile-coin-selector">
+                      {isMobile ? <>
+                        <Button variant="outline" role="combobox"
+                          aria-label={`${t("coin.symbol")} ${formatAssetLabel({ symbol, assetType })}`}
+                          aria-expanded={coinSelectOpen} className="h-11 w-full justify-between"
+                          onClick={() => setCoinSelectOpen(true)}>
+                          <span className="truncate">{formatAssetLabel({ symbol, assetType })}</span>
+                          <CaretSortIcon aria-hidden="true" className="ml-2 h-4 w-4 shrink-0" />
+                        </Button>
+                        <BottomSheet open={coinSelectOpen} onOpenChange={setCoinSelectOpen} title={t("coin.symbol")}>
+                          <Input value={coinKeyword} onChange={(event) => { setCoinKeyword(event.target.value); setCoinListLimit(200); }}
+                            placeholder={t("coin.searchPlaceholder")} className="mb-3 min-h-11" />
+                          <div className="mobile-coin-options">
+                            {visibleAllowSymbols.map((item) => <button type="button" key={getAssetLogoKey(item)}
+                              className="mobile-coin-option" onClick={() => {
+                                setCoinSelectOpen(false);
+                                navigate(buildAssetDetailsPath(item));
+                              }}>{formatAssetLabel(item)}</button>)}
+                            {filteredAllowSymbols.length > coinListLimit && <button type="button"
+                              className="mobile-coin-option" onClick={() => setCoinListLimit((prev) => prev + 200)}>
+                              {t("coin.showMoreN").replace("{n}", String(filteredAllowSymbols.length - coinListLimit))}
+                            </button>}
+                          </div>
+                        </BottomSheet>
+                      </> : <>
                       <Popover
                         open={coinSelectOpen}
                         onOpenChange={setCoinSelectOpen}
@@ -1001,6 +1045,7 @@ const App = ({
                           </Command>
                         </PopoverContent>
                       </Popover>
+                      </>}
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
@@ -1188,7 +1233,8 @@ const App = ({
           </FadeUp>
         </StaggerContainer>
         <div
-          className={`absolute inset-0 z-10 backdrop-blur-md bg-background/60 rounded-lg transition-opacity duration-500 ${
+          data-testid="coin-page-loading-overlay"
+          className={`absolute inset-0 z-10 backdrop-blur-md bg-background/60 rounded-lg transition-opacity duration-500 motion-reduce:transition-none ${
             pageLoading ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
         />

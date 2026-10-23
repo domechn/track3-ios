@@ -161,7 +161,11 @@ vi.mock("@/middlelayers/data", () => ({
   autoBackupHistoricalData: vi.fn(),
   autoImportHistoricalData: vi.fn(),
 }));
-vi.mock("@/middlelayers/alerts", () => ({ processAlerts: vi.fn() }));
+vi.mock("@/middlelayers/alerts", () => ({
+  processAlerts: vi.fn(),
+  countUnreadAlerts: vi.fn().mockResolvedValue(0),
+  ALERTS_CHANGED_EVENT: "track3-alerts-changed",
+}));
 
 vi.mock("@/middlelayers/datafetch/utils/cache", () => ({
   invalidateCacheGroups: cacheMocks.invalidateCacheGroups,
@@ -258,6 +262,17 @@ function renderApp() {
 }
 
 describe("App data-changed version bumps on refresh and soft refresh", () => {
+  it("renders mobile tabs and routes to the More hub", async () => {
+    const view = renderApp();
+    await view.findByTestId("summary-range");
+    const nav = view.container.querySelector(".mobile-tab-bar");
+    expect(nav).not.toBeNull();
+    expect(nav!.querySelectorAll("a")).toHaveLength(4);
+    fireEvent.click(nav!.querySelector('a[href="#/more"]')!);
+    await waitFor(() => expect(view.container.querySelector(".mobile-more-hub")).toBeInTheDocument());
+    expect(view.container.querySelector('.mobile-more-hub a[href="#/cost-basis"]')).toBeInTheDocument();
+  });
+
   it("finishes boot while startup alert evaluation is pending", async () => {
     vi.mocked(processAlerts).mockImplementation(() => new Promise(() => {}));
     const view = renderApp();

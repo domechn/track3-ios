@@ -1,0 +1,101 @@
+import React from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { ActionSheet, BottomSheet, MobileRecordList, PullToRefresh, SegmentedControl, SwipeableRow } from "./index";
+
+describe("mobile interactions", () => {
+  it("dismisses a sheet with Escape and restores focus", async () => {
+    const onOpenChange = vi.fn();
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const view = render(
+      <BottomSheet open onOpenChange={onOpenChange} title="Details">
+        <button>Inside</button>
+      </BottomSheet>,
+    );
+    expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    view.rerender(<BottomSheet open={false} onOpenChange={onOpenChange} title="Details" />);
+    await waitFor(() => expect(trigger).toHaveFocus());
+    trigger.remove();
+  });
+
+  it("offers a swipe action as an accessible button", () => {
+    const onDelete = vi.fn();
+    render(<SwipeableRow actions={[{ label: "Delete", onClick: onDelete, destructive: true }]}>Snapshot</SwipeableRow>);
+    const row = screen.getByText("Snapshot").closest("[data-swipeable-row]");
+    expect(row).not.toBeNull();
+    fireEvent.pointerDown(row!, { clientX: 200, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(row!, { clientX: 120, clientY: 102, pointerId: 1 });
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it("selects one segment and exposes its selected state", () => {
+    const onChange = vi.fn();
+    render(<SegmentedControl value="week" onChange={onChange} options={[
+      { value: "day", label: "Day" }, { value: "week", label: "Week" },
+    ]} />);
+    expect(screen.getByRole("radio", { name: "Week" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "Day" }));
+    expect(onChange).toHaveBeenCalledWith("day");
+  });
+
+  it("gives selection feedback when a touch segment changes", () => {
+    const vibrate = vi.fn();
+    Object.defineProperty(navigator, "vibrate", { configurable: true, value: vibrate });
+    render(<SegmentedControl value="day" onChange={() => {}} options={[
+      { value: "day", label: "Day" }, { value: "week", label: "Week" },
+    ]} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Week" }));
+    expect(vibrate).toHaveBeenCalled();
+    Reflect.deleteProperty(navigator, "vibrate");
+  });
+
+  it("refreshes on a downward gesture only when scrolled to the top", () => {
+    const onRefresh = vi.fn();
+    const { getByTestId } = render(<PullToRefresh onRefresh={onRefresh}><div>Content</div></PullToRefresh>);
+    const area = getByTestId("pull-to-refresh");
+    fireEvent.touchStart(area, { touches: [{ clientX: 100, clientY: 20 }] });
+    fireEvent.touchEnd(area, { changedTouches: [{ clientX: 102, clientY: 110 }] });
+    expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("closes an action sheet after choosing an action", () => {
+    const onOpenChange = vi.fn();
+    const onChoose = vi.fn();
+    render(<ActionSheet open onOpenChange={onOpenChange} title="Options" actions={[
+      { label: "Open", onClick: onChoose },
+    ]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(onChoose).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("opens record fields in a detail sheet", () => {
+    render(<MobileRecordList records={[{
+      id: "btc", title: "BTC", subtitle: "$42,000", fields: [
+        { label: "Cost basis", value: "$40,000" },
+      ],
+    }]} />);
+    fireEvent.click(screen.getByRole("button", { name: /BTC/ }));
+    const dialog = screen.getByRole("dialog", { name: "BTC" });
+    expect(dialog).toHaveTextContent("Cost basis");
+    expect(dialog).toHaveTextContent("$40,000");
+  });
+
+  it("raises a form sheet above the virtual keyboard", () => {
+    const oldViewport = window.visualViewport;
+    Object.defineProperty(window, "visualViewport", { configurable: true, value: {
+      height: 500, offsetTop: 0, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    } });
+    try {
+      render(<BottomSheet open onOpenChange={() => {}} title="Form"><input aria-label="Name" /></BottomSheet>);
+      expect(screen.getByRole("dialog", { name: "Form" })).toHaveStyle({ bottom: `${window.innerHeight - 500}px` });
+    } finally {
+      Object.defineProperty(window, "visualViewport", { configurable: true, value: oldViewport });
+    }
+  });
+});

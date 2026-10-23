@@ -63,6 +63,11 @@ import { deliverAlerts, formatAlert } from "@/middlelayers/alert-notifications";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { markIOSReady } from "@/utils/ios-ready";
+import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
+import { useAlertBadge } from "@/components/use-alert-badge";
+import { useNavigate } from "react-router-dom";
+import { MobileHeaderTotal } from "@/components/mobile/header-total";
 
 const Setting = React.lazy(() => import("../settings"));
 const HistoricalData = React.lazy(() => import("../historical-data"));
@@ -113,6 +118,7 @@ function TopBar({
   onDatePickerValueChange,
   lastRefreshAt,
   onRefreshSuccess,
+  compactTitle,
 }: {
   isProUser: boolean;
   quoteColor: QuoteColor;
@@ -125,14 +131,17 @@ function TopBar({
   ) => void;
   lastRefreshAt?: string;
   onRefreshSuccess: () => void;
+  compactTitle?: string;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
 
   return (
-    <div className="sticky top-0 z-10 glass-subtle border-b relative">
+    <div id="app-top-bar" className="sticky top-0 z-10 glass-subtle border-b relative">
       <div className="flex h-12 items-center px-4">
+        {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
+        <MobileHeaderTotal currency={currentCurrency} live={isProUser} />
         {isProUser && (
           <div className="mr-4">
             <RealTimeTotalValue
@@ -150,7 +159,7 @@ function TopBar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div>
+                <div id="app-refresh-trigger">
                   <RefreshButtonLoadingContext.Provider
                     value={{
                       buttonLoading: refreshButtonLoading,
@@ -235,19 +244,46 @@ function Layout({
   onRefreshSuccess,
 }: LayoutProps) {
   const { t } = useTranslation();
+  const mobile = useIsMobile();
   const sidebarWidth = sidebarCollapsed ? 52 : 200;
+  const unread = useAlertBadge();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = tabForPath(location.pathname);
+  const routePath = location.pathname + location.search;
+  const rootPath = tabRoots[currentTab];
+  const tabStacks = useRef<Record<"overview" | "history" | "analytics" | "more", string[]>>({
+    overview: [tabRoots.overview], history: [tabRoots.history],
+    analytics: [tabRoots.analytics], more: [tabRoots.more],
+  });
+  const stack = tabStacks.current[currentTab];
+  if (stack.at(-1) !== routePath) {
+    const existing = stack.indexOf(routePath);
+    if (existing >= 0) stack.splice(existing + 1);
+    else stack.push(routePath);
+  }
+  const backPath = stack.at(-2) ?? rootPath;
+  const canGoBack = routePath !== rootPath;
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  useEffect(() => {
+    const update = () => setHeaderCollapsed(window.scrollY > 64);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [location.pathname]);
 
   return (
-    <div className="min-h-screen">
-      <Sidebar
+    <div className="app-layout min-h-screen">
+      {!mobile && <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={onSidebarToggle}
         isProUser={isProUser}
-      />
+      />}
 
       <div
-        style={{ marginLeft: sidebarWidth }}
-        className="transition-[margin-left] duration-300 ease-in-out"
+        style={{ marginLeft: mobile ? 0 : sidebarWidth, transition: mobile ? "none" : undefined }}
+        className="app-content transition-[margin-left] duration-300 ease-in-out"
       >
         <TopBar
           isProUser={isProUser}
@@ -257,12 +293,33 @@ function Layout({
           dateRange={dateRange}
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
+          compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
           onRefreshSuccess={onRefreshSuccess}
         />
 
         {/* Main content */}
-        <main id="app-main-content" tabIndex={-1} className="p-5">
-          <div className="relative min-h-[400px]" aria-busy={initializing}>
+        <main id="app-main-content" tabIndex={-1} className="p-5"
+          onTouchStart={(event) => {
+            const touch = event.touches[0];
+            swipeStart.current = touch.clientX < 24 ? { x: touch.clientX, y: touch.clientY } : null;
+          }}
+          onTouchEnd={(event) => {
+            if (!canGoBack || !swipeStart.current) return;
+            const touch = event.changedTouches[0];
+            const dx = touch.clientX - swipeStart.current.x;
+            const dy = touch.clientY - swipeStart.current.y;
+            swipeStart.current = null;
+            if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
+          }}>
+          <PullToRefresh onRefresh={() => {
+            const button = document.querySelector<HTMLButtonElement>("#app-refresh-trigger button");
+            button?.click();
+          }}>
+          <div className="mobile-route-heading">
+            <MobilePage title={routeTitle(location.pathname, t)}
+              back={canGoBack ? () => navigate(backPath) : undefined} />
+          </div>
+          <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
             >
@@ -275,10 +332,33 @@ function Layout({
               />
             )}
           </div>
+          </PullToRefresh>
         </main>
       </div>
+      <MobileNavigation unread={unread} />
     </div>
   );
+}
+
+function MoreHub() {
+  const { t } = useTranslation();
+  const groups = [
+    { title: t("nav.analytics", "Analytics"), items: [
+      { href: "#/summary", label: t("nav.summary") },
+      { href: "#/wallets", label: t("nav.wallets") },
+      { href: "#/comparison", label: t("nav.comparison") },
+      { href: "#/cost-basis", label: t("nav.costBasis") },
+      { href: "#/rebalance", label: t("nav.rebalance") },
+    ] },
+    { title: t("nav.more", "More"), items: [
+      { href: "#/goals", label: t("nav.goals") },
+      { href: "#/assistant", label: t("nav.assistant") },
+      { href: "#/settings", label: t("nav.settings") },
+    ] },
+  ];
+  return <div className="mobile-more-hub">{groups.map((group) =>
+    <InsetGroup key={group.title} title={group.title}>{group.items.map((item) =>
+      <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}</InsetGroup>)}</div>;
 }
 
 type AppRoutesProps = {
@@ -359,6 +439,7 @@ function AppRoutes({
         }
       >
         <Route index element={<Navigate to="/overview" />} />
+        <Route path="more" element={<MoreHub />} />
         <Route
           path="overview"
           element={

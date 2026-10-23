@@ -51,6 +51,9 @@ it("maps calculator gains and composition to charts without Cartesian axes on th
   const composition = vi.mocked(Doughnut).mock.calls[0][0];
   expect(composition.data.datasets[0].data).toEqual([80]);
   expect(composition.options?.scales).toBeUndefined();
+  expect(gains.options?.interaction).toEqual({ mode: "index", intersect: false });
+  expect(gains.options?.events).toContain("touchstart");
+  expect(gains.options?.events).toContain("touchmove");
   expect(getByText("BTC")).toBeVisible();
   report.disposals.push({
     eventId: "sale", lotId: "lot", assetType: "crypto", symbol: "BTC",

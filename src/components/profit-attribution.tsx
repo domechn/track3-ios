@@ -9,12 +9,14 @@ import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
 import { positiveNegativeColor, positiveNegativeTextClass } from "@/utils/color";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { MobileRecordList, useIsMobile } from "./mobile";
 
 type Data = Awaited<ReturnType<typeof queryAttribution>>;
 const dimensions: AttributionDimension[] = ["coin", "source", "wallet", "assetType"];
 
 export default function ProfitAttribution({ currency, dateRange, quoteColor }: { currency: CurrencyRateDetail; dateRange: TDateRange; quoteColor: QuoteColor }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [loaded, setLoaded] = useState<{ rangeKey: string; result: Data } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [dimension, setDimension] = useState<AttributionDimension>("coin");
@@ -72,7 +74,7 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
       {(["totalChange", "priceEffect", "flowEffect", "residual"] as const).map((key) => (
         <div key={key} className="min-w-0 rounded-md border border-border/50 bg-muted/20 p-2">
           <div className="text-xs text-muted-foreground">{label(key)}</div>
-          <div className={`truncate text-sm font-semibold tabular-nums sm:text-base ${tone(totals[key])}`} title={format(totals[key])}>{format(totals[key])}</div>
+          <div className={`attribution-total truncate text-sm font-semibold tabular-nums sm:text-base ${tone(totals[key])}`} title={format(totals[key])}>{format(totals[key])}</div>
         </div>
       ))}
     </div>
@@ -83,7 +85,13 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
       <section className="space-y-2"><h3 className="text-xs font-medium text-muted-foreground">{label("contributors")}</h3>{bars(contributors)}</section>
       <section className="space-y-2"><h3 className="text-xs font-medium text-muted-foreground">{label("detractors")}</h3>{bars(detractors)}</section>
     </figure>
-    <div className="max-w-full overflow-x-auto rounded-md border border-border/50">
+    {isMobile && <MobileRecordList records={groups.map((group) => ({
+      id: group.key, title: displayGroup(group), subtitle: format(group.totalChange),
+      fields: (["priceEffect", "flowEffect", "residual", "totalChange"] as const).map((key) => ({
+        label: label(key), value: format(group[key]),
+      })),
+    }))} />}
+    {!isMobile && <div className="max-w-full overflow-x-auto rounded-md border border-border/50">
       <Table className="min-w-[580px] text-xs sm:text-sm">
         <caption className="sr-only">{label("table")}</caption>
         <TableHeader><TableRow>
@@ -98,6 +106,6 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
           {(["priceEffect", "flowEffect", "residual", "totalChange"] as const).map((key) => <TableCell key={key} className={`py-2 text-right tabular-nums ${tone(group[key])}`}>{format(group[key])}</TableCell>)}
         </TableRow>)}</TableBody>
       </Table>
-    </div>
+    </div>}
   </div>;
 }

@@ -17,6 +17,7 @@ import AISetupCard from "./common/ai-setup-card";
 import { ASSISTANT_APP_ACTION_EVENT, COST_BASIS_SETTINGS_KEY } from "@/middlelayers/ai/actions/page-settings";
 import { CostCharts, FinanceChartSkeleton } from "./finance-charts";
 import type { QuoteColor } from "@/middlelayers/types";
+import { MobileRecordList, useIsMobile } from "./mobile";
 
 const methods: CostBasisMethod[] = ["FIFO", "LIFO", "HIFO", "AVERAGE"];
 const pageSize = 50;
@@ -42,6 +43,7 @@ function PageControls({
 
 export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { quoteColor?: QuoteColor }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const dataVersion = useDataChangedVersion();
   const currentYear = String(new Date().getFullYear());
   const [method, setMethod] = useState<CostBasisMethod>("FIFO");
@@ -161,7 +163,7 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold">{t("cost.title")}</h1>
+        <h1 className="text-2xl font-semibold touch:hidden">{t("cost.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("cost.subtitle")}</p>
       </div>
       <AISetupCard page="cost-basis"
@@ -232,7 +234,56 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
           <PageControls label={t("cost.warnings")} page={pages.warnings} count={report.warnings.length}
             onPageChange={(page) => setPages((previous) => ({ ...previous, warnings: page }))} />
         </CardContent></Card>}
-        <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className="rounded-lg border bg-card">
+        {isMobile && <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className="rounded-lg border bg-card">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">{t("aiSetup.details")}</summary>
+          <div className="space-y-4 p-3">
+            <section><h2 className="mb-2 font-semibold">{t("cost.byAsset")}</h2>
+              <MobileRecordList records={report.assets.slice(pages.assets * pageSize, (pages.assets + 1) * pageSize).map((asset) => ({
+                id: `${asset.assetType}:${asset.symbol}`, title: asset.symbol, subtitle: money(asset.gainLoss),
+                fields: [
+                  { label: t("cost.proceeds"), value: money(asset.proceeds) },
+                  { label: t("cost.costBasis"), value: money(asset.costBasis) },
+                  { label: t("cost.gainLoss"), value: money(asset.gainLoss) },
+                ],
+              }))} />
+              <PageControls label={t("cost.byAsset")} page={pages.assets} count={report.assets.length}
+                onPageChange={(page) => setPages((previous) => ({ ...previous, assets: page }))} />
+            </section>
+            <section><h2 className="mb-2 font-semibold">{t("cost.realized")}</h2>
+              <MobileRecordList records={report.disposals.slice(pages.disposals * pageSize, (pages.disposals + 1) * pageSize).map((row, index) => ({
+                id: `${row.eventId}:${row.lotId}:${index}`, title: row.symbol, subtitle: money(row.gainLoss),
+                fields: [
+                  { label: t("cost.acquired"), value: format(new Date(row.acquiredAt), "yyyy-MM-dd") },
+                  { label: t("cost.disposed"), value: format(new Date(row.disposedAt), "yyyy-MM-dd") },
+                  { label: t("cost.quantity"), value: qty(row.amount) },
+                  { label: t("cost.proceeds"), value: money(row.proceeds) },
+                  { label: t("cost.costBasis"), value: money(row.costBasis) },
+                  { label: t("cost.gainLoss"), value: money(row.gainLoss) },
+                  { label: t("cost.term"), value: t(`cost.term.${row.term}`) },
+                  { label: t("cost.lot"), value: row.lotId },
+                ],
+              }))} />
+              <PageControls label={t("cost.realized")} page={pages.disposals} count={report.disposals.length}
+                onPageChange={(page) => setPages((previous) => ({ ...previous, disposals: page }))} />
+            </section>
+            <section><h2 className="mb-2 font-semibold">{t("cost.unrealized")}</h2>
+              <MobileRecordList records={report.unrealized.slice(pages.unrealized * pageSize, (pages.unrealized + 1) * pageSize).map((asset) => ({
+                id: `${asset.assetType}:${asset.symbol}:${asset.id}`, title: asset.symbol, subtitle: money(asset.gainLoss),
+                fields: [
+                  { label: t("cost.lot"), value: asset.id },
+                  { label: t("cost.acquired"), value: format(new Date(asset.acquiredAt), "yyyy-MM-dd") },
+                  { label: t("cost.quantity"), value: qty(asset.amount) },
+                  { label: t("cost.costBasis"), value: money(asset.costBasis) },
+                  { label: t("cost.marketValue"), value: money(asset.marketValue) },
+                  { label: t("cost.gainLoss"), value: money(asset.gainLoss) },
+                ],
+              }))} />
+              <PageControls label={t("cost.unrealized")} page={pages.unrealized} count={report.unrealized.length}
+                onPageChange={(page) => setPages((previous) => ({ ...previous, unrealized: page }))} />
+            </section>
+          </div>
+        </details>}
+        {!isMobile && <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className="rounded-lg border bg-card">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.details")}</summary>
         <Card>
           <CardHeader><CardTitle>{t("cost.byAsset")}</CardTitle></CardHeader>
@@ -259,7 +310,7 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
           <PageControls label={t("cost.unrealized")} page={pages.unrealized} count={report.unrealized.length}
             onPageChange={(page) => setPages((previous) => ({ ...previous, unrealized: page }))} />
         </CardContent></Card>
-        </details>
+        </details>}
       </>}
     </div>
   );
