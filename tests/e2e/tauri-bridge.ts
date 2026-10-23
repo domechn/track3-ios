@@ -79,6 +79,8 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
 
   await page.exposeBinding("__e2eInvoke", async (_source, cmd: string, args: any, options?: any) => {
     if (cmd === "get_database_url") return "sqlite:e2e.db";
+    if (cmd === "ios_startup_failure") return null;
+    if (cmd === "ios_retry_startup") return false;
     if (cmd === "plugin:sql|load") return args.db;
     if (cmd === "plugin:sql|select") return select(args.query, args.values);
     if (cmd === "plugin:sql|execute") return execute(args.query, args.values);

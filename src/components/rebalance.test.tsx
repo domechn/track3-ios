@@ -74,6 +74,27 @@ describe("Rebalance page", () => {
     expect(screen.getByRole("spinbutton", { name: "Target percentage for BTC" })).toHaveValue(75);
   });
 
+  it("offers 44 point stepper controls and a full-height percentage field on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 }],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const percent = await screen.findByRole("spinbutton", { name: "Target percentage for BTC" });
+    expect(percent).toHaveClass("h-11");
+    expect(screen.getByLabelText("Target kind")).toHaveClass("h-11");
+    expect(screen.getByRole("textbox", { name: "Symbol" })).toHaveClass("h-11");
+    expect(screen.getByRole("button", { name: "Remove target BTC" })).toHaveClass("h-11");
+    fireEvent.click(screen.getByRole("button", { name: "Increase BTC target" }));
+    expect(percent).toHaveValue(51);
+    fireEvent.click(screen.getByRole("button", { name: "Decrease BTC target" }));
+    expect(percent).toHaveValue(50);
+    fireEvent.change(percent, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Increase BTC target" }));
+    expect(percent).toHaveValue(1);
+  });
+
   it("has no axe violations with a saved target profile", async () => {
     vi.mocked(getRebalanceProfile).mockResolvedValue({
       targets: [{ kind: "asset", assetType: "crypto", symbol: "BTC", percent: 100 }],

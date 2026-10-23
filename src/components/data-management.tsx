@@ -281,7 +281,10 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
 
   return (
     <div className="space-y-6">
-      {showBackup && showImportConfirm && <BottomSheet title={t("data.restoreConfirm.title")}>
+      {showBackup && showImportConfirm && <BottomSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
+        setShowImportConfirm(false);
+        setExportData(undefined);
+      }}>
         <p className="py-2 text-center">{t("data.restoreConfirm.description")}</p>
         <Button variant="destructive" className="min-h-12 w-full" onClick={() => {
           setShowImportConfirm(false);

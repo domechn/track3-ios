@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import LocalAuthentication
 import Security
 import UIKit
@@ -135,6 +136,41 @@ private enum Track3Keychain {
     static let service = "dev.track3.ios.encryption"
     static let account = "master-key"
 
+    #if targetEnvironment(simulator)
+    static var simulatorKeyURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(".track3-simulator-key")
+    }
+
+    static func readSimulatorKey() -> Data? {
+        try? Data(contentsOf: simulatorKeyURL)
+    }
+
+    static func writeSimulatorKey(_ data: Data) -> Bool {
+        let url = simulatorKeyURL
+        var staged = url.deletingLastPathComponent().appendingPathComponent(UUID().uuidString)
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: staged, options: .atomic)
+            try FileManager.default.setAttributes(
+                [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+                ofItemAtPath: staged.path
+            )
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try staged.setResourceValues(values)
+            let status = staged.path.withCString { old in
+                url.path.withCString { new in rename(old, new) }
+            }
+            guard status == 0 else { throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno)) }
+            return true
+        } catch {
+            try? FileManager.default.removeItem(at: staged)
+            return false
+        }
+    }
+    #endif
+
     static var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
@@ -145,15 +181,22 @@ private enum Track3Keychain {
 @_cdecl("track3_ios_keychain_read")
 public func track3IOSKeychainRead(_ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32) -> Int32 {
     guard let output, capacity > 0 else { return -2 }
+    #if targetEnvironment(simulator)
+    if FileManager.default.fileExists(atPath: Track3Keychain.simulatorKeyURL.path) {
+        guard let data = Track3Keychain.readSimulatorKey() else { return Int32(errSecInteractionNotAllowed) }
+        guard data.count <= Int(capacity) else { return -2 }
+        for (index, byte) in data.enumerated() { output[index] = byte }
+        return Int32(data.count)
+    }
+    #endif
     var query = Track3Keychain.query
     query[kSecReturnData as String] = true
     query[kSecMatchLimit as String] = kSecMatchLimitOne
     var result: CFTypeRef?
-    var status = SecItemCopyMatching(query as CFDictionary, &result)
-    while status == errSecInteractionNotAllowed && UIApplication.shared.applicationState != .active {
-        Thread.sleep(forTimeInterval: 0.5)
-        status = SecItemCopyMatching(query as CFDictionary, &result)
-    }
+    let status = SecItemCopyMatching(query as CFDictionary, &result)
+    #if targetEnvironment(simulator)
+    if status == errSecMissingEntitlement { return -1 }
+    #endif
     if status == errSecItemNotFound { return -1 }
     guard status == errSecSuccess else { return Int32(status) }
     guard let data = result as? Data, data.count <= Int(capacity) else { return -2 }
@@ -165,17 +208,41 @@ public func track3IOSKeychainRead(_ output: UnsafeMutablePointer<UInt8>?, _ capa
 public func track3IOSKeychainWrite(_ input: UnsafePointer<UInt8>?, _ length: Int32) -> Int32 {
     guard let input, length > 0 else { return -2 }
     let data = Data(bytes: input, count: Int(length))
+    #if targetEnvironment(simulator)
+    if FileManager.default.fileExists(atPath: Track3Keychain.simulatorKeyURL.path) {
+        return Track3Keychain.writeSimulatorKey(data) ? 0 : Int32(errSecMissingEntitlement)
+    }
+    #endif
     let status = SecItemUpdate(Track3Keychain.query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
     if status == errSecSuccess { return Int32(errSecSuccess) }
+    #if targetEnvironment(simulator)
+    if status == errSecMissingEntitlement {
+        return Track3Keychain.writeSimulatorKey(data) ? 0 : Int32(status)
+    }
+    #endif
     guard status == errSecItemNotFound else { return Int32(status) }
     var query = Track3Keychain.query
     query[kSecValueData as String] = data
     query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-    return Int32(SecItemAdd(query as CFDictionary, nil))
+    let addStatus = SecItemAdd(query as CFDictionary, nil)
+    #if targetEnvironment(simulator)
+    if addStatus == errSecMissingEntitlement {
+        return Track3Keychain.writeSimulatorKey(data) ? 0 : Int32(addStatus)
+    }
+    #endif
+    return Int32(addStatus)
 }
 
 @_cdecl("track3_ios_keychain_delete")
 public func track3IOSKeychainDelete() -> Bool {
+    #if targetEnvironment(simulator)
+    if FileManager.default.fileExists(atPath: Track3Keychain.simulatorKeyURL.path) {
+        do {
+            try FileManager.default.removeItem(at: Track3Keychain.simulatorKeyURL)
+            return true
+        } catch { return false }
+    }
+    #endif
     let status = SecItemDelete(Track3Keychain.query as CFDictionary)
     return status == errSecSuccess || status == errSecItemNotFound
 }
@@ -231,21 +298,28 @@ public func track3IOSSetBadge(_ count: Int32) {
 @_cdecl("track3_ios_share_file")
 public func track3IOSShareFile(_ path: UnsafePointer<CChar>) -> Bool {
     let source = URL(fileURLWithPath: String(cString: path))
-    let staged = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
-    do { try FileManager.default.copyItem(at: source, to: staged) }
-    catch { return false }
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let staged = folder.appendingPathComponent(source.lastPathComponent)
+    do {
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        try FileManager.default.copyItem(at: source, to: staged)
+    }
+    catch {
+        try? FileManager.default.removeItem(at: folder)
+        return false
+    }
     DispatchQueue.main.async {
         guard let window = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap({ $0.windows })
             .first(where: { $0.isKeyWindow }),
               let root = window.rootViewController else {
-            try? FileManager.default.removeItem(at: staged)
+            try? FileManager.default.removeItem(at: folder)
             return
         }
         let controller = UIActivityViewController(activityItems: [staged], applicationActivities: nil)
         controller.completionWithItemsHandler = { _, _, _, _ in
-            try? FileManager.default.removeItem(at: staged)
+            try? FileManager.default.removeItem(at: folder)
         }
         if let popover = controller.popoverPresentationController {
             popover.sourceView = root.view

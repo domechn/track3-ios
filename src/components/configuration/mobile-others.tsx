@@ -47,7 +47,7 @@ export function MobileOthers(props: {
         <button className="min-h-11 min-w-11 text-destructive" aria-label={`${t("common.delete")} ${other.symbol}`} onClick={() => setRemoval(index)}>×</button>
       </div>)}
     </div>
-    {editor && <MobilePage title={t("mobile.others.edit")}>
+    {editor && <MobilePage title={t("mobile.others.edit")} onDismiss={() => setEditor(undefined)}>
       <div className="mx-auto max-w-xl space-y-5">
         <Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button>
         <h2 className="text-3xl font-bold">{t("mobile.others.edit")}</h2>
@@ -58,7 +58,7 @@ export function MobileOthers(props: {
         <Button className="min-h-12 w-full" onClick={save}>{t("config.saveChanges")}</Button>
       </div>
     </MobilePage>}
-    {removal !== null && <BottomSheet title={t("config.removeDialogTitle")}>
+    {removal !== null && <BottomSheet title={t("config.removeDialogTitle")} onDismiss={() => setRemoval(null)}>
         <p className="py-2 text-center">{t("config.removeDialogDesc")}</p>
         <Button variant="destructive" className="min-h-12 w-full" onClick={() => { props.onRemove(removal); setRemoval(null); }}>{t("common.delete")}</Button>
         <Button variant="outline" className="min-h-12 w-full" onClick={() => setRemoval(null)}>{t("common.cancel")}</Button>

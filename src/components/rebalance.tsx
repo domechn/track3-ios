@@ -37,6 +37,8 @@ import { isIOS } from "@/utils/platform";
 type TargetDraft = RebalanceTarget & { id: number; previousAsset?: { assetType: AssetType; symbol: string } };
 
 const numberOrZero = (raw: string) => raw === "" ? Number.NaN : Number(raw);
+const stepPercent = (percent: number, step: number) =>
+  Math.max(0, Math.min(100, Math.round(((Number.isFinite(percent) ? percent : 0) + step) * 100) / 100));
 function storedOptions(): Partial<RebalanceOptions> {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(REBALANCE_OPTIONS_KEY) ?? "{}");
@@ -226,7 +228,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
   ) => (
     <label htmlFor={id} className="space-y-1 text-xs text-muted-foreground">
       <span>{label}</span>
-      <Input id={id} className="touch:h-11 text-xs tabular-nums h-8" type="number" min="0" step="0.01"
+      <Input id={id} className={`${isIOS() ? "h-11" : "h-8"} text-xs tabular-nums`} type="number" min="0" step="0.01"
         value={Number.isNaN(value) ? "" : value}
         onChange={(event) => setter(numberOrZero(event.target.value))} />
     </label>
@@ -273,7 +275,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                   : "grid grid-cols-[minmax(90px,1fr)_minmax(85px,1fr)_72px_32px] items-end gap-1.5 sm:grid-cols-[150px_minmax(120px,1fr)_110px_32px] touch:grid-cols-2 touch:sm:grid-cols-[150px_minmax(120px,1fr)_110px_44px]"}>
                   <label className="space-y-1 text-xs text-muted-foreground">
                     <span>{t("rebalance.targetKind")}</span>
-                    <select className="touch:h-11 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground h-8"
+                    <select className={`${isIOS() ? "h-11" : "h-8"} w-full rounded-md border border-input bg-background px-2 text-xs text-foreground`}
                       value={target.kind} onChange={(event) => {
                         const percent = target.percent;
                         const previousAsset = target.kind === "asset"
@@ -293,7 +295,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                     target.kind === "type" ? (
                       <label className="space-y-1 text-xs text-muted-foreground">
                         <span>{t("rebalance.targetType")}</span>
-                        <select className="touch:h-11 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground h-8"
+                        <select className={`${isIOS() ? "h-11" : "h-8"} w-full rounded-md border border-input bg-background px-2 text-xs text-foreground`}
                           value={target.assetType}
                           onChange={(event) => updateTarget(index, { ...target, assetType: event.target.value as AssetType })}>
                           <option value="crypto">{t("rebalance.crypto")}</option>
@@ -303,28 +305,36 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                     ) : (
                       <label className="space-y-1 text-xs text-muted-foreground">
                         <span>{t("rebalance.symbol")}</span>
-                        <Input className="touch:h-11 text-xs h-8" value={target.symbol} placeholder={t("rebalance.symbolPlaceholder")}
+                        <Input className={`${isIOS() ? "h-11" : "h-8"} text-xs`} value={target.symbol} placeholder={t("rebalance.symbolPlaceholder")}
                           onChange={(event) => updateTarget(index, { ...target, symbol: event.target.value.toUpperCase() })}
                           aria-label={t("rebalance.symbol")} />
                       </label>
                     )}
                   <label className="space-y-1 text-xs text-muted-foreground">
                     <span>{t("rebalance.percent")}</span>
-                    <Input className="touch:h-11 px-1.5 text-xs tabular-nums h-8" type="number" min="0" max="100" step="0.01"
+                    <Input className={`${isIOS() ? "h-11" : "h-8"} px-1.5 text-xs tabular-nums`} type="number" min="0" max="100" step="0.01"
                       aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
                       aria-invalid={!!validation || normalizeError}
                       aria-describedby={validation || normalizeError ? "rebalance-target-error" : undefined}
                       value={Number.isNaN(target.percent) ? "" : target.percent}
                       onChange={(event) => updateTarget(index, { ...target, percent: numberOrZero(event.target.value) })} />
                   </label>
-                  {isIOS() && <input
-                    type="range" min="0" max="100" step="1"
-                    className="col-span-2 min-h-11 w-full accent-primary"
-                    aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
-                    value={Number.isNaN(target.percent) ? 0 : target.percent}
-                    onChange={(event) => updateTarget(index, { ...target, percent: Number(event.target.value) })}
-                  />}
-                  <Button className="touch:h-11 touch:w-11 p-0 h-8 w-8" size="sm" variant="ghost"
+                  {isIOS() && <div className="col-span-2 flex items-center gap-2">
+                    <Button className="h-11 w-11 shrink-0 p-0" variant="outline"
+                      aria-label={t("rebalance.decreaseTarget").replace("{asset}", labelFor(target))}
+                      onClick={() => updateTarget(index, { ...target, percent: stepPercent(target.percent, -1) })}>−</Button>
+                    <input
+                      type="range" min="0" max="100" step="1"
+                      className="min-h-11 min-w-0 flex-1 accent-primary"
+                      aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
+                      value={Number.isNaN(target.percent) ? 0 : target.percent}
+                      onChange={(event) => updateTarget(index, { ...target, percent: Number(event.target.value) })}
+                    />
+                    <Button className="h-11 w-11 shrink-0 p-0" variant="outline"
+                      aria-label={t("rebalance.increaseTarget").replace("{asset}", labelFor(target))}
+                      onClick={() => updateTarget(index, { ...target, percent: stepPercent(target.percent, 1) })}>+</Button>
+                  </div>}
+                  <Button className={`${isIOS() ? "h-11 w-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
                     aria-label={t("rebalance.remove").replace("{asset}", labelFor(target))}
                     onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>×</Button>
                 </div>

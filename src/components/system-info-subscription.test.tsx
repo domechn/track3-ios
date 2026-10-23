@@ -107,6 +107,17 @@ beforeEach(() => {
 });
 
 describe("System Info subscription management", () => {
+  it("keeps license entry but hides external subscription links on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/systemInfo?section=pro";
+    render(<SystemInfo onProStatusChange={vi.fn()} />);
+    expect(await screen.findByText("Free")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /view pro benefits/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /subscribe monthly/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Enter existing license key/i)).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
   it("shows only app details on the iPhone About page", async () => {
     vi.mocked(isIOS).mockReturnValue(true);
     window.location.hash = "#/settings/systemInfo?section=about";

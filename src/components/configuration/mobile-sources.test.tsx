@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MobileSources } from "./mobile-sources";
+import type { ExchangeRow } from "./types";
 
 const props = {
   exchanges: [{ type: "binance", apiKey: "private-key-1234", secret: "secret", active: true }],
@@ -45,6 +46,30 @@ describe("mobile data sources", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocapitalize", "off");
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocomplete", "off");
+  });
+
+  it.each([
+    ["okex", "Password"],
+    ["bitget", "Passphrase"],
+  ])("clears %s secrets when the exchange type changes", async (provider, label) => {
+    const save = vi.fn(async (_value: ExchangeRow) => {});
+    render(<MobileSources {...props} onSaveExchange={save} exchangeOptions={[
+      ...props.exchangeOptions, { value: "bitget", label: "Bitget" },
+    ]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: provider } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "new-key" } });
+    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "new-secret" } });
+    fireEvent.change(screen.getByLabelText(label), { target: { value: "old-provider-secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "binance" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0]).not.toHaveProperty("password");
+    expect(save.mock.calls[0][0]).not.toHaveProperty("passphrase");
+    expect(JSON.stringify(save.mock.calls[0][0])).not.toContain("old-provider-secret");
   });
 
   it.each([

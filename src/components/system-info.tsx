@@ -47,7 +47,7 @@ const App = ({
   const [showLicense, setShowLicense] = useState(false);
   const [saveLicenseLoading, setSaveLicenseLoading] = useState(false);
   const [inactiveLicenseLoading, setInactiveLicenseLoading] = useState(false);
-  const [showLegacyInput, setShowLegacyInput] = useState(false);
+  const [showLegacyInput, setShowLegacyInput] = useState(isIOS());
 
   // subscription states
   const [subscriptionInfo, setSubscriptionInfo] =
@@ -62,7 +62,7 @@ const App = ({
   useEffect(() => {
     loadVersion();
     loadLicense();
-    loadSubscriptionPlans();
+    if (!isIOS()) loadSubscriptionPlans();
   }, []);
 
   useEffect(() => {
@@ -404,13 +404,13 @@ const App = ({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
+              {!isIOS() && <Button
                 variant="outline"
                 onClick={onManageSubscription}
                 disabled={portalLoading}
               >
                 {t("system.manageSub")}
-              </Button>
+              </Button>}
               <ConfirmDeleteDialog
                 trigger={
                   <Button
@@ -493,7 +493,7 @@ const App = ({
       )}
 
       {/* Subscription plans — shown when no active license */}
-      {!activeLicense && (
+      {!activeLicense && !isIOS() && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

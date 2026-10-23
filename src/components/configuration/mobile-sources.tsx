@@ -169,16 +169,25 @@ export function MobileSources(props: MobileSourcesProps) {
           </div>
         </section>
       ))}
-      {editor && <MobilePage title={t("mobile.sources.edit")}>
+      {editor && <MobilePage title={t("mobile.sources.edit")} onDismiss={close}>
         <div className="mx-auto max-w-xl space-y-6">
           <div className="flex items-center justify-between">
-            <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
+            <div className="flex items-center gap-2">
+              {editor.step === 2 && !editor.original && <Button variant="ghost" className="min-h-11" onClick={() => setEditor({ ...editor, step: 1 })}>{t("common.back")}</Button>}
+              <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
+            </div>
             <span className="text-sm text-muted-foreground">{editor.step} / 2</span>
           </div>
           <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
           {editor.step === 1 ? <>
             <Label htmlFor="mobile-provider">{t("config.formType")}</Label>
-            <select id="mobile-provider" className="mt-2 min-h-12 w-full rounded-xl border bg-card px-3" value={editor.draft.type} onChange={(event) => update({ type: event.target.value })}>
+            <select id="mobile-provider" className="mt-2 min-h-12 w-full rounded-xl border bg-card px-3" value={editor.draft.type} onChange={(event) => {
+              const type = event.target.value;
+              if (editor.kind === "exchange" && type !== editor.draft.type) {
+                const { password: _password, passphrase: _passphrase, ...rest } = editor.draft as ExchangeRow;
+                setEditor({ ...editor, draft: { ...rest, type } });
+              } else update({ type });
+            }}>
               {sections.find((section) => section.kind === editor.kind)?.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <Button className="min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}</Button>
@@ -200,7 +209,7 @@ export function MobileSources(props: MobileSourcesProps) {
           </>}
         </div>
       </MobilePage>}
-      {removal && <BottomSheet title={t("config.removeDialogTitle")}>
+      {removal && <BottomSheet title={t("config.removeDialogTitle")} onDismiss={() => setRemoval(undefined)}>
           <p className="py-2 text-center">{t("config.removeDialogDesc")}</p>
           <Button variant="destructive" className="min-h-12 w-full" onClick={remove}>{t("common.delete")}</Button>
           <Button variant="outline" className="min-h-12 w-full" onClick={() => setRemoval(undefined)}>{t("common.cancel")}</Button>

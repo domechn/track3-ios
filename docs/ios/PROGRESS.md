@@ -32,10 +32,8 @@ and signed build checks remain pending.
 
 The S3 exit condition is **not yet met**: S2 navigation has not been merged
 here, and native behavior still needs simulator and device validation. The
-last pushed iOS run `39944680622` built the app but it exited during setup
-before the first frame. Its log confirms an iOS Keychain read failure; the
-old bridge hid the OSStatus, so the precise Security error is unknown.
-Artifact uploads also failed because the GitHub Actions storage quota was full.
+last pushed iOS run `39947887097` failed at simulator launch after ad hoc
+signing. Its crash report was unavailable because the artifact quota was full.
 
 - iPhone Settings now opens focused pages for data sources, base currency,
   appearance, language, blacklist, Pro, assistant configuration, security,
@@ -54,7 +52,8 @@ Artifact uploads also failed because the GitHub Actions storage quota was full.
   notification permission flow and now update the app icon badge.
 - The assistant has a full phone chat and session view with a composer that
   follows the visual viewport above the keyboard and collapsed tool activity.
-  Alert editing opens as a page; rebalance targets have touch sliders;
+  Alert editing opens as a page; rebalance targets have touch sliders and
+  44 pt increment and decrement buttons;
   refresh opens a progress sheet with existing source status and retry.
   The backup status is visible without hover.
 - A small Swift bridge supplies Face ID, Touch ID, or device passcode app
@@ -75,13 +74,17 @@ Artifact uploads also failed because the GitHub Actions storage quota was full.
 - Editing a saved source keeps its attachment identity fixed. The alert
   editor has a Cancel button, and refresh hides old source results until the
   current run finishes.
-- The current S3 review fixes add ad hoc signing with explicit Keychain
-  entitlements to the CI simulator app, expose Keychain OSStatus in setup
-  failures, and write debug setup errors to the existing Caches error log.
-  A background Keychain read that is temporarily blocked waits for the app
-  to become active. Mobile source saving now distinguishes duplicate,
-  invalid, and provider failures and redacts submitted credentials. Settings
-  sections follow router query changes while mounted.
+- The current review removes the blocking Keychain retry loop and fabricated
+  simulator signature. A simulator lacking Keychain entitlement uses a
+  protected, backup-excluded key file. Other startup key errors leave Track3
+  locked with the database closed instead of panicking; a temporary key error
+  retries when the app becomes active or the user taps Retry. CI prints recent
+  crash details in the job log; upload quota errors no longer mask the launch
+  result. Mobile dialogs trap focus, lock background scrolling, and dismiss
+  through Escape or a backdrop tap. Changing a new exchange's provider clears
+  its old password and passphrase. The iPhone Pro page keeps license entry
+  but hides external subscription links. The share sheet preserves the
+  export filename.
 
 ### Remaining S3 work and verification limits
 
@@ -92,11 +95,10 @@ Artifact uploads also failed because the GitHub Actions storage quota was full.
   is not guaranteed; no BGTaskScheduler integration exists.
 - Keychain migration, native lock, privacy cover, badge, haptics, share sheet,
   Files visibility, and background behavior still need simulator and
-  physical-device checks. The simulator signing and startup fixes are pending
-  a new macOS CI run; no rendered simulator screenshot is verified on this
-  worktree yet. A Keychain read failure while the app is already active still
-  stops setup to avoid opening encrypted data with the wrong key. The debug
-  startup log will report its OSStatus.
+  physical-device checks. The current startup fix is pending a macOS CI run;
+  no rendered simulator screenshot is verified on this worktree yet. A
+  Keychain failure leaves the portfolio locked; the debug startup log reports
+  its OSStatus.
   Swift and the iOS app can only be compiled by the macOS CI job after the
   driver commits and pushes this worktree.
 - End-to-end reachability for the whole README feature list depends on
@@ -105,8 +107,8 @@ Artifact uploads also failed because the GitHub Actions storage quota was full.
 
 ### S3 local checks
 
-- `corepack yarn tsc --noEmit` passed.
-- `corepack yarn vitest run` passed: 1,757 tests in 209 files, including
+- `corepack yarn tsc --noEmit` passed after the current review fixes.
+- `corepack yarn vitest run` passed: 1,767 tests in 211 files, including
   English/Chinese catalog parity.
 - `E2E_PORT=1423 corepack yarn playwright test
   tests/e2e/ios-settings.spec.ts --workers=1` passed: 13 browser checks at

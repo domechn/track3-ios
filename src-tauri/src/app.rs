@@ -1,5 +1,10 @@
 #[cfg(debug_assertions)]
 use std::io::Write;
+#[cfg(target_os = "ios")]
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Mutex,
+};
 use std::{collections::HashMap, io};
 
 use crate::{
@@ -28,6 +33,18 @@ use tauri::Manager;
 
 lazy_static! {
     static ref ENT: Ent = Ent::new();
+}
+#[cfg(target_os = "ios")]
+static IOS_STARTUP_FAILURE: Mutex<Option<String>> = Mutex::new(None);
+#[cfg(target_os = "ios")]
+static IOS_STARTUP_RETRYABLE: AtomicBool = AtomicBool::new(false);
+
+#[cfg(target_os = "ios")]
+fn set_ios_startup_failure(error: String, retryable: bool) {
+    *IOS_STARTUP_FAILURE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(error);
+    IOS_STARTUP_RETRYABLE.store(retryable, Ordering::SeqCst);
 }
 
 /// Decrypt data with an explicit key (for import where the current ENT key
@@ -222,6 +239,91 @@ fn get_database_url(database_path: tauri::State<'_, DatabasePath>) -> Result<Str
     sqlite_url(&database_path.0)
 }
 
+#[tauri::command]
+fn ios_startup_failure() -> Option<String> {
+    #[cfg(target_os = "ios")]
+    return IOS_STARTUP_FAILURE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .clone();
+    #[cfg(not(target_os = "ios"))]
+    None
+}
+
+#[cfg(target_os = "ios")]
+fn retry_ios_startup(handle: tauri::AppHandle) -> Result<(), (String, bool)> {
+    let app_version = handle.package_info().version.to_string();
+    let resource_dir = handle
+        .path()
+        .resource_dir()
+        .map_err(|error| (error.to_string(), false))?;
+    let app_data_dir = handle
+        .path()
+        .app_data_dir()
+        .map_err(|error| (error.to_string(), false))?;
+    let app_config_dir = handle
+        .path()
+        .app_config_dir()
+        .map_err(|error| (error.to_string(), false))?;
+    let database_path =
+        tauri::async_runtime::block_on(resolve_database_path(&app_data_dir, &app_config_dir))
+            .map_err(|error| (error, false))?;
+    let key = crate::startup_security::load_or_create_ios_encryption_key(
+        &app_data_dir.join(".ent-key"),
+        !database_path.exists(),
+    )
+    .map_err(|error| (error, true))?;
+    tauri::async_runtime::block_on(initialize_database_if_needed(
+        &database_path,
+        &app_version,
+        &resource_dir,
+    ))
+    .map_err(|error| (error, false))?;
+    ENT.set_key(key).map_err(|error| (error, false))?;
+    tauri::async_runtime::block_on(recover_pending_rotation(
+        &database_path,
+        &app_data_dir,
+        &ENT,
+    ))
+    .map_err(|error| (error, false))?;
+    crate::ios_backup::exclude_existing_key_artifacts(&app_data_dir)
+        .map_err(|error| (error, false))?;
+    tauri::async_runtime::block_on(run_migrations(&database_path, &resource_dir, &app_version))
+        .map_err(|error| (error, false))?;
+    handle.manage(DatabasePath(database_path));
+    Ok(())
+}
+
+#[cfg(target_os = "ios")]
+#[tauri::command]
+async fn ios_retry_startup(handle: tauri::AppHandle) -> Result<bool, String> {
+    if !IOS_STARTUP_RETRYABLE.swap(false, Ordering::SeqCst) {
+        return Ok(false);
+    }
+    match tauri::async_runtime::spawn_blocking(move || retry_ios_startup(handle)).await {
+        Ok(Ok(())) => {
+            *IOS_STARTUP_FAILURE
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+            Ok(true)
+        }
+        Ok(Err((error, retryable))) => {
+            set_ios_startup_failure(error, retryable);
+            Ok(false)
+        }
+        Err(error) => {
+            set_ios_startup_failure(format!("startup retry failed: {error}"), false);
+            Ok(false)
+        }
+    }
+}
+
+#[cfg(not(target_os = "ios"))]
+#[tauri::command]
+fn ios_retry_startup() -> bool {
+    false
+}
+
 #[cfg(target_os = "ios")]
 #[tauri::command]
 async fn ios_key_recovery_needed(
@@ -382,18 +484,27 @@ pub fn run() {
             ))
             .map_err(io::Error::other)?;
             #[cfg(target_os = "ios")]
-            let ios_key = crate::startup_security::load_or_create_ios_encryption_key(
+            let ios_key = match crate::startup_security::load_or_create_ios_encryption_key(
                 &app_data_dir.join(".ent-key"),
                 !database_path.exists(),
-            )
-            .map_err(io::Error::other)?;
+            ) {
+                Ok(key) => key,
+                Err(error) => {
+                    #[cfg(debug_assertions)]
+                    let _ = record_frontend_error(
+                        app.handle().clone(),
+                        format!("startup key unavailable: {error}"),
+                    );
+                    set_ios_startup_failure(error, true);
+                    return Ok(());
+                }
+            };
             tauri::async_runtime::block_on(initialize_database_if_needed(
                 &database_path,
                 &app_version,
                 &resource_dir,
             ))
             .map_err(io::Error::other)?;
-            app.manage(DatabasePath(database_path.clone()));
 
             #[cfg(not(target_os = "ios"))]
             let enc_key =
@@ -419,13 +530,22 @@ pub fn run() {
                 &app_version,
             ))
             .map_err(io::Error::other)?;
+            app.manage(DatabasePath(database_path));
             Ok(())
         })();
         #[cfg(debug_assertions)]
         if let Err(error) = &result {
             let _ = record_frontend_error(app.handle().clone(), format!("startup failed: {error}"));
         }
-        result
+        #[cfg(target_os = "ios")]
+        if let Err(error) = result {
+            set_ios_startup_failure(error.to_string(), false);
+            return Ok(());
+        }
+        #[cfg(not(target_os = "ios"))]
+        return result;
+        #[cfg(target_os = "ios")]
+        Ok(())
     });
     #[cfg(debug_assertions)]
     let builder = builder.invoke_handler(tauri::generate_handler![
@@ -442,6 +562,8 @@ pub fn run() {
         delete_sync_snapshot,
         get_database_url,
         ios_key_recovery_needed,
+        ios_startup_failure,
+        ios_retry_startup,
         ios_lock_enabled,
         ios_set_lock_enabled,
         ios_authenticate,
@@ -466,6 +588,8 @@ pub fn run() {
         delete_sync_snapshot,
         get_database_url,
         ios_key_recovery_needed,
+        ios_startup_failure,
+        ios_retry_startup,
         ios_lock_enabled,
         ios_set_lock_enabled,
         ios_authenticate,
