@@ -6,6 +6,8 @@ pub mod ent;
 pub mod info;
 #[path = "../../src/migration.rs"]
 pub mod migration;
+#[path = "../../src/startup_security.rs"]
+pub mod startup_security;
 #[path = "../../src/sync_persistence.rs"]
 pub mod sync_persistence;
 #[path = "../../src/types.rs"]

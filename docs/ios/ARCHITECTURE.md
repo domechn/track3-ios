@@ -24,14 +24,28 @@ once after reboot. SQLite assets and transactions rely on iOS Data Protection
 for at-rest protection; sensitive configuration and assistant content also
 use app-layer encryption.
 
+Fresh iOS installs create a random `.ent-key` before the database is
+initialized. It is stored with mode `0600` in app data under iOS Data
+Protection and excluded from iCloud and Finder backups. This is a protected
+random file rather than a Keychain item because the existing recoverable
+key rotation protocol atomically replaces `.ent-key` alongside database and
+session ciphertext; keeping another Keychain copy would require a second
+recovery transaction. Installs that already have a database but no key
+continue to use the legacy key, so an app update does not make existing
+secrets unreadable.
+
 The recoverable rotation protocol atomically replaces `.ent-key` and uses
 temporary files and a journal. iOS marks those key artifacts with
 `NSURLIsExcludedFromBackupKey` as they are created and scans existing key
 artifacts at startup. This prevents an iCloud or Finder backup from carrying
-the encryption key beside the encrypted configuration. The existing legacy
-default key remains for compatibility. After a device restore, configuration
-encrypted with a custom key cannot be read from the restored database; the
-user must import an exported configuration using its original key. Device
+the encryption key beside the encrypted configuration. After a device restore,
+configuration encrypted on iOS cannot be read from the restored database.
+The generated key is not shown to users, so an export encrypted with that
+default key is also unrecoverable after restore. For a recoverable
+configuration export, the user must first set a known key with Data
+Management's Update Encryption Key control, then export the configuration
+and keep that key separately. The import flow can decrypt with the supplied
+key. Device
 backup and restore behavior still needs validation on a signed build.
 
 `scripts/ios/configure-project.py` applies the Data Protection entitlement to
@@ -56,15 +70,21 @@ file APIs within the sandbox. `fs2` instance locking and `libc::O_NOFOLLOW`
 remain supported Unix operations; key rotation keeps its existing fsync and
 recovery behavior.
 
-The iOS document picker exports an already written file from the app's
-Documents directory. The frontend writes the file before opening the picker;
-desktop exports continue writing to the selected path afterward. Automatic
+The iOS document picker creates an empty file under a unique name in Documents.
+The frontend stages export content under the app cache, copies it to the
+selected path after the picker closes, and removes the cache file. It removes
+the empty Documents placeholder on cancellation; after a successful export
+to an external location the empty placeholder may remain because the
+returned URL cannot safely be compared with the sandbox Documents path.
+This prevents an earlier Documents export from being overwritten or deleted
+when the user cancels. Desktop exports write directly to the selected path.
+Automatic
 backups on iOS use the app's Documents directory, with filesystem scope for
 that directory. Backups are available through Files and Finder. Selecting
 arbitrary external directories across launches is unavailable because the
 current plugin does not retain security-scoped access.
 
-After successful configuration and SQLite queries, the frontend waits for the
-overview heading to render and invokes a Rust command that writes a readiness
-marker in the app cache. Simulator CI checks that marker before taking its
-screenshot.
+The simulator debug build enables a frontend probe that waits for the overview
+heading and invokes a debug-only Rust command to write a readiness marker in
+the app cache, even when data loading fails or charts remain busy. CI polls
+for that marker after capturing its screenshot and logs.

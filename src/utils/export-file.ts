@@ -1,6 +1,6 @@
-import { documentDir } from "@tauri-apps/api/path";
+import { appCacheDir, documentDir } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
-import { exists, remove } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, remove } from "@tauri-apps/plugin-fs";
 import { isIOS } from "@/utils/platform";
 
 export async function exportFile(
@@ -19,19 +19,23 @@ export async function exportFile(
     return true;
   }
 
-  // iOS exports the existing Documents file while the picker is open.
-  const source = `${(await documentDir()).replace(/\/+$/, "")}/${filename}`;
+  // The iOS picker creates its own empty Documents file; keep sensitive data in cache.
+  const stagingName = filename.replace(/(\.[^.]+)$/, `-${crypto.randomUUID()}$1`);
+  const source = `${(await appCacheDir()).replace(/\/+$/, "")}/${stagingName}`;
+  const pickerSource = `${(await documentDir()).replace(/\/+$/, "")}/${stagingName}`;
   let selected: string | null = null;
   try {
     await write(source);
-    selected = await save(options);
+    selected = await save({ ...options, defaultPath: stagingName });
+    if (selected) await copyFile(source, selected);
     return !!selected;
   } finally {
-    const selectedPath = selected?.startsWith("file://")
-      ? decodeURIComponent(new URL(selected).pathname)
-      : selected;
-    if (selectedPath !== source && await exists(source)) {
+    if (await exists(source)) {
       await remove(source);
+    }
+    // shortcut: successful external exports may leave an empty Documents placeholder until URLs can be compared canonically.
+    if (!selected && await exists(pickerSource)) {
+      await remove(pickerSource);
     }
   }
 }

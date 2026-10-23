@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   appCacheDir: vi.fn(),
   getImageApiPath: vi.fn(),
   listWalletAliases: vi.fn(),
+  markIOSReady: vi.fn(),
 }));
 
 vi.mock("../settings", () => ({
@@ -165,6 +166,9 @@ vi.mock("@/middlelayers/wallet", () => ({
     }
   },
 }));
+vi.mock("@/utils/ios-ready", () => ({
+  markIOSReady: mocks.markIOSReady,
+}));
 
 const transaction: Transaction = {
   id: 42,
@@ -232,6 +236,7 @@ beforeEach(() => {
   mocks.appCacheDir.mockResolvedValue("/tmp/track3-cache");
   mocks.getImageApiPath.mockResolvedValue("");
   mocks.listWalletAliases.mockResolvedValue({});
+  mocks.markIOSReady.mockResolvedValue(undefined);
   mocks.invalidateCacheGroups.mockImplementation(() => {
     try {
       mocks.clearLocalStorageCache();
@@ -260,6 +265,18 @@ function renderApp() {
 }
 
 describe("Coin Analytics data-changed integration", () => {
+  it("checks rendered iOS readiness when startup data loading rejects", async () => {
+    window.location.hash = "#/overview";
+    mocks.queryLastRefreshAt.mockRejectedValueOnce(new Error("database unavailable"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      renderApp();
+      await waitFor(() => expect(mocks.markIOSReady).toHaveBeenCalledTimes(1));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("finishes a committed edit when route cache cleanup fails", async () => {
     const unhandledRejection = vi.fn();
     const consoleWarn = vi

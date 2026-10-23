@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File, OpenOptions},
-    io::{ErrorKind, Read},
+    io::{ErrorKind, Read, Write},
     path::Path,
 };
 
@@ -115,6 +115,47 @@ pub fn load_encryption_key(key_path: &Path) -> Result<String, String> {
     };
     validate_encryption_key_material(&key)?;
     Ok(key)
+}
+
+pub fn load_or_create_ios_encryption_key(
+    key_path: &Path,
+    fresh_database: bool,
+) -> Result<String, String> {
+    if !fresh_database {
+        return load_encryption_key(key_path);
+    }
+    reject_link_or_reparse_point(key_path)?;
+    if key_path.exists() {
+        return load_encryption_key(key_path);
+    }
+
+    let key = format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    );
+    let mut options = OpenOptions::new();
+    options.create_new(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW).mode(0o600);
+    }
+    let mut file = options
+        .open(key_path)
+        .map_err(|error| format!("failed to create encryption key: {error}"))?;
+    let result = (|| {
+        file.write_all(key.as_bytes())
+            .and_then(|_| file.sync_all())
+            .map_err(|error| format!("failed to persist encryption key: {error}"))?;
+        #[cfg(target_os = "ios")]
+        crate::ios_backup::exclude_key_artifact(key_path)?;
+        Ok(key)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(key_path);
+    }
+    result
 }
 
 fn open_key_file_no_follow(key_path: &Path) -> Result<File, std::io::Error> {
@@ -244,6 +285,50 @@ mod tests {
             load_encryption_key(&directory.0.join(".ent-key")).unwrap(),
             LEGACY_ENCRYPTION_KEY
         );
+    }
+
+    #[test]
+    fn fresh_ios_install_gets_a_persisted_random_key() {
+        let directory = TestDirectory::new();
+        let key_path = directory.0.join(".ent-key");
+
+        let first = super::load_or_create_ios_encryption_key(&key_path, true).unwrap();
+        assert_ne!(first, LEGACY_ENCRYPTION_KEY);
+        assert!(first.len() >= 32);
+        assert_eq!(fs::read_to_string(&key_path).unwrap(), first);
+        assert_eq!(
+            super::load_or_create_ios_encryption_key(&key_path, true).unwrap(),
+            first
+        );
+        assert_eq!(
+            super::load_or_create_ios_encryption_key(&key_path, false).unwrap(),
+            first
+        );
+        let other = TestDirectory::new();
+        assert_ne!(
+            super::load_or_create_ios_encryption_key(&other.0.join(".ent-key"), true).unwrap(),
+            first
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&key_path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+    }
+
+    #[test]
+    fn existing_ios_database_without_a_key_keeps_legacy_compatibility() {
+        let directory = TestDirectory::new();
+        let key_path = directory.0.join(".ent-key");
+
+        assert_eq!(
+            super::load_or_create_ios_encryption_key(&key_path, false).unwrap(),
+            LEGACY_ENCRYPTION_KEY
+        );
+        assert!(!key_path.exists());
     }
 
     #[test]

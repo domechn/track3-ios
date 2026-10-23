@@ -14,7 +14,7 @@ use crate::{
     },
     migration::run_migrations,
     refresh_persistence::persist_refresh as persist_refresh_atomically,
-    startup_security::{acquire_app_instance_lock, load_encryption_key, LEGACY_ENCRYPTION_KEY},
+    startup_security::{acquire_app_instance_lock, LEGACY_ENCRYPTION_KEY},
     sync_persistence::{
         delete_sync_snapshot as delete_sync_snapshot_atomically,
         import_sync_snapshot as import_sync_snapshot_atomically,
@@ -220,6 +220,7 @@ fn get_database_url(database_path: tauri::State<'_, DatabasePath>) -> Result<Str
     sqlite_url(&database_path.0)
 }
 
+#[cfg(debug_assertions)]
 #[tauri::command]
 fn mark_frontend_ready(handle: tauri::AppHandle) -> Result<(), String> {
     let cache_dir = handle.path().app_cache_dir().map_err(|e| e.to_string())?;
@@ -259,6 +260,12 @@ pub fn run() {
                 &app_config_dir,
             ))
             .map_err(io::Error::other)?;
+            #[cfg(target_os = "ios")]
+            let ios_key = crate::startup_security::load_or_create_ios_encryption_key(
+                &app_data_dir.join(".ent-key"),
+                !database_path.exists(),
+            )
+            .map_err(io::Error::other)?;
             tauri::async_runtime::block_on(initialize_database_if_needed(
                 &database_path,
                 &app_version,
@@ -267,8 +274,12 @@ pub fn run() {
             .map_err(io::Error::other)?;
             app.manage(DatabasePath(database_path.clone()));
 
-            let key_path = app_data_dir.join(".ent-key");
-            let enc_key = load_encryption_key(&key_path).map_err(io::Error::other)?;
+            #[cfg(not(target_os = "ios"))]
+            let enc_key =
+                crate::startup_security::load_encryption_key(&app_data_dir.join(".ent-key"))
+                    .map_err(io::Error::other)?;
+            #[cfg(target_os = "ios")]
+            let enc_key = ios_key;
             ENT.set_key(enc_key).map_err(io::Error::other)?;
 
             tauri::async_runtime::block_on(recover_pending_rotation(
@@ -289,21 +300,40 @@ pub fn run() {
             .map_err(io::Error::other)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            query_coins_prices,
-            query_binance_balance,
-            encrypt,
-            decrypt,
-            download_coins_logos,
-            decrypt_with_key,
-            rotate_encryption_key,
-            persist_refresh,
-            import_sync_snapshot,
-            replace_sync_snapshot,
-            delete_sync_snapshot,
-            get_database_url,
-            mark_frontend_ready,
-        ])
+        .invoke_handler({
+            #[cfg(debug_assertions)]
+            let handler = tauri::generate_handler![
+                query_coins_prices,
+                query_binance_balance,
+                encrypt,
+                decrypt,
+                download_coins_logos,
+                decrypt_with_key,
+                rotate_encryption_key,
+                persist_refresh,
+                import_sync_snapshot,
+                replace_sync_snapshot,
+                delete_sync_snapshot,
+                get_database_url,
+                mark_frontend_ready,
+            ];
+            #[cfg(not(debug_assertions))]
+            let handler = tauri::generate_handler![
+                query_coins_prices,
+                query_binance_balance,
+                encrypt,
+                decrypt,
+                download_coins_logos,
+                decrypt_with_key,
+                rotate_encryption_key,
+                persist_refresh,
+                import_sync_snapshot,
+                replace_sync_snapshot,
+                delete_sync_snapshot,
+                get_database_url,
+            ];
+            handler
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

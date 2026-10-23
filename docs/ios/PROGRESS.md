@@ -2,39 +2,38 @@
 
 ## S1 foundation
 
-- CI run `39923565686` passed the web job, both iOS Rust target checks, the
-  unsigned simulator and device builds, simulator install and launch, process
-  checks, screenshot capture, and IPA creation. Its two artifact uploads failed
-  because the account's GitHub Actions artifact storage quota was exhausted.
-  No screenshot or generated project from that run is available to inspect.
-- This round adds an iOS readiness signal after the frontend loads
-  configuration, queries SQLite, and renders the overview heading. CI now
-  requires the signal and a screenshot with at least 5% varied samples. It
-  prints a compressed screenshot and the generated Xcode project as
-  recoverable base64 log chunks. Artifact upload errors no longer mask build
-  and launch results while the account quota is exhausted. Screenshot and log
-  uploads remain configured; simulator ZIP and IPA uploads are temporarily
-  omitted. The unsigned device IPA is still built.
-- Exports now write their data before the iOS document picker opens. Manual
-  automatic backup setup uses the app's Documents directory on iOS, which
-  remains available across launches and is accessible through Files and
-  Finder. The mobile filesystem scope includes Documents. The app shell
-  respects iOS safe area insets, and narrow desktop windows stay classified
-  as desktop.
-- Encryption key files and rotation journals are marked
-  `NSURLIsExcludedFromBackupKey` on iOS. A restored device cannot decrypt
-  configuration encrypted with a custom key; users need their exported
-  configuration and its key to recover it. Device restore testing is pending.
-- The Rust library is named `track3_lib`, avoiding a Windows artifact name
-  collision with the `track3` binary.
-- Local verification for this round: `corepack yarn tsc --noEmit` passed,
-  `corepack yarn vitest run` passed (1,711 tests in 200 files), and
-  `cargo test --locked -p track3-pure-tests --lib` passed (50 tests). iOS
-  compilation and simulator validation require the next macOS CI run.
+- Run `39926851914` failed in the simulator launch step after printing
+  `getpwuid_r did not find a match for uid 501`. Its script did not identify
+  the failing command, and the artifact upload hit the account quota. The
+  earlier run `39923565686` built both iOS targets and passed simulator
+  launch, but its screenshot artifact upload also hit the quota.
+- The Xcode project from run `39926851914` was recovered from its CI log and
+  is present in `src-tauri/gen/apple` for the driver to commit. Its
+  Info.plist and project configuration now include the bundle display name,
+  permission descriptions, document sharing, and portrait iPhone orientation.
+  The project YAML and Info.plist values were checked locally for agreement.
+- The simulator step now traces commands, captures and prints the screenshot
+  and launch logs before readiness checks, and polls for the readiness marker
+  for up to 60 seconds. It captures a second screenshot after readiness for
+  the final artifact. The marker accepts a rendered overview heading even
+  when charts are busy and is attempted after startup data loading succeeds
+  or fails. The probe is included only in CI's debug frontend and debug Rust
+  command registration. The workflow again uploads the zipped simulator
+  `.app` and unsigned device `.ipa` with one-day retention.
+- Fresh iOS installs now create a random, backup-excluded `.ent-key` before
+  database initialization. Existing databases without a key keep legacy
+  compatibility. iOS exports stage content in cache under a unique name and
+  copy it after picker selection, so cancellation cannot overwrite or remove
+  a prior Documents export. A configuration export made under the generated
+  key cannot be recovered after device restore; the user must rotate to a
+  known key before making a recoverable configuration export.
+- Local `corepack yarn tsc --noEmit` passed, `corepack yarn vitest run`
+  passed (1,714 tests in 200 files), and Rust pure tests passed (59 tests).
+  The Rust tests exercise random key creation and existing-install
+  compatibility. A Vite build with the CI readiness probe enabled passed.
 
-The S1 exit condition is **not yet met**. These changes need another macOS CI
-run and visual inspection of its screenshot. The generated
-`src-tauri/gen/apple` project still needs to be recovered from the next run's
-log (or artifact, if quota recovers) and added to the repository by the driver.
-Only the driver commits and pushes. Physical device and signed build checks
-remain pending.
+The S1 exit condition is **not yet met**. The driver must commit and push
+this worktree, then provide the macOS CI result. A green simulator run and a
+rendered screenshot are still required. GitHub Actions artifact storage
+must be cleared by the repository owner for the `.app`, `.ipa`, and screenshot
+uploads to succeed. Physical device and signed build checks remain pending.

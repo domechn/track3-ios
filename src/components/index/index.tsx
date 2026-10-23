@@ -577,10 +577,6 @@ const App = () => {
       .then(() => loadAllData(active))
       .then(() => {
         if (!active) return;
-        setInitializing(false);
-        void markIOSReady().catch(() => {
-          console.warn("iOS readiness check failed");
-        });
         void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
           const text = formatAlert(alert, t);
           toast({ title: text.title, description: text.message });
@@ -588,9 +584,15 @@ const App = () => {
           console.warn("startup alert evaluation failed");
         });
       })
+      .catch(() => {
+        console.warn("startup data loading failed");
+      })
       .finally(() => {
         if (active) {
           setInitializing(false);
+          void markIOSReady().catch(() => {
+            console.warn("iOS readiness check failed");
+          });
           // Defer to the next tick so the boot overlay clears first;
           // auto backup is intentionally off the critical path.
           window.setTimeout(() => {
