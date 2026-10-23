@@ -59,6 +59,8 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   await userEvent.click(screen.getByText("Add alert"));
   expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Save rule" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
 });
 
 it("shows stored portfolio values as a line chart", async () => {

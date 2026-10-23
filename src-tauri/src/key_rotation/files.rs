@@ -12,6 +12,18 @@ pub(super) const BACKUP_SUFFIX: &str = ".rotation.bak";
 pub(super) const KEY_FILE_NAME: &str = ".ent-key";
 const ROTATION_ARTIFACT_MARKER: &str = ".rotation.";
 
+pub(super) fn read_persisted_key(path: &Path) -> Result<Option<String>, String> {
+    #[cfg(target_os = "ios")]
+    {
+        let _ = path;
+        crate::ios_native::keychain_read()
+    }
+    #[cfg(not(target_os = "ios"))]
+    {
+        read_optional_string(path)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum ReplacementStrategy {
     RenameAbsent,

@@ -170,15 +170,15 @@ export function MobileSources(props: MobileSourcesProps) {
           </> : <>
             <Field id="mobile-alias" label={t("config.formAlias")} value={editor.draft.alias ?? ""} onChange={(value) => update({ alias: value })} />
             {editor.kind === "exchange" && <>
-              <Field id="mobile-api-key" label={t("config.formApiKey")} value={(editor.draft as ExchangeRow).apiKey} onChange={(value) => update({ apiKey: value })} onPaste={() => void paste("apiKey")} invalid={errorField === "apiKey"} />
+              <Field id="mobile-api-key" label={t("config.formApiKey")} value={(editor.draft as ExchangeRow).apiKey} onChange={(value) => update({ apiKey: value })} onPaste={editor.original ? undefined : () => void paste("apiKey")} readOnly={!!editor.original} invalid={errorField === "apiKey"} />
               <Field id="mobile-secret" label={t("config.formApiSecret")} value={(editor.draft as ExchangeRow).secret} onChange={(value) => update({ secret: value })} secret onPaste={() => void paste("secret")} invalid={errorField === "secret"} />
               {editor.draft.type === "okex" && <Field id="mobile-password" label={t("config.formPassword")} value={(editor.draft as ExchangeRow).password ?? ""} onChange={(value) => update({ password: value })} secret onPaste={() => void paste("password")} invalid={errorField === "password"} />}
               {editor.draft.type === "bitget" && <Field id="mobile-passphrase" label={t("config.formPassphrase")} value={(editor.draft as ExchangeRow).passphrase ?? ""} onChange={(value) => update({ passphrase: value })} secret onPaste={() => void paste("passphrase")} invalid={errorField === "passphrase"} />}
             </>}
-            {editor.kind === "wallet" && <Field id="mobile-address" label={t("config.formAddress")} value={(editor.draft as WalletRow).address} onChange={(value) => update({ address: value })} onPaste={() => void paste("address")} invalid={errorField === "address"} />}
+            {editor.kind === "wallet" && <Field id="mobile-address" label={t("config.formAddress")} value={(editor.draft as WalletRow).address} onChange={(value) => update({ address: value })} onPaste={editor.original ? undefined : () => void paste("address")} readOnly={!!editor.original} invalid={errorField === "address"} />}
             {editor.kind === "broker" && <>
               <Field id="mobile-token" label={t("config.formToken")} value={(editor.draft as StockBrokerRow).token} onChange={(value) => update({ token: value })} secret onPaste={() => void paste("token")} invalid={errorField === "token"} />
-              <Field id="mobile-query-id" label={t("config.queryId")} value={(editor.draft as StockBrokerRow).queryId} onChange={(value) => update({ queryId: value })} onPaste={() => void paste("queryId")} invalid={errorField === "queryId"} />
+              <Field id="mobile-query-id" label={t("config.queryId")} value={(editor.draft as StockBrokerRow).queryId} onChange={(value) => update({ queryId: value })} onPaste={editor.original ? undefined : () => void paste("queryId")} readOnly={!!editor.original} invalid={errorField === "queryId"} />
             </>}
             {error && <p id="mobile-source-error" role="alert" className="text-sm text-destructive">{error}</p>}
             <Button className="min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
@@ -194,14 +194,14 @@ export function MobileSources(props: MobileSourcesProps) {
   );
 }
 
-function Field({ id, label, value, onChange, secret = false, onPaste, invalid = false }: {
-  id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; invalid?: boolean;
+function Field({ id, label, value, onChange, secret = false, onPaste, readOnly = false, invalid = false }: {
+  id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; readOnly?: boolean; invalid?: boolean;
 }) {
   const { t } = useTranslation();
   return <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
     <div className="flex gap-2">
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} type={secret ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? "mobile-source-error" : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? "mobile-source-error" : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
       {onPaste && <Button variant="outline" className="min-h-12" onClick={onPaste}>{t("mobile.sources.paste")}</Button>}
     </div>
   </div>;

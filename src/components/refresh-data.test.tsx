@@ -90,6 +90,23 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
   });
 
+  it("hides results from the previous run while an iPhone refresh is pending", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockResolvedValueOnce({
+      failedSources: [], requiresDataSourceAction: false, usedLastKnownData: true,
+      persisted: true, sourceResults: [], sourceStatuses: [{ sourceId: "btc:0", label: "Old BTC result", status: "stale" }],
+    } as never);
+    const user = userEvent.setup();
+    render(<RefreshData loading={false} />);
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Old BTC result")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(screen.getByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+    expect(screen.queryByText("Old BTC result")).not.toBeInTheDocument();
+  });
+
   it("announces an active refresh to assistive technology", () => {
     render(<RefreshData loading={true} />);
     expect(screen.getByRole("status")).toHaveTextContent("Refreshing portfolio");

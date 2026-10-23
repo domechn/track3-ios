@@ -10,6 +10,38 @@ unsafe extern "C" {
     fn track3_ios_haptic(kind: u8);
     fn track3_ios_set_badge(count: i32);
     fn track3_ios_share_file(path: *const std::ffi::c_char) -> bool;
+    fn track3_ios_keychain_read(output: *mut u8, capacity: i32) -> i32;
+    fn track3_ios_keychain_write(input: *const u8, length: i32) -> bool;
+    fn track3_ios_keychain_delete() -> bool;
+}
+
+pub fn keychain_read() -> Result<Option<String>, String> {
+    let mut bytes = [0u8; 4096];
+    let length = unsafe { track3_ios_keychain_read(bytes.as_mut_ptr(), bytes.len() as i32) };
+    match length {
+        -1 => Ok(None),
+        -2 => Err("iOS Keychain read failed".into()),
+        0.. => String::from_utf8(bytes[..length as usize].to_vec())
+            .map(Some)
+            .map_err(|_| "invalid iOS Keychain key".into()),
+        _ => Err("iOS Keychain read failed".into()),
+    }
+}
+
+pub fn keychain_write(key: &str) -> Result<(), String> {
+    if unsafe { track3_ios_keychain_write(key.as_ptr(), key.len() as i32) } {
+        Ok(())
+    } else {
+        Err("iOS Keychain write failed".into())
+    }
+}
+
+pub fn keychain_delete() -> Result<(), String> {
+    if unsafe { track3_ios_keychain_delete() } {
+        Ok(())
+    } else {
+        Err("iOS Keychain delete failed".into())
+    }
 }
 
 pub fn install() {

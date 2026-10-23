@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import Security
 import UIKit
 
 private final class Track3PrivacyLock: NSObject {
@@ -8,6 +9,8 @@ private final class Track3PrivacyLock: NSObject {
     private let overlayTag = 0x74A3
     private var installed = false
     private var authenticating = false
+    private var needsUnlock = false
+    private var unlockGeneration = 0
 
     var enabled: Bool { UserDefaults.standard.bool(forKey: setting) }
 
@@ -15,10 +18,11 @@ private final class Track3PrivacyLock: NSObject {
         guard !installed else { return }
         installed = true
         let center = NotificationCenter.default
-        center.addObserver(self, selector: #selector(background), name: UIApplication.willResignActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(privacyCover), name: UIApplication.willResignActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(background), name: UIApplication.didEnterBackgroundNotification, object: nil)
         center.addObserver(self, selector: #selector(foreground), name: UIApplication.didBecomeActiveNotification, object: nil)
-        center.addObserver(self, selector: #selector(windowVisible), name: UIWindow.didBecomeVisibleNotification, object: nil)
         if enabled {
+            needsUnlock = true
             cover()
             if UIApplication.shared.applicationState == .active { authenticateForeground() }
         }
@@ -26,7 +30,7 @@ private final class Track3PrivacyLock: NSObject {
 
     func setEnabled(_ value: Bool) {
         UserDefaults.standard.set(value, forKey: setting)
-        if !value { DispatchQueue.main.async { self.uncover() } }
+        if !value { DispatchQueue.main.async { self.needsUnlock = false; self.uncover() } }
     }
 
     private var windows: [UIWindow] {
@@ -70,18 +74,15 @@ private final class Track3PrivacyLock: NSObject {
         for window in windows { window.viewWithTag(overlayTag)?.removeFromSuperview() }
     }
 
-    @objc private func background() { cover() }
+    @objc private func privacyCover() { if enabled { cover() } }
 
-    @objc private func foreground() {
-        if enabled { cover(); authenticateForeground() }
-        else { uncover() }
+    @objc private func background() {
+        if enabled { unlockGeneration &+= 1; needsUnlock = true; cover() }
     }
 
-    @objc private func windowVisible() {
-        if enabled {
-            cover()
-            if UIApplication.shared.applicationState == .active { authenticateForeground() }
-        }
+    @objc private func foreground() {
+        if enabled && needsUnlock { cover(); authenticateForeground() }
+        else { uncover() }
     }
 
     @objc private func retry() { authenticateForeground() }
@@ -89,20 +90,86 @@ private final class Track3PrivacyLock: NSObject {
     private func authenticateForeground() {
         guard enabled && !authenticating else { return }
         authenticating = true
+        let generation = unlockGeneration
         let context = LAContext()
         var error: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             authenticating = false
+            setEnabled(false)
+            showUnavailableAlert()
             return
         }
         let chinese = Locale.preferredLanguages.first?.hasPrefix("zh") == true
         context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: chinese ? "解锁 Track3" : "Unlock Track3") { success, _ in
             DispatchQueue.main.async {
                 self.authenticating = false
-                if success && self.enabled { self.uncover() }
+                if success && self.enabled && generation == self.unlockGeneration {
+                    self.needsUnlock = false
+                    self.uncover()
+                } else if self.enabled && generation != self.unlockGeneration && UIApplication.shared.applicationState == .active {
+                    self.authenticateForeground()
+                }
             }
         }
     }
+
+    private func showUnavailableAlert() {
+        let chinese = Locale.preferredLanguages.first?.hasPrefix("zh") == true
+        let alert = UIAlertController(
+            title: chinese ? "设备锁定不可用" : "Device lock unavailable",
+            message: chinese ? "请在 iOS 设置中启用设备密码，然后重新开启 Track3 锁定。" : "Set a device passcode in iOS Settings, then turn Track3 lock on again.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: chinese ? "好" : "OK", style: .default))
+        DispatchQueue.main.async {
+            guard let root = self.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
+            root.present(alert, animated: true)
+        }
+    }
+}
+
+private enum Track3Keychain {
+    static let service = "dev.track3.ios.encryption"
+    static let account = "master-key"
+
+    static var query: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service,
+         kSecAttrAccount as String: account]
+    }
+}
+
+@_cdecl("track3_ios_keychain_read")
+public func track3IOSKeychainRead(_ output: UnsafeMutablePointer<UInt8>?, _ capacity: Int32) -> Int32 {
+    guard let output, capacity > 0 else { return -2 }
+    var query = Track3Keychain.query
+    query[kSecReturnData as String] = true
+    query[kSecMatchLimit as String] = kSecMatchLimitOne
+    var result: CFTypeRef?
+    let status = SecItemCopyMatching(query as CFDictionary, &result)
+    if status == errSecItemNotFound { return -1 }
+    guard status == errSecSuccess, let data = result as? Data, data.count <= Int(capacity) else { return -2 }
+    for (index, byte) in data.enumerated() { output[index] = byte }
+    return Int32(data.count)
+}
+
+@_cdecl("track3_ios_keychain_write")
+public func track3IOSKeychainWrite(_ input: UnsafePointer<UInt8>?, _ length: Int32) -> Bool {
+    guard let input, length > 0 else { return false }
+    let data = Data(bytes: input, count: Int(length))
+    let status = SecItemUpdate(Track3Keychain.query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+    if status == errSecSuccess { return true }
+    guard status == errSecItemNotFound else { return false }
+    var query = Track3Keychain.query
+    query[kSecValueData as String] = data
+    query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+    return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+}
+
+@_cdecl("track3_ios_keychain_delete")
+public func track3IOSKeychainDelete() -> Bool {
+    let status = SecItemDelete(Track3Keychain.query as CFDictionary)
+    return status == errSecSuccess || status == errSecItemNotFound
 }
 
 @_cdecl("track3_ios_install_native")

@@ -46,4 +46,16 @@ describe("mobile data sources", () => {
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocapitalize", "off");
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocomplete", "off");
   });
+
+  it.each([
+    ["exchange", "Binance", "Api Key"],
+    ["wallet", "BTC", "Address"],
+    ["broker", "IBKR", "Query ID"],
+  ])("keeps an edited %s identity fixed so attached holdings remain linked", (kind, name, field) => {
+    render(<MobileSources {...props}
+      wallets={[{ type: "btc", address: "bc1qexample", active: true }]}
+      brokers={[{ type: "ibkr", token: "secret", queryId: "12345", active: true }]} />);
+    fireEvent.click(screen.getByText(name, { exact: true }).closest("button")!);
+    expect(screen.getByRole("textbox", { name: field })).toHaveAttribute("readonly");
+  });
 });

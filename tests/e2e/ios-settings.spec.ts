@@ -29,6 +29,51 @@ for (const width of [375, 390, 430]) {
     await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
+
+  test(`remaining iPhone settings pages stay reachable within ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    await installTauriBridge(page);
+    for (const [path, title, content] of [
+      ["/settings/configuration?section=currency", "Currency", "Base Currency"],
+      ["/settings/appearance?section=theme", "Appearance", "Follow system"],
+      ["/settings/data?section=blacklist", "Blacklist", "Token Blacklist"],
+      ["/settings/systemInfo?section=pro", "Pro and license", "Pro Status"],
+      ["/settings/assistant", "AI assistant", "Endpoint"],
+      ["/settings/data?section=security", "Security", "App lock"],
+      ["/settings/sync", "Backup and sync", "S3 endpoint"],
+      ["/settings/systemInfo?section=about", "About", "App Version"],
+    ]) {
+      await page.goto(`/#${path}`);
+      await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
+      await expect(page.getByText(content, { exact: true }).last()).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    }
+  });
+
+  test(`assistant, alert editor and rebalance fit ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    await installTauriBridge(page);
+    await page.goto("/#/assistant");
+    await expect(page.getByRole("textbox", { name: "Ask the assistant..." })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.goto("/#/goals");
+    await expect(page.getByRole("heading", { level: 1, name: "Goals & Alerts" })).toBeVisible();
+    await page.getByText("Add alert", { exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Add alert" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.goto("/#/rebalance");
+    await expect(page.getByRole("heading", { level: 1, name: "Rebalance" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  });
+
+  test(`refresh progress sheet fits ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    await installTauriBridge(page);
+    await page.goto("/#/overview");
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  });
 }
 
 test("custom asset source picker opens from the bottom of the iPhone screen", async ({ page }) => {

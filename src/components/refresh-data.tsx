@@ -298,7 +298,7 @@ const App = ({
             </div>}
           </AlertDialogHeader>
           <div className="my-2 max-h-80 space-y-2 overflow-y-auto">
-            {sortedStatuses.map((source) => {
+            {!refreshing && sortedStatuses.map((source) => {
               const Icon = kindIcon[source.kind ?? "others"];
               const StatusIcon = statusIcon[source.status];
               return (
@@ -347,7 +347,7 @@ const App = ({
             ); })}
           </div>
           <AlertDialogFooter>
-            {failedStatuses.length > 0 && <Button variant="outline"
+            {!refreshing && failedStatuses.length > 0 && <Button variant="outline"
               disabled={refreshLoading} onClick={() => runRefresh()}>{t("refresh.retryAllFailed")}</Button>}
             <AlertDialogCancel>{t("refresh.close")}</AlertDialogCancel>
           </AlertDialogFooter>

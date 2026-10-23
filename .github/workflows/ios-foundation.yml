@@ -80,10 +80,6 @@ jobs:
       - name: Check the simulator Rust target
         run: cargo check --locked --target aarch64-apple-ios-sim --lib
         working-directory: src-tauri
-      - name: Typecheck iOS native bridge
-        run: |
-          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios15.0-simulator src-tauri/gen/apple/Sources/track3/Track3Native.swift
       - name: Build unsigned simulator app
         run: VITE_TRACK3_IOS_READY_PROBE=1 corepack yarn tauri ios build --target aarch64-sim --debug --no-sign --ci
       - name: Launch in iPhone simulator
@@ -183,3 +179,8 @@ jobs:
             artifacts/*.zip
             artifacts/*.ipa
           retention-days: 1
+      - name: Typecheck iOS native bridge
+        if: always()
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios15.0-simulator src-tauri/gen/apple/Sources/track3/Track3Native.swift

@@ -118,6 +118,7 @@ pub fn load_encryption_key(key_path: &Path) -> Result<String, String> {
     Ok(key)
 }
 
+#[cfg(not(target_os = "ios"))]
 pub fn load_or_create_ios_encryption_key(
     key_path: &Path,
     fresh_database: bool,
@@ -159,13 +160,57 @@ pub fn load_or_create_ios_encryption_key(
     result
 }
 
+#[cfg(target_os = "ios")]
+pub fn load_or_create_ios_encryption_key(
+    key_path: &Path,
+    fresh_database: bool,
+) -> Result<String, String> {
+    reject_link_or_reparse_point(key_path)?;
+    if let Some(key) = crate::ios_native::keychain_read()? {
+        validate_encryption_key_material(&key)?;
+        if key_path.exists() {
+            if load_encryption_key(key_path)? != key {
+                return Err("iOS Keychain and legacy key file differ".into());
+            }
+            fs::remove_file(key_path)
+                .map_err(|error| format!("failed to remove legacy key file: {error}"))?;
+        }
+        return Ok(key);
+    }
+    if key_path.exists() {
+        let key = load_encryption_key(key_path)?;
+        crate::ios_native::keychain_write(&key)?;
+        fs::remove_file(key_path)
+            .map_err(|error| format!("failed to remove legacy key file: {error}"))?;
+        return Ok(key);
+    }
+    if !fresh_database {
+        return Ok(LEGACY_ENCRYPTION_KEY.to_string());
+    }
+    let key = format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    );
+    crate::ios_native::keychain_write(&key)?;
+    Ok(key)
+}
+
 pub async fn ios_key_recovery_needed(
     database_path: &Path,
     key_path: &Path,
 ) -> Result<bool, String> {
+    #[cfg(target_os = "ios")]
+    let encryption_key =
+        crate::ios_native::keychain_read()?.unwrap_or_else(|| LEGACY_ENCRYPTION_KEY.to_string());
+    #[cfg(not(target_os = "ios"))]
+    let encryption_key = LEGACY_ENCRYPTION_KEY.to_string();
+    #[cfg(not(target_os = "ios"))]
     if key_path.exists() {
         return Ok(false);
     }
+    #[cfg(target_os = "ios")]
+    let _ = key_path;
     let options = SqliteConnectOptions::new()
         .filename(database_path)
         .create_if_missing(false)
@@ -185,7 +230,7 @@ pub async fn ios_key_recovery_needed(
     let ent = crate::ent::Ent::new();
     Ok(encrypted
         .into_iter()
-        .any(|value| ent.decrypt_with_key(value, LEGACY_ENCRYPTION_KEY).is_err()))
+        .any(|value| ent.decrypt_with_key(value, &encryption_key).is_err()))
 }
 
 fn open_key_file_no_follow(key_path: &Path) -> Result<File, std::io::Error> {

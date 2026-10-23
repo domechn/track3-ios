@@ -196,6 +196,7 @@ export default function GoalsAlerts() {
           ? "fixed inset-0 z-50 order-last overflow-y-auto bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-[calc(env(safe-area-inset-top)+1rem)]"
           : "order-last rounded-lg border bg-card"}>
         <summary className="flex min-h-11 cursor-pointer items-center px-4 py-2 text-sm font-medium">{t(isIOS() ? "goals.mobile.add" : "aiSetup.manual")}</summary>
+      {isIOS() && manualOpen && <Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button>}
       {(!isIOS() || manualOpen) && <Card id="goal-rule-editor" className="border-0 shadow-none">
         <CardHeader className="pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
