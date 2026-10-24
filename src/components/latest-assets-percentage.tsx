@@ -357,9 +357,7 @@ const App = ({
             <span className="sr-only">{t("common.openAssetDetails").replace("{asset}", formatAssetLabel(reference))}</span>
             <span className="mobile-allocation-swatch" aria-hidden="true"
               style={{ backgroundColor: palette[chartIndex < 0 ? percentageData.length - 1 : chartIndex].main }} />
-            {asset.assetType === "stock"
-              ? <span className="mobile-stock-mark" aria-hidden="true">{asset.coin.slice(0, 1)}</span>
-              : <img src={resolveAssetLogoSrc(reference, logoMap[getAssetLogoKey(reference)])} alt="" />}
+            <img src={resolveAssetLogoSrc(reference, logoMap[getAssetLogoKey(reference)])} alt="" />
             <span className="mobile-allocation-name">
               <strong>{asset.coin}</strong>
               <span>{asset.amount >= 1

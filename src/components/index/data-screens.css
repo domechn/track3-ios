@@ -52,7 +52,7 @@
   .d2-allocation-sheet .overview-allocation-card, .d2-positions-sheet .position-changes-card { border: 0; background: transparent; box-shadow: none; }
   .d2-positions-sheet .position-changes-header { display: none; }
   .d2-positions-sheet .position-changes-content { padding: 0; }
-  .d2-profit-sheet > .rounded-xl { border: 0; box-shadow: none; }
+  .d2-profit-sheet > [data-ui-card] { border: 0; box-shadow: none; }
   .d2-profit-sheet .profit-summary-card { background: transparent; }
   .d2-profit-sheet .profit-summary-card > :first-child { padding: 0 0 12px; }
   .d2-profit-sheet .profit-summary-card > :last-child { padding: 0; }
@@ -94,12 +94,12 @@
   .history-detail-sheet .history-detail-dialog { display: grid; width: 100% !important; min-width: 0; max-width: 100% !important; max-height: none !important; gap: 16px; overflow: visible; border-radius: 0; padding-bottom: 0; }
   .history-detail-meta { display: grid; gap: 4px; }
   .history-detail-meta p { min-width: 0; }
-  .history-detail-meta .history-mobile-delete { width: 100%; min-height: 44px; margin: 8px 0 0; border-radius: 12px; background: hsl(var(--card)); padding: 0 16px; text-align: left; }
+  .history-detail-dialog > .history-mobile-delete { width: 100%; min-height: 44px; margin: 8px 0 0; border-radius: 12px; background: hsl(var(--card)); padding: 0 16px; text-align: left; }
   .history-asset-confirm-overlay.history-asset-confirm-overlay { z-index: 90; }
   .history-asset-confirm.history-asset-confirm { z-index: 91; }
-  .history-detail-dialog > .grid { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border-radius: 14px; background: hsl(var(--card)); }
-  .history-detail-dialog > .grid > div { min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 10px 16px; }
-  .history-detail-dialog > .grid > :last-child { grid-column: 1; border-top: .5px solid var(--ios-separator); }
+  .history-detail-tools { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border-radius: 14px; background: hsl(var(--card)); }
+  .history-detail-tools > div { min-width: 0; border: 0; border-radius: 0; background: transparent; padding: 10px 16px; }
+  .history-detail-tools > :last-child { grid-column: 1; border-top: .5px solid var(--ios-separator); }
   .history-detail-dialog .history-detail-assets { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
   .history-detail-dialog .history-detail-assets p:last-child { display: none; }
   .history-detail-dialog .history-mobile-detail-list { display: block; overflow: hidden; border-radius: 14px; background: hsl(var(--card)); }
@@ -108,17 +108,18 @@
   .history-detail-dialog .history-mobile-asset-content { padding: 9px 16px; }
   .history-detail-dialog .history-mobile-asset-content > :last-child { margin-top: 2px; }
   .history-detail-dialog .history-mobile-asset:not(:last-child) { border-bottom: .5px solid var(--ios-separator); }
-  .history-detail-dialog .history-mobile-asset .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
+  .history-detail-dialog .history-asset-value { font-family: inherit; font-variant-numeric: tabular-nums; }
   .history-mobile-rank { width: 14px; flex: none; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 400; }
   .history-detail-dialog .history-mobile-delete { color: var(--ios-loss); }
 
   .d2-comparison .comparison-controls-card { background: transparent; }
   .d2-comparison .comparison-controls-card > :first-child { padding: 0 0 16px; }
+  .d2-comparison [data-ui-card]:not(.comparison-controls-card) > div { padding-inline: 16px; }
   .d2-comparison .comparison-date-button { min-height: 52px; border: 0; border-radius: 12px; background: hsl(var(--card)); padding: 6px 10px; font-size: 14px; }
   .d2-comparison .comparison-date-controls { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
   .d2-comparison .comparison-date-button { width: 100%; }
   .d2-comparison .comparison-date-button span { white-space: nowrap; }
-  .d2-comparison .comparison-mask-toggle { gap: 6px; padding: 0 10px; font-size: 13px; }
+  .d2-comparison .comparison-mask-toggle { gap: 6px; padding: 0; font-size: 13px; }
   .d2-comparison .comparison-mask-toggle svg { width: 18px; height: 18px; }
   .d2-comparison .mobile-segments { width: 100%; }
   .d2-comparison .comparison-quick-control { display: block; width: 100%; }
@@ -140,23 +141,29 @@
   .d2-comparison .comparison-metric-head { grid-column: 2; grid-row: 2; text-align: right; }
   .d2-comparison .comparison-metric-delta { grid-column: 1 / -1; grid-row: 3; font-size: 13px; text-align: left; }
 
-  .d2-summary > .space-y-3 { display: grid; gap: 24px; }
-  .d2-summary > .space-y-3 > * { margin: 0; }
-  .d2-summary .grid.grid-cols-1 { gap: 16px; }
-  .d2-summary .grid.grid-cols-1 > button, .mobile-sheet-body .grid.grid-cols-1 > button { min-height: 68px; border: 0; border-radius: 12px; background: hsl(var(--secondary)); padding: 12px; }
-  .d2-summary .grid.grid-cols-1.sm\:grid-cols-2, .mobile-sheet-body .grid.grid-cols-1.sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .d2-summary .grid.grid-cols-1 > button > :last-child { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .d2-summary .border-b.border-border\/40 { border-color: var(--ios-separator); }
-  .d2-summary .text-\[11px\] { font-size: 12px; }
-  .d2-summary .grid.grid-cols-1 > button:active { transform: scale(.97); opacity: .7; }
+  .d2-summary > .summary-stack { display: grid; gap: 24px; }
+  .d2-summary > .summary-stack > * { min-width: 0; margin: 0; }
+  .d2-summary .profit-summary-card, .d2-summary .overview-movers-card { min-width: 0; }
+  .d2-summary .summary-hero-metrics { gap: 16px; }
+  .d2-summary .ath-card > div { padding-inline: 16px; }
+  .d2-summary .profit-summary-card > :first-child { min-width: 0; padding: 16px 16px 8px; }
+  .d2-summary .profit-summary-card > :last-child { min-width: 0; padding: 4px 16px 16px; }
+  .d2-summary .profit-period-grid > button, .d2-profit-sheet .profit-period-grid > button { min-height: 68px; border: 0; border-radius: 12px; background: hsl(var(--secondary)); padding: 12px; }
+  .d2-summary .profit-period-grid, .d2-profit-sheet .profit-period-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d2-summary .profit-period-grid > button > :last-child { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .d2-summary .profit-period-grid > button:active { transform: scale(.97); opacity: .7; }
   body:has(.d2-summary) #app-top-bar .mobile-header-total { display: none; }
+  .d2-summary .profit-metrics-card { border: 0; background: transparent; box-shadow: none; }
+  .d2-summary .profit-metrics-card > :first-child { padding: 0 0 8px; }
+  .d2-summary .profit-metrics-card > :last-child { padding: 0; }
+  .d2-summary .profit-metrics-card > :last-child > div { margin: 0; }
   .d2-summary .profit-metrics-mobile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .d2-summary .profit-metric-tile { display: flex; min-width: 0; min-height: 100px; flex-direction: column; align-items: flex-start; border-radius: 12px; background: hsl(var(--secondary)); padding: 12px; text-align: left; }
+  .d2-summary .profit-metric-tile { display: flex; min-width: 0; min-height: 100px; flex-direction: column; align-items: flex-start; border-radius: 12px; background: hsl(var(--card)); padding: 12px; text-align: left; }
   .d2-summary .profit-metric-label { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.25; }
   .d2-summary .profit-metric-value { margin-top: 8px; font-size: clamp(16px, 4.5vw, 20px); line-height: 1.1; font-weight: 600; letter-spacing: -.03em; white-space: nowrap; }
   .d2-summary .profit-metric-value[data-tone="gain"] { color: var(--ios-gain); }
   .d2-summary .profit-metric-value[data-tone="loss"] { color: var(--ios-loss); }
-  .d2-summary .profit-metric-date { margin-top: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.25; }
+  .d2-summary .profit-metric-date { margin-top: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.25; white-space: nowrap; }
   .d2-summary .profit-metric-tile:active { transform: scale(.97); opacity: .7; }
   .d2-summary .profit-month-back { gap: 12px; border: 0; border-radius: 0; background: transparent; padding: 0 0 8px; }
   .d2-summary .profit-month-back > :first-child { color: hsl(var(--foreground)); font-size: 17px; font-weight: 600; }
@@ -165,19 +172,28 @@
   .d2-summary .ath-card .ath-metrics > * { min-width: 0; margin: 0; padding: 0; border: 0; }
   .d2-summary .ath-card .ath-current-metric { grid-column: 1 / -1; padding-bottom: 14px; border-bottom: .5px solid var(--ios-separator); }
   .d2-summary .ath-card .ath-metrics > :not(.ath-current-metric) > :last-child { overflow: visible; font-size: 15px; font-weight: 600; white-space: nowrap; }
-  .d2-summary .attribution-rank { border-radius: 12px; background: hsl(var(--card)); }
-  .d2-summary .attribution-rank-button { display: grid; width: 100%; min-height: 52px; grid-template-columns: minmax(4rem, 1fr) minmax(2rem, 1.2fr) auto; align-items: center; gap: 8px; padding: 10px 12px; text-align: left; font-size: 13px; }
+  .d2-summary .overview-movers-card > .mobile-movers-header { min-width: 0; padding: 16px 16px 8px; }
+  .d2-summary .overview-movers-card > :last-child { min-width: 0; padding: 4px 16px 16px; }
+  .d2-summary .attribution-rank { border-radius: 12px; background: hsl(var(--secondary)); }
+  .d2-summary .attribution-rank-button { display: grid; width: 100%; min-height: 48px; grid-template-columns: 24px minmax(3rem, 1fr) minmax(2rem, .75fr) auto; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; font-size: 13px; }
+  .d2-summary .attribution-rank-logo { width: 24px; height: 24px; flex: none; border-radius: 50%; }
+  .d2-summary .attribution-rank-mark { display: grid; place-items: center; background: color-mix(in srgb, var(--ios-accent) 12%, transparent); color: var(--ios-accent); font-weight: 600; }
   .d2-summary .attribution-rank-details { display: grid; gap: 8px; padding: 0 12px 12px; }
   .d2-summary .attribution-rank-details > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
   .d2-summary .attribution-rank-details dt { color: hsl(var(--muted-foreground)); }
 
-  .d2-wallets > .space-y-3 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .d2-wallets > .space-y-3 > * { min-width: 0; margin: 0; }
+  .d2-wallets > .wallet-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .d2-wallets > .wallet-stack > * { min-width: 0; margin: 0; }
   .d2-wallets [data-card-boundary="true"], .d2-wallets [data-card-boundary="true"] > div { min-width: 0; max-width: 100%; }
+  .d2-wallets [data-card-boundary="true"] > :first-child, .d2-wallets .wallet-change-card > :first-child { padding-inline: 16px; }
+  .d2-coin [data-card-boundary="true"] > :first-child, .d2-coin [data-card-boundary="true"] > :last-child { padding-inline: 16px; }
   .d2-wallets [data-testid="stat-total-value"] { grid-column: 1 / -1; order: -1; }
   .d2-wallets [data-testid="stat-total-value"] span { display: block; margin-top: 3px; font-size: clamp(30px, 9vw, 42px); line-height: 1.1; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
   .d2-wallets .wallet-allocation-mobile-list, .d2-wallets .wallet-change-mobile-list { border: 0; border-radius: 14px; }
   .d2-wallets .mobile-list-row { min-height: 62px; font-size: 15px; }
+  .d2-wallets .wallet-allocation-mobile-list, .d2-wallets .wallet-change-mobile-list { margin-inline: -16px; }
+  .d2-coin .wallet-allocation-mobile-list { margin-inline: -16px; }
+  .d2-wallets [data-card-boundary="true"] > :last-child, .d2-wallets .wallet-change-card > :last-child { padding-inline: 16px; }
   .d2-wallets .mobile-list-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .d2-wallets .wallet-change-summary { display: flex; flex-wrap: wrap; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 13px; }
   .d2-wallets .wallet-change-summary [data-tone="gain"] { color: var(--ios-gain); }
@@ -197,42 +213,35 @@
   .d2-wallets [data-testid="type-pill-others"] > span:first-child, .d2-coin [data-testid="type-pill-others"] > span:first-child { background: var(--ios-chart-6); }
 
   .d2-coin .coin-detail-hero { margin: 0 0 24px; }
+  .d2-coin [data-ui-card] > div { padding-inline: 16px; }
   #app-main-content:has(.d2-coin) .mobile-large-title { position: absolute; width: max-content; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .d2-coin .coin-detail-identity { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; }
   .d2-coin .coin-detail-identity img { width: 34px; height: 34px; flex: none; border-radius: 50%; }
   .d2-coin .coin-detail-identity button { display: flex; min-height: 44px; align-items: center; gap: 6px; font-size: 22px; font-weight: 700; }
   .d2-coin .coin-detail-identity button svg { width: 16px; height: 16px; color: hsl(var(--muted-foreground)); }
-  .d2-coin .coin-mobile-transactions .mobile-list-label { white-space: nowrap; overflow-wrap: normal; }
-  .d2-coin .coin-mobile-transactions .mobile-list-value { flex: none; }
+  .d2-coin .coin-mobile-transactions .mobile-list-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+  .d2-coin .coin-mobile-transactions .mobile-list-value { flex: none; white-space: nowrap; }
+  .d2-coin .coin-mobile-transactions .mobile-list-row { gap: 6px; }
   .d2-coin .coin-detail-price { margin-top: 12px; font-size: clamp(40px, 11vw, 52px); line-height: 1.08; font-weight: 600; letter-spacing: -.05em; white-space: nowrap; }
   .d2-coin .coin-detail-change { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: 13px; }
   .d2-coin .coin-metric-grid { gap: 10px; }
-  .d2-coin .coin-symbol-metric { grid-column: 1 / -1; }
-  .d2-coin .coin-symbol-metric .rounded-xl { min-height: 0; }
-  .d2-coin .coin-symbol-metric .rounded-xl > :first-child { padding: 14px 16px 4px; }
-  .d2-coin .coin-symbol-metric .rounded-xl > :last-child { padding: 4px 16px 14px; }
-  .d2-coin .coin-symbol-metric img, .d2-coin .coin-symbol-metric .rounded-xl > :first-child svg { display: none; }
-  .d2-coin .mobile-coin-selector { height: 44px; }
-  .d2-coin .coin-symbol-metric .rounded-xl > :last-child > .text-xs { margin-top: 8px; }
-  .d2-coin .coin-symbol-metric .text-xl { font-size: 30px; letter-spacing: -.04em; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) { grid-column: span 3; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) .rounded-xl { display: flex; height: 100%; min-height: 108px; flex-direction: column; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) .rounded-xl > :last-child { margin-top: auto; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) svg { display: none; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) h3 { overflow: visible; white-space: normal; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) .text-xl { overflow: visible; font-size: clamp(14px, 3.8vw, 17px); white-space: nowrap; }
-  .d2-coin .coin-metric-grid > :not(.coin-symbol-metric) .text-xs { overflow: visible; white-space: normal; }
-  .d2-coin .coin-breakeven-subtitle { display: none; }
-  .d2-coin .rounded-xl > .flex-row h3 { line-height: 1.25; }
+  .d2-coin .coin-metric-grid > * { grid-column: span 3; min-width: 0; }
+  .d2-coin .coin-metric-card { display: flex; height: 100%; min-height: 108px; flex-direction: column; }
+  .d2-coin .coin-metric-card > :first-child { padding: 12px 12px 4px; }
+  .d2-coin .coin-metric-card > :last-child { padding: 4px 12px 12px; }
+  .d2-coin .coin-metric-card svg { display: none; }
+  .d2-coin .coin-metric-card h3 { overflow: visible; white-space: normal; line-height: 1.25; }
+  .d2-coin .coin-metric-card > :last-child > :first-child { overflow: visible; font-size: clamp(14px, 3.8vw, 17px); white-space: nowrap; }
+  .d2-coin .coin-metric-card > :last-child > :last-child { overflow: visible; white-space: normal; }
+  .d2-coin .coin-breakeven-subtitle { display: flex; margin-top: 6px; gap: 4px; flex-wrap: wrap; }
   .d2-coin .mobile-record-list { border: 0; }
   .d2-coin .mobile-record-list .mobile-list-row { min-height: 64px; }
   .d2-coin [data-single-wallet="true"] { display: none; }
 
-  .d2-cost .grid.sm\:grid-cols-2.lg\:grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .d2-cost .grid.sm\:grid-cols-2.lg\:grid-cols-4 .text-lg { overflow: visible; font-size: clamp(13px, 3.6vw, 17px); white-space: nowrap; overflow-wrap: normal; }
+  .d2-cost .cost-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d2-cost .cost-metric-value { overflow: visible; font-size: clamp(13px, 3.6vw, 17px); white-space: nowrap; overflow-wrap: normal; }
   .d2-cost details { overflow: hidden; border: 0; border-radius: 14px; background: hsl(var(--card)); }
   .d2-cost details > summary { min-height: 52px; padding: 14px 16px; font-size: 15px; }
-  .d2-cost details > .space-y-4 { padding: 0 16px 16px; }
   .d2-cost .mobile-record-list { border: 0; border-radius: 14px; }
   .d2-cost .mobile-list-row { min-height: 60px; }
   .d2-cost .cost-details { border: 0; overflow: hidden; border-radius: 14px; }
@@ -244,10 +253,9 @@
   .d2-cost .cost-gain[data-tone="loss"] { color: var(--ios-loss); }
   .d2-cost .cost-gain[data-tone="neutral"] { color: hsl(var(--muted-foreground)); }
 
-  .mobile-analytics-hub ~ .d2-summary .text-xl, .d2-summary .text-xl { font-family: inherit; font-variant-numeric: tabular-nums; }
-  .mobile-analytics-hub ~ .d2-summary .rounded-xl, .d2-wallets .rounded-xl, .d2-comparison .rounded-xl, .d2-coin .rounded-xl, .d2-cost .rounded-xl { border: 0; box-shadow: none; }
+  :is(.d2-summary, .d2-wallets, .d2-comparison, .d2-coin, .d2-cost) [data-ui-card] { border: 0; box-shadow: none; }
   .mobile-analytics-hub ~ .d2-summary h3, .d2-wallets h3, .d2-comparison h3, .d2-coin h3, .d2-cost h3 { font-size: 13px; font-weight: 500; color: hsl(var(--muted-foreground)); }
-  .mobile-analytics-hub ~ .d2-summary .text-sm.font-semibold, .d2-coin .text-xl, .d2-cost .text-lg { font-family: inherit; font-variant-numeric: tabular-nums; }
+  :is(.d2-summary, .d2-coin, .d2-cost) .ios-money { font-family: inherit; font-variant-numeric: tabular-nums; }
 }
 
 @container (max-width: 94px) {

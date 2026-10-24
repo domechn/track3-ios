@@ -608,20 +608,10 @@ const App = ({
                   )}
                 </p>
               ) : null}
-              {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
-                <button type="button" className="history-mobile-delete self-start"
-                  disabled={deleting}
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setDeleteCandidate(selectedDataId);
-                  }}>
-                  {t("history.deleteSnapshot")}
-                </button>
-              )}
               </DetailHeader>
             {detailLoading ? <p role="status" className="text-sm text-muted-foreground">{t("common.loading")}</p> : null}
             {detailError ? <p role="alert" className="text-sm text-destructive">{t("history.detailLoadFailed")}</p> : null}
-            <div className="grid gap-2 md:grid-cols-3">
+            <div className="history-detail-tools grid gap-2 md:grid-cols-3">
               <div className="history-detail-assets rounded-lg border border-border/40 bg-background/30 p-3">
                 <p className="text-sm font-medium text-muted-foreground">
                   {t("history.assets")}
@@ -669,7 +659,7 @@ const App = ({
                     <img className="h-7 w-7 shrink-0 rounded-full" src={resolveAssetLogoSrc(item, logoMap[item.symbol])} alt="" />
                     <span className="min-w-0 break-words">{item.symbol}</span>
                   </span>
-                  <span className="font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
+                  <span className="history-asset-value font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                   <span>{t("common.amountLabel")}: {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
@@ -678,6 +668,16 @@ const App = ({
                 </div>
               </SwipeableRow>)}
             </div>}
+            {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
+              <button type="button" className="history-mobile-delete"
+                disabled={deleting}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setDeleteCandidate(selectedDataId);
+                }}>
+                {t("history.deleteSnapshot")}
+              </button>
+            )}
             {isMobile && <ConfirmDeleteDialog
               open={deleteAssetCandidate !== null}
               onOpenChange={(open) => { if (!open) setDeleteAssetCandidate(null); }}

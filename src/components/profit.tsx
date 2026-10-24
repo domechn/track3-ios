@@ -278,10 +278,8 @@ const App = ({
         </span>}>
         <span className="flex min-w-0 items-center gap-2">
           <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground mobile-mover-rank">#{index + 1}</span>
-          {row.assetType === "stock"
-            ? <span className="mobile-stock-mark" aria-hidden="true">{row.symbol.slice(0, 1)}</span>
-            : <img className="h-6 w-6 shrink-0 rounded-full"
-                src={resolveAssetLogoSrc(row, logoMap[key])} alt="" />}
+          <img className="h-6 w-6 shrink-0 rounded-full"
+            src={resolveAssetLogoSrc(row, logoMap[key])} alt="" />
           <AssetLabel asset={row} labelClassName="truncate text-sm font-medium"
             badgeClassName="hidden" />
         </span>
@@ -335,7 +333,7 @@ const App = ({
       </CardHeader>
       <CardContent className="space-y-2">
         {view === "attribution" ? (
-          <ProfitAttribution currency={currency} dateRange={dateRange} quoteColor={quoteColor} />
+          <ProfitAttribution currency={currency} dateRange={dateRange} quoteColor={quoteColor} logoMap={logoMap} />
         ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {topProfitData.length > 0 && <div className="space-y-1">

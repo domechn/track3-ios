@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
 import { useEffect, useRef } from "react";
+import { useIsMobile } from "./mobile";
 
 const chartPalette = () => document.documentElement.classList.contains("dark")
   ? ["#6d97fa", "#85ade0", "#79b6ac", "#b9a3cb", "#bda887", "#929bb1"]
@@ -82,11 +83,12 @@ export function FinanceChartSkeleton() {
 
 export function CostCharts({ report, quoteColor }: { report: CostBasisReport; quoteColor: QuoteColor }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = costBasisVisuals(report, 8, t("finance.other"));
   return <>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="cost-metric-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {[
         { key: "cost.gainLoss", value: report.totals.gainLoss, rate: visual.rates.realized, rateKey: "finance.realizedReturn" },
         { key: "cost.shortTerm", value: report.totals.shortTerm, rate: visual.rates.shortTerm, rateKey: "finance.realizedShare" },
@@ -95,8 +97,10 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
       ].map(({ key, value, rate, rateKey }) => <Card key={key} className="min-w-0">
         <CardContent className="space-y-1 p-3">
           <p className="text-xs text-muted-foreground">{t(key)}</p>
-          <p className="truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor) }}>
-            {value > 0 ? "+" : ""}{value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+          <p className="cost-metric-value truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor) }}>
+            {isMobile
+              ? `${value > 0 ? "+" : value < 0 ? "−" : ""}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD`}
           </p>
           <p className="text-[11px] text-muted-foreground tabular-nums">{rate === null ? "—" : `${rate > 0 ? "+" : ""}${rate.toFixed(1)}%`} {t(rateKey)}</p>
         </CardContent>

@@ -11,8 +11,14 @@ vi.mock("@/middlelayers/charts", () => ({
   resizeChartWithDelay: vi.fn(),
 }));
 vi.mock("react-chartjs-2", () => ({
-  Line: ({ data }: { data: { datasets: { data: number[] }[] } }) =>
-    <div data-testid="coin-line" data-values={JSON.stringify(data.datasets.map((ds) => ds.data))} />,
+  Line: ({ data, options }: { data: { labels: string[]; datasets: { data: number[] }[] };
+    options: { scales: { x: { ticks: { maxRotation: number; maxTicksLimit: number } }; y2: { display: boolean } } } }) =>
+    <div data-testid="coin-line" data-values={JSON.stringify(data.datasets.map((ds) => ds.data))}
+      data-labels={JSON.stringify(data.labels)} data-axis={JSON.stringify({
+        maxRotation: options.scales.x.ticks.maxRotation,
+        maxTicksLimit: options.scales.x.ticks.maxTicksLimit,
+        secondAxis: options.scales.y2.display,
+      })} />,
 }));
 vi.mock("@/utils/hook", () => ({ useWindowSize: () => ({ width: 1200, height: 800 }) }));
 
@@ -80,4 +86,31 @@ it("keeps a newer coin range when an older query resolves later", async () => {
     coin: "BTC", timestamps: [1], values: [100], amounts: [1],
   }));
   expect(screen.getByTestId("coin-line")).toHaveAttribute("data-values", "[[200],[2]]");
+});
+
+it("uses short horizontal dates and one value axis on a phone", async () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: query.includes("max-width: 950px"), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  });
+  try {
+    vi.mocked(queryCoinsAmountChange).mockResolvedValue({
+      coin: "BTC", timestamps: [Date.UTC(2026, 7, 24), Date.UTC(2026, 9, 18)],
+      values: [100, 120], amounts: [2, 3],
+    });
+    render(<ChartResizeContext.Provider value={{ needResize: 0, setNeedResize: vi.fn() }}>
+      <OverviewLoadingContext.Provider value={{ reportLoaded: vi.fn() }}>
+        <CoinsChart currency={{ currency: "USD", symbol: "$", rate: 1, alias: "usd" }}
+          dateRange={{ start: new Date("2026-08-01"), end: new Date("2026-10-31") }} symbol="BTC" />
+      </OverviewLoadingContext.Provider>
+    </ChartResizeContext.Provider>);
+    await waitFor(() => expect(screen.getByTestId("coin-line")).toHaveAttribute("data-values", "[[100,120]]"));
+    expect(screen.getByTestId("coin-line")).toHaveAttribute("data-labels", '["Aug 24","Oct 18"]');
+    expect(screen.getByTestId("coin-line")).toHaveAttribute("data-axis",
+      '{"maxRotation":0,"maxTicksLimit":4,"secondAxis":false}');
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
 });

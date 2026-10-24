@@ -651,7 +651,7 @@ const App = ({
                           (detailUrlFn ? "cursor-pointer" : "cursor-default")
                         }
                         style={{
-                          background: isMobile ? `var(--ios-chart-${item.category === "cex" ? 1 : item.category === "onchain" ? 3 : item.category === "broker" ? 4 : 6})` : tileBackground(
+                          background: isMobile ? `var(--ios-chart-${item.category === "cex" ? 1 : item.category === "onchain" ? rank % 2 === 0 ? 3 : 5 : item.category === "broker" ? 4 : 6})` : tileBackground(
                             item.category,
                             rank,
                             total,

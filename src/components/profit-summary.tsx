@@ -400,7 +400,7 @@ const App = ({
     }
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="profit-period-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
         {(isMobile ? [...monthCards].reverse() : monthCards).map((item) => (
           <button
             key={item.key}
@@ -428,7 +428,7 @@ const App = ({
 
   function renderYearSummary() {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="profit-period-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
         {yearCards.map((item) => (
           <div
             key={`y-profit-summary-${item.year}`}

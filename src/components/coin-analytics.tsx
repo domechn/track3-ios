@@ -780,7 +780,7 @@ const App = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex space-x-2 py-1 items-center">
+          {maxDataPage > 0 && <div className="flex space-x-2 py-1 items-center">
             <Button
               variant="outline"
               size="sm"
@@ -802,11 +802,11 @@ const App = ({
             >
               <ChevronRightIcon />
             </Button>
-          </div>
+          </div>}
           {isMobile && <MobileRecordList className="coin-mobile-transactions"
             records={historicalData.slice(dataPage * pageSize, (dataPage + 1) * pageSize).map((act) => ({
-              id: String(act.id), title: `${symbol} · ${new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
-                { year: "numeric", month: "short", day: "numeric" }).format(new Date(act.txnCreatedAt))}`,
+              id: String(act.id), title: new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(act.txnCreatedAt)),
               subtitle: getValueStr(act),
               fields: [
                 { label: t("coin.col.amount"), value: getAmountStr(act) },
@@ -1085,7 +1085,7 @@ const App = ({
               </Card>
             </FadeUp>}
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card coin-breakeven-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis">
                     {t("coin.breakeven")}
@@ -1108,14 +1108,14 @@ const App = ({
                     {breakEvenPriceStr}
                   </div>
                   <div className="coin-breakeven-subtitle text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
-                    <div>{t("coin.lastPrice")}</div>
+                    <div>{t(isMobile ? "coin.lastPriceShort" : "coin.lastPrice")}</div>
                     <div>{lastPriceStr}</div>
                   </div>
                 </CardContent>
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.positions")}
@@ -1148,7 +1148,7 @@ const App = ({
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.profit")}
@@ -1179,7 +1179,7 @@ const App = ({
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.costPrice")}
@@ -1210,7 +1210,7 @@ const App = ({
             </FadeUp>
 
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.sellPrice")}

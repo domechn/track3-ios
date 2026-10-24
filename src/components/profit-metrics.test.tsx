@@ -68,9 +68,13 @@ describe("ProfitMetrics", () => {
       const tiles = document.querySelector(".profit-metrics-mobile");
       expect(tiles).toBeInTheDocument();
       expect(tiles?.querySelectorAll(".profit-metric-tile")).toHaveLength(6);
-      const profit = screen.getByText("Maximum profit time").closest(".profit-metric-tile");
+      const profit = screen.getByText("Best day").closest(".profit-metric-tile");
       expect(profit?.querySelector(".profit-metric-value")).toHaveTextContent("$40.00");
       expect(profit?.querySelector(".profit-metric-date")).toHaveTextContent("Jan 2, 2024");
+      const streak = document.querySelector(".profit-metric-tile");
+      expect(streak?.querySelector(".profit-metric-value")).toHaveTextContent("days");
+      expect(streak?.querySelector(".profit-metric-date")).toHaveTextContent("Jan 2");
+      expect(streak?.querySelector(".profit-metric-date")).not.toHaveTextContent(" – ");
     } finally {
       window.matchMedia = previousMatchMedia;
     }

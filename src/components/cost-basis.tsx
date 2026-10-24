@@ -63,7 +63,7 @@ function PageControls({
 }
 
 export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { quoteColor?: QuoteColor }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const dataVersion = useDataChangedVersion();
   const currentYear = String(new Date().getFullYear());
@@ -177,10 +177,14 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
     }
   }
 
-  const money = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const money = (value: number) => isMobile
+    ? `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const mobileDate = (value: string) => new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+    { year: "numeric", month: "short", day: "numeric" }).format(new Date(value));
   const gain = (value: number) => <span className="cost-gain ios-money"
     data-tone={value === 0 ? "neutral" : (value > 0) === (quoteColor === "green-up-red-down") ? "gain" : "loss"}>
-    {value > 0 ? "+" : value < 0 ? "−" : ""}{Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    {value > 0 ? "+" : value < 0 ? "−" : ""}{isMobile ? "$" : ""}{Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
   </span>;
   const qty = (value: number) => value !== 0 && Math.abs(value) < 1e-8
     ? String(value) : value.toLocaleString(undefined, { maximumFractionDigits: 8 });
@@ -197,8 +201,8 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
       {!isMobile && aiSetup}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {report && <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-          <span>{t("cost.proceeds")}: <strong className="font-medium text-foreground">{money(report.totals.proceeds)} USD</strong></span>
-          <span>{t("cost.costBasis")}: <strong className="font-medium text-foreground">{money(report.totals.costBasis)} USD</strong></span>
+          <span>{t("cost.proceeds")}: <strong className="font-medium text-foreground">{money(report.totals.proceeds)}{isMobile ? "" : " USD"}</strong></span>
+          <span>{t("cost.costBasis")}: <strong className="font-medium text-foreground">{money(report.totals.costBasis)}{isMobile ? "" : " USD"}</strong></span>
         </div>}
         <div className="flex gap-2">
         <Button variant="outline" disabled={!report || loading || !filtersCurrent} onClick={() => void exportReport("csv")}>{t("cost.exportCsv")}</Button>
@@ -280,8 +284,8 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
               <CostLotList empty={t("common.noData")} records={report.disposals.slice(pages.disposals * pageSize, (pages.disposals + 1) * pageSize).map((row, index) => ({
                 id: `${row.eventId}:${row.lotId}:${index}`, title: row.symbol, subtitle: gain(row.gainLoss),
                 fields: [
-                  { label: t("cost.acquired"), value: format(new Date(row.acquiredAt), "yyyy-MM-dd") },
-                  { label: t("cost.disposed"), value: format(new Date(row.disposedAt), "yyyy-MM-dd") },
+                  { label: t("cost.acquired"), value: mobileDate(row.acquiredAt) },
+                  { label: t("cost.disposed"), value: mobileDate(row.disposedAt) },
                   { label: t("cost.quantity"), value: qty(row.amount) },
                   { label: t("cost.proceeds"), value: money(row.proceeds) },
                   { label: t("cost.costBasis"), value: money(row.costBasis) },
@@ -298,7 +302,7 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
                 id: `${asset.assetType}:${asset.symbol}:${asset.id}`, title: asset.symbol, subtitle: gain(asset.gainLoss),
                 fields: [
                   { label: t("cost.lot"), value: asset.id },
-                  { label: t("cost.acquired"), value: format(new Date(asset.acquiredAt), "yyyy-MM-dd") },
+                  { label: t("cost.acquired"), value: mobileDate(asset.acquiredAt) },
                   { label: t("cost.quantity"), value: qty(asset.amount) },
                   { label: t("cost.costBasis"), value: money(asset.costBasis) },
                   { label: t("cost.marketValue"), value: money(asset.marketValue) },

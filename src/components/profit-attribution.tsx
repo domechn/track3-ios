@@ -10,11 +10,14 @@ import { positiveNegativeColor, positiveNegativeTextClass } from "@/utils/color"
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { SegmentedControl, useIsMobile } from "./mobile";
+import { getAssetLogoKey, resolveAssetLogoSrc } from "@/utils/assets";
 
 type Data = Awaited<ReturnType<typeof queryAttribution>>;
 const dimensions: AttributionDimension[] = ["coin", "source", "wallet", "assetType"];
 
-export default function ProfitAttribution({ currency, dateRange, quoteColor }: { currency: CurrencyRateDetail; dateRange: TDateRange; quoteColor: QuoteColor }) {
+export default function ProfitAttribution({ currency, dateRange, quoteColor, logoMap = {} }: {
+  currency: CurrencyRateDetail; dateRange: TDateRange; quoteColor: QuoteColor; logoMap?: Record<string, string>;
+}) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [loaded, setLoaded] = useState<{ rangeKey: string; result: Data } | null>(null);
@@ -62,7 +65,14 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
     <ol className="space-y-2">
       {items.map((group) => {
         const key = `${dimension}:${group.key}`;
+        const asset = dimension === "coin" ? {
+          assetType: group.key.startsWith("stock:") ? "stock" as const : "crypto" as const,
+          symbol: group.key.slice(group.key.indexOf(":") + 1),
+        } : null;
         const content = <>
+          {isMobile && (asset
+            ? <img className="attribution-rank-logo" src={resolveAssetLogoSrc(asset, logoMap[getAssetLogoKey(asset)])} alt="" />
+            : <span className="attribution-rank-logo attribution-rank-mark" aria-hidden="true">{displayGroup(group).slice(0, 1).toUpperCase()}</span>)}
           <span className="truncate font-medium" title={displayGroup(group)}>{displayGroup(group)}</span>
           <span className="h-2 rounded-full bg-muted" aria-hidden="true"><span className="block h-full rounded-full" style={{ width: `${Math.abs(group.priceEffect) / max * 100}%`, background: barTone(group.priceEffect) }} /></span>
           <span className={`min-w-[5.5rem] text-right tabular-nums ${tone(group.priceEffect)}`}>{format(group.priceEffect)}</span>

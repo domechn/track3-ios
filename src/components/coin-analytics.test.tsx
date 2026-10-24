@@ -380,7 +380,10 @@ it("shows a compact phone identity, 24h price change, and an unbroken transactio
   await waitFor(() => expect(hero).toHaveTextContent("+25.00%"));
   expect(hero).toHaveTextContent("BTC");
   expect(hero).toHaveTextContent("24h");
-  expect(document.querySelector(".coin-mobile-transactions")).toHaveTextContent("BTC · Apr 15, 2024");
+  const history = document.querySelector(".coin-mobile-transactions")!;
+  expect(history).toHaveTextContent("Apr 15");
+  fireEvent.click(history.querySelector(".mobile-list-row")!);
+  expect(await screen.findByRole("dialog", { name: "Apr 15" })).toHaveTextContent("2024");
 });
 
 it("anchors the prior-day coin price to the latest snapshot instead of the range end", async () => {

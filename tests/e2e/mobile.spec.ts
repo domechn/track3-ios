@@ -105,6 +105,48 @@ test("a phone tap on P&L bars keeps the value chip visible", async ({ browser })
   }
 });
 
+test("SE data cards keep equal side margins and coin history labels clear their values", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/summary");
+    await expect(page.locator(".d2-summary")).toHaveAttribute("aria-busy", "false");
+    await page.locator(".d2-summary .profit-summary-card").getByRole("button", { name: /^Oct / }).click();
+    const card = page.locator(".d2-summary .profit-summary-card");
+    const cardEdges = (await card.boundingBox())!;
+    expect(cardEdges.x + cardEdges.width).toBeLessThanOrEqual(359);
+    await page.locator(".d2-summary").getByRole("radio", { name: "Attribution" }).click();
+    const attribution = (await page.locator(".d2-summary .overview-movers-card").boundingBox())!;
+    expect(attribution.x + attribution.width).toBeLessThanOrEqual(359);
+
+    await page.goto("/#/coins/BTC");
+    await expect(page.locator(".coin-mobile-transactions .mobile-list-row").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Previous page" })).toHaveCount(0);
+    const coinRows = page.locator(".coin-mobile-transactions .mobile-list-row");
+    for (let index = 0; index < await coinRows.count(); index++) {
+      await coinRows.nth(index).scrollIntoViewIfNeeded();
+      const edges = await coinRows.nth(index).evaluate((node) => ({
+        titleRight: node.querySelector(".mobile-list-label")!.getBoundingClientRect().right,
+        valueLeft: node.querySelector(".mobile-list-value")!.getBoundingClientRect().left,
+      }));
+      expect(edges.titleRight + 6, JSON.stringify(edges)).toBeLessThanOrEqual(edges.valueLeft);
+    }
+    await page.goto("/#/comparison");
+    await expect(page.locator(".comparison-total-delta .mobile-delta-pill")).toBeVisible();
+    const hideValues = (await page.locator(".comparison-mask-toggle").boundingBox())!;
+    expect(hideValues.x).toBeLessThanOrEqual(17);
+    await page.goto("/#/wallets");
+    await expect.poll(() => page.locator('[data-testid="wallet-treemap-tile"][data-tile-category="onchain"]').count())
+      .toBeGreaterThan(1);
+    const onchainColors = await page.locator('[data-testid="wallet-treemap-tile"][data-tile-category="onchain"]')
+      .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).backgroundColor));
+    expect(new Set(onchainColors).size).toBeGreaterThan(1);
+  } finally {
+    await context.close();
+  }
+});
+
 for (const width of [375, 390]) {
   for (const theme of ["light", "dark"] as const) {
     test(`D2 detail captures at ${width}px in ${theme}`, async ({ browser }) => {
@@ -127,7 +169,7 @@ for (const width of [375, 390]) {
         await expect(detail.locator(".history-mobile-asset")).toHaveCount(7);
         const deleteButton = (await detail.getByRole("button", { name: "Delete snapshot" }).boundingBox())!;
         const stats = (await detail.locator(".grid").first().boundingBox())!;
-        expect(stats.y - (deleteButton.y + deleteButton.height)).toBeLessThan(32);
+        expect(deleteButton.y).toBeGreaterThan(stats.y + stats.height);
         await capture("history-detail");
 
         await page.goto("/#/summary");
@@ -142,7 +184,7 @@ for (const width of [375, 390]) {
         expect(metricWidths.every((value) => value.whiteSpace === "nowrap" &&
           value.scroll <= value.client + 1), JSON.stringify(metricWidths)).toBe(true);
         await page.locator(".d2-summary .profit-metrics-mobile").evaluate((node) =>
-          window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 100, behavior: "instant" }));
+          window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 100, behavior: "auto" }));
         await expect.poll(() => page.locator(".d2-summary .profit-metrics-mobile").evaluate((node) =>
           Math.round(node.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
         await capture("profit-metrics");
@@ -491,6 +533,9 @@ for (const size of sizes) {
           await expect(page.getByTestId("coin-page-loading-overlay")).toHaveClass(/opacity-0/);
           await expect.poll(() => page.getByTestId("coin-page-loading-overlay")
             .evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
+          if (size.width === 320) {
+            expect((await page.locator(".coin-breakeven-subtitle").boundingBox())!.height).toBeLessThan(22);
+          }
         }
         if (route === "overview") {
           await expect(page.locator(".mobile-hero-value")).toBeVisible();
@@ -845,8 +890,10 @@ test("coin transactions open as detail rows with edit actions", async ({ browser
     await installTauriBridge(page, undefined, true);
     await page.goto("/#/coins/BTC");
     await expect(page.locator(".coin-mobile-transactions")).toBeVisible();
-    await page.locator(".coin-mobile-transactions .mobile-list-row").first().click();
-    await expect(page.getByRole("dialog", { name: /BTC/ })).toBeVisible();
+    const row = page.locator(".coin-mobile-transactions .mobile-list-row").first();
+    const date = await row.locator(".mobile-list-label").innerText();
+    await row.click();
+    await expect(page.getByRole("dialog", { name: date })).toBeVisible();
     await expect(page.getByRole("button", { name: /update buy\/sell price/i })).toBeVisible();
   } finally {
     await context.close();
@@ -1225,12 +1272,12 @@ for (const width of [320, 375]) {
       await page.goto("/#/comparison");
       const totals = page.locator(".comparison-total-grid");
       await expect(totals).toBeVisible();
-      const values = totals.locator("> div > p:nth-child(2)");
-      await expect(values).toHaveCount(3);
-      const [base, head] = await Promise.all([values.nth(0).boundingBox(), values.nth(2).boundingBox()]);
+      const values = totals.locator(".comparison-total-base p:nth-child(2), .comparison-total-head p:nth-child(2)");
+      await expect(values).toHaveCount(2);
+      const [base, head] = await Promise.all([values.nth(0).boundingBox(), values.nth(1).boundingBox()]);
       expect(Math.abs(head!.y - base!.y)).toBeLessThanOrEqual(1);
       expect(head!.x).toBeGreaterThanOrEqual(base!.x + base!.width);
-      for (const value of [values.nth(0), values.nth(2)]) {
+      for (const value of [values.nth(0), values.nth(1)]) {
         expect(await value.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
         expect(await value.evaluate((node) => getComputedStyle(node).overflowWrap)).toBe("normal");
         expect(await value.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(

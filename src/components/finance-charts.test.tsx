@@ -46,6 +46,25 @@ it("shows zero cost basis gains with a neutral value and no plus sign", () => {
   expect(gain).not.toHaveStyle({ color: "#10b981" });
 });
 
+it("shows USD cost basis totals with a dollar symbol on phones", () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: query.includes("max-width: 950px"), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  });
+  try {
+    const report: CostBasisReport = {
+      method: "FIFO", totals: { proceeds: 200, costBasis: 130, gainLoss: 70, shortTerm: 0, longTerm: 70 },
+      assets: [], disposals: [], openLots: [], unrealized: [], warnings: [],
+    };
+    const { getByText } = render(<CostCharts report={report} quoteColor="green-up-red-down" />);
+    expect(getByText("Gain/loss").parentElement).toHaveTextContent("+$70.00");
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
+});
+
 it("shows a compact loading placeholder with an accessible status", () => {
   const { getByRole, container } = render(<FinanceChartSkeleton />);
   expect(getByRole("status")).toHaveTextContent("Loading");

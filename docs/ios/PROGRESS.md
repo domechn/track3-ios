@@ -1,5 +1,13 @@
 # iOS port progress
 
+## D2 reviewer follow-up
+
+- Fixed the browser-test TypeScript error from the unsupported scroll behavior. Added a browser check for SE card margins and coin History row separation; updated assertions for the History delete position, coin detail title, and comparison pill.
+- Moved History's destructive action below the asset list. Coin History uses compact dates with full timestamps in details, and its one-page pager is hidden. The phone trend now has one value axis, short horizontal dates, and four ticks. The Breakeven subtitle fits the 320 pt tile.
+- Flattened Profit Metrics into a two-column tile grid with short labels, compact date ranges, and day units. Profit and Attribution cards use the same 16 pt inner gutter. Attribution rows include logos; AAPL uses the stock glyph in Allocation and Gainers. Wallet rows align with their card content and on-chain wallets have distinct tile colors. Comparison aligns Hide values to the page gutter and uses a delta pill.
+- Cost basis phone values use `$` and localized lot dates. Data-screen CSS now targets semantic component classes and an additive card marker in the shared primitive.
+- Final local checks passed: app and browser-test TypeScript, 1,846 Vitest tests in 226 files, and all 96 tests across the three mobile Playwright suites. The suite regenerated 196 PNGs under `test-results/mobile/`, including 56 D2 detail captures in both themes at 375 and 390 px. I inspected the refreshed coin, wallet, comparison, Profit Metrics, P&L, Attribution, History detail, and cost basis captures. CI, a simulator build, and a physical-device run have not been performed for this follow-up. The prior D2 verification figures below refer to the earlier state.
+
 ## D2 data screen redesign (this worktree)
 
 - The Analytics hub now wraps its seven destinations into two phone columns, with no clipped tile labels. The compact live total is hidden on Analytics while its snapshot total is visible. Profit Metrics uses two-column tiles with short dates on separate lines. The History month header includes its latest total; the detail sheet has a grouped asset list, a tighter row height, and a grouped delete action.

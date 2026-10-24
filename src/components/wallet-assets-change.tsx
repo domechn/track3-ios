@@ -214,7 +214,7 @@ const App = ({
   );
 
   return (
-    <Card>
+    <Card className="wallet-change-card">
       <CardHeader className="space-y-2 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">

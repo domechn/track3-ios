@@ -34,7 +34,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { BottomSheet, SegmentedControl, useHaptics, useIsMobile } from "./mobile";
+import { BottomSheet, DeltaPill, SegmentedControl, useHaptics, useIsMobile } from "./mobile";
 import { isSameDay } from "date-fns";
 import { useTranslation } from "@/i18n";
 
@@ -633,11 +633,13 @@ const App = ({
                       <p className="comparison-total-delta-label text-xs text-muted-foreground">
                         {t("common.changeLabel")}
                       </p>
-                      <p
+                      {isMobile ? <DeltaPill value={totalValue.changePercent} quoteColor={quoteColor}>
+                        {formatChangePercent(totalValue.changePercent)}
+                      </DeltaPill> : <p
                         className={`text-sm font-semibold tabular-nums truncate ${changeClass(totalValue.changePercent)}`}
                       >
                         {formatChangePercent(totalValue.changePercent)}
-                      </p>
+                      </p>}
                       <p
                         className={`text-xs tabular-nums truncate ${changeClass(
                           totalValue.changePercent,

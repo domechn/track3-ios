@@ -37,6 +37,7 @@ describe("profit attribution", () => {
       expect(await screen.findByText("Top contributors")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: /BTC/ }));
       const row = screen.getByRole("button", { name: /BTC/ }).closest("li")!;
+      expect(row.querySelector("img")).toBeInTheDocument();
       expect(within(row).getByText("Quantity change")).toBeInTheDocument();
       expect(within(row).getByText("+€200.00")).toBeInTheDocument();
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

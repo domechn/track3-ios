@@ -285,13 +285,23 @@ const App = ({
         locale === "zh" ? "zh-CN" : "en-US",
         { year: "numeric", month: "short", day: "numeric" },
       ).format(new Date(date));
+      const shortRange = (start: Date, end: Date) => {
+        if (start.toDateString() === end.toDateString()) return shortDate(start);
+        const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+        if (locale === "zh") return `${shortDate(start)}–${sameMonth ? end.getDate() + "日" : shortDate(end)}`;
+        const monthDay = (date: Date) => new Intl.DateTimeFormat("en-US",
+          { month: "short", day: "numeric" }).format(date);
+        return sameMonth
+          ? `${monthDay(start)}–${end.getDate()}, ${end.getFullYear()}`
+          : `${monthDay(start)}–${monthDay(end)}${start.getFullYear() === end.getFullYear() ? `, ${end.getFullYear()}` : ""}`;
+      };
       const amount = (value: number) => `${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(value)))}`;
       const tiles = [
-        { label: t("profitMetrics.maxContProfit"), value: String(daysBetweenDates(maxProfileDateRange.start, maxProfileDateRange.end)), date: `${shortDate(maxProfileDateRange.start)} – ${shortDate(maxProfileDateRange.end)}` },
-        { label: t("profitMetrics.maxContLoss"), value: String(daysBetweenDates(maxLostDateRange.start, maxLostDateRange.end)), date: `${shortDate(maxLostDateRange.start)} – ${shortDate(maxLostDateRange.end)}` },
-        { label: t("profitMetrics.maxProfit"), value: maxSingleDayProfitData.value < 0 ? "—" : amount(maxSingleDayProfitData.value), date: shortDate(maxSingleDayProfitData.timestamp), tone: "gain" },
-        { label: t("profitMetrics.maxLoss"), value: maxSingleDayLostData.value > 0 ? "—" : `−${amount(maxSingleDayLostData.value)}`, date: shortDate(maxSingleDayLostData.timestamp), tone: "loss" },
-        { label: t("profitMetrics.maxDrawdown"), value: `${maxDrawdownData.value.toFixed(2)}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
+        { label: t("profitMetrics.maxContProfitShort"), value: `${daysBetweenDates(maxProfileDateRange.start, maxProfileDateRange.end)} ${t("profitMetrics.days")}`, date: shortRange(maxProfileDateRange.start, maxProfileDateRange.end) },
+        { label: t("profitMetrics.maxContLossShort"), value: `${daysBetweenDates(maxLostDateRange.start, maxLostDateRange.end)} ${t("profitMetrics.days")}`, date: shortRange(maxLostDateRange.start, maxLostDateRange.end) },
+        { label: t("profitMetrics.maxProfitShort"), value: maxSingleDayProfitData.value < 0 ? "—" : amount(maxSingleDayProfitData.value), date: shortDate(maxSingleDayProfitData.timestamp), tone: "gain" },
+        { label: t("profitMetrics.maxLossShort"), value: maxSingleDayLostData.value > 0 ? "—" : `−${amount(maxSingleDayLostData.value)}`, date: shortDate(maxSingleDayLostData.timestamp), tone: "loss" },
+        { label: t("profitMetrics.maxDrawdownShort"), value: `${maxDrawdownData.value.toFixed(2)}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
       ];
       return <div>
         {athReachedDetailsDialog}
@@ -302,8 +312,8 @@ const App = ({
             <span className="profit-metric-date">{tile.date}</span>
           </div>)}
           <button type="button" className="profit-metric-tile" onClick={onATHTimesClick}>
-            <span className="profit-metric-label">{t("profitMetrics.athReached")}</span>
-            <strong className="profit-metric-value ios-money">{athTimes.times}</strong>
+            <span className="profit-metric-label">{t("profitMetrics.athReachedShort")}</span>
+            <strong className="profit-metric-value ios-money">{athTimes.times} {t("profitMetrics.times")}</strong>
             <span className="profit-metric-date"><InfoCircledIcon className="inline h-3.5 w-3.5" /> {t("profitMetrics.dialogTitle")}</span>
           </button>
         </div>
@@ -412,7 +422,7 @@ const App = ({
   });
 
   return (
-    <Card>
+    <Card className="profit-metrics-card">
       <CardHeader className="space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {t("profitMetrics.title")}
