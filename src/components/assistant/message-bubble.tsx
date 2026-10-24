@@ -45,6 +45,7 @@ function ThinkBlock({ text, isStreaming, hasResponseStarted }: {
 
   const displayText = stripThinkTags(text);
   if (!displayText) return null;
+  if (isIOS() && !isStreaming && hasResponseStarted) return null;
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--glass-border)] bg-accent/30">

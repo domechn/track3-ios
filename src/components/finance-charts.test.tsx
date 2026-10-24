@@ -93,6 +93,9 @@ it("maps deviations from the calculator and includes the configured tolerance", 
   } as RebalanceResult;
   render(<RebalanceCharts result={result} tolerancePercent={3} quoteColor="green-up-red-down" />);
   const deviations = vi.mocked(Bar).mock.calls[1][0];
+  const allocation = vi.mocked(Bar).mock.calls[0][0];
+  expect(allocation.options?.scales?.y?.ticks?.autoSkip).toBe(false);
+  expect(allocation.data.datasets[0].backgroundColor).not.toBe(allocation.data.datasets[1].backgroundColor);
   expect(deviations.data.labels).toEqual(["BTC", "ETH"]);
   expect(deviations.data.datasets[0].data).toEqual([20, -20]);
   expect(deviations["aria-label"]).toContain("3%");
@@ -105,6 +108,7 @@ it("maps portfolio values and a total value goal to separate line datasets", () 
     { date: "2025-01-01", value: 100 }, { date: "2025-01-02", value: 120 },
   ]} />);
   const chart = vi.mocked(Line).mock.calls[0][0];
-  expect(chart.data.labels).toEqual(["2025-01-01", "2025-01-02"]);
+  expect(chart.data.labels).toEqual(["Jan 1", "Jan 2"]);
+  expect(chart.options?.scales?.y?.ticks).toEqual(expect.objectContaining({ callback: expect.any(Function) }));
   expect(chart.data.datasets.map((series) => series.data)).toEqual([[100, 120], [150, 150]]);
 });

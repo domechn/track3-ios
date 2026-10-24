@@ -20,6 +20,7 @@ import {
 } from "@/i18n";
 import { isIOS } from "@/utils/platform";
 import { useSearchParams } from "react-router-dom";
+import { InsetGroup, ListRow } from "@/components/mobile";
 
 const App = ({
   onQuoteColorChange,
@@ -75,6 +76,30 @@ const App = ({
   const section = isIOS() ? searchParams.get("section") : null;
   const showTheme = !section || section === "theme";
   const showLanguage = !section || section === "language";
+
+  if (isIOS()) return <div className="ios-d3-mobile-appearance">
+    {showTheme && <>
+      <InsetGroup title={t("appearance.theme")}>
+        {(["system", "light", "dark"] as const).map((value) => <ListRow key={value} className="ios-d3-choice-row" onClick={() => {
+          setSelectedTheme(value);
+          currentTheme.setTheme(value);
+          void saveTheme(value);
+        }} trailing={<span className="ios-d3-choice-check" aria-hidden="true">{selectedTheme === value ? "✓" : ""}</span>}>
+          {t(`appearance.theme.${value}`)}
+        </ListRow>)}
+      </InsetGroup>
+      <InsetGroup title={t("appearance.quoteColor")}>
+        {(["green-up-red-down", "red-up-green-down"] as const).map((value) => <ListRow key={value} className="ios-d3-choice-row" onClick={() => void handleQuoteColorValueChange(value)} trailing={<span className="ios-d3-choice-check" aria-hidden="true">{quoteColor === value ? "✓" : ""}</span>}>
+          {t(value === "green-up-red-down" ? "appearance.quoteColorGreenUp" : "appearance.quoteColorRedUp")}
+        </ListRow>)}
+      </InsetGroup>
+    </>}
+    {showLanguage && <InsetGroup title={t("appearance.language")}>
+      {SUPPORTED_LOCALES.map((value) => <ListRow key={value} className="ios-d3-choice-row" onClick={() => handleLanguageValueChange(value)} trailing={<span className="ios-d3-choice-check" aria-hidden="true">{selectedLocale === value ? "✓" : ""}</span>}>
+        {LOCALE_LABELS[value]}
+      </ListRow>)}
+    </InsetGroup>}
+  </div>;
 
   return (
     <div className="ios-d3-settings-content ios-d3-appearance space-y-6">

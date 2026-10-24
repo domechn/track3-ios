@@ -26,7 +26,7 @@ describe("mobile data sources", () => {
     const preview = vi.fn();
     render(<MobileSources {...props} isPro onQuickLookExchange={preview} />);
     fireEvent.click(screen.getByRole("button", { name: "More actions for Binance" }));
-    fireEvent.click(screen.getByRole("button", { name: "Quick look Binance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Quick look" }));
     expect(preview).toHaveBeenCalledWith(props.exchanges[0]);
   });
 
@@ -36,7 +36,7 @@ describe("mobile data sources", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Toggle Binance" }));
     expect(toggle).toHaveBeenCalledWith(props.exchanges[0]);
     fireEvent.click(screen.getByRole("button", { name: "More actions for Binance" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete Binance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(screen.getByRole("alertdialog", { name: "Remove this configuration?" })).toBeInTheDocument();
   });
 
@@ -47,18 +47,28 @@ describe("mobile data sources", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/api key/i);
-    expect(screen.getByRole("textbox", { name: "Api Key" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "API key" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "API key" })).toHaveAttribute("aria-describedby", "mobile-api-key-error");
+    expect(screen.getByText("API key is required")).toHaveAttribute("id", "mobile-api-key-error");
     expect(props.onSaveExchange).not.toHaveBeenCalled();
+  });
+
+  it("offers provider rows and a shared switch in the source flow", () => {
+    render(<MobileSources {...props} />);
+    expect(screen.getByRole("switch", { name: "Toggle Binance" })).toHaveClass("ios-switch");
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    expect(screen.getByRole("button", { name: "OKX" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
   });
 
   it("reveals a secret only while its reveal control is held", () => {
     render(<MobileSources {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    const secret = screen.getByLabelText("Api Secret");
+    const secret = screen.getByLabelText("API secret");
     fireEvent.change(secret, { target: { value: "private-secret" } });
     expect(secret).toHaveAttribute("type", "password");
-    const reveal = screen.getByRole("button", { name: "Hold to reveal Api Secret" });
+    const reveal = screen.getByRole("button", { name: "Hold to reveal API secret" });
     fireEvent.pointerDown(reveal);
     expect(secret).toHaveAttribute("type", "text");
     fireEvent.pointerUp(reveal);
@@ -89,13 +99,13 @@ describe("mobile data sources", () => {
       ...props.exchangeOptions, { value: "bitget", label: "Bitget" },
     ]} />);
     fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
-    fireEvent.change(screen.getByLabelText("Type"), { target: { value: provider } });
+    fireEvent.click(screen.getByRole("button", { name: provider === "okex" ? "OKX" : "Bitget" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "new-key" } });
-    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "new-secret" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "API key" }), { target: { value: "new-key" } });
+    fireEvent.change(screen.getByLabelText("API secret"), { target: { value: "new-secret" } });
     fireEvent.change(screen.getByLabelText(label), { target: { value: "old-provider-secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "binance" } });
+    fireEvent.click(screen.getByRole("button", { name: "Binance" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
@@ -112,8 +122,8 @@ describe("mobile data sources", () => {
     render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error(failure))} />);
     fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "key" } });
-    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "API key" }), { target: { value: "key" } });
+    fireEvent.change(screen.getByLabelText("API secret"), { target: { value: "secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message));
   });
@@ -125,8 +135,8 @@ describe("mobile data sources", () => {
       render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error("Invalid exchange"))} />);
       fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "sensitive-key-123" } });
-      fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+      fireEvent.change(screen.getByRole("textbox", { name: "API key" }), { target: { value: "sensitive-key-123" } });
+      fireEvent.change(screen.getByLabelText("API secret"), { target: { value: "secret" } });
       fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
       await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/connection/i));
       expect(screen.getByRole("alert")).not.toHaveTextContent("sensitive-key-123");
@@ -139,15 +149,15 @@ describe("mobile data sources", () => {
     render(<MobileSources {...props} onSaveExchange={vi.fn().mockRejectedValue(new Error("Request failed for sensitive-key-123"))} />);
     fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Api Key" }), { target: { value: "sensitive-key-123" } });
-    fireEvent.change(screen.getByLabelText("Api Secret"), { target: { value: "secret" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "API key" }), { target: { value: "sensitive-key-123" } });
+    fireEvent.change(screen.getByLabelText("API secret"), { target: { value: "secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/Request failed/));
     expect(screen.getByRole("alert")).not.toHaveTextContent("sensitive-key-123");
   });
 
   it.each([
-    ["exchange", "Binance", "Api Key"],
+    ["exchange", "Binance", "API key"],
     ["wallet", "BTC", "Address"],
     ["broker", "IBKR", "Query ID"],
   ])("keeps an edited %s identity fixed so attached holdings remain linked", (kind, name, field) => {

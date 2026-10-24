@@ -88,6 +88,7 @@ vi.mock("@/middlelayers/configuration", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(isIOS).mockReturnValue(false);
   vi.mocked(getConfiguration).mockResolvedValue(undefined);
   vi.mocked(queryQuerySize).mockResolvedValue(10);
   vi.mocked(queryPreferCurrency).mockResolvedValue({
@@ -119,7 +120,7 @@ describe("Configuration base currency initialization", () => {
     vi.mocked(isIOS).mockReturnValue(true);
     window.location.hash = "#/settings/configuration?section=sources";
     render(<Configuration />);
-    expect(await screen.findByText("No custom assets yet")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Add Symbol" })).toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
   });

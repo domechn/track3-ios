@@ -218,7 +218,8 @@ test("custom asset source picker opens from the bottom of the iPhone screen", as
   await page.setViewportSize({ width: 390, height: 812 });
   await installTauriBridge(page);
   await page.goto("/#/settings/configuration?section=sources");
-  await page.getByRole("button", { name: "Attach to BTC" }).click();
+  await page.getByRole("button", { name: "More actions for BTC" }).click();
+  await page.getByRole("button", { name: "Attach to" }).click();
   const picker = page.getByRole("dialog", { name: "Attach to" });
   await expect(picker).toBeVisible();
   const box = await picker.boundingBox();

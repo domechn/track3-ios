@@ -107,6 +107,19 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
   });
 
+  it("shows a completed source while the rest of the refresh is pending", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockImplementationOnce((_progress, options) => new Promise(() => {
+      options?.onSourceResult?.({
+        sourceId: "cex:0", label: "Main exchange", walletIdentities: [],
+        status: "ok", coins: [], startedAt: "2026-01-01T00:00:00.000Z", finishedAt: "2026-01-01T00:00:02.000Z",
+      });
+    }));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("group", { name: "Main exchange" })).toHaveTextContent("2.0s");
+  });
+
   it("hides results from the previous run while an iPhone refresh is pending", async () => {
     vi.mocked(isIOS).mockReturnValue(true);
     vi.mocked(refreshAllData).mockResolvedValueOnce({
@@ -269,13 +282,13 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect(screen.getByText("OK")).toBeTruthy();
     expect(refreshAllData).toHaveBeenLastCalledWith(
       expect.any(Function),
-      {
+      expect.objectContaining({
         retrySourceId: "btc:0",
         previousSourceResults: [failedSource],
         previousSourceStatuses: partialResult.sourceStatuses,
         previousSnapshotId: "previous",
         previousSnapshotKey: "snapshot-key",
-      },
+      }),
       expect.any(Object), expect.any(Function),
     );
   });
@@ -425,9 +438,9 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect((await axe.run(dialog, { rules: { "color-contrast": { enabled: false } } })).violations).toEqual([]);
     await user.click(screen.getByRole("button", { name: "Retry all failed" }));
     await waitFor(() => expect(refreshAllData).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(refreshAllData).mock.calls[1][1]).toEqual({
+    expect(vi.mocked(refreshAllData).mock.calls[1][1]).toEqual(expect.objectContaining({
       previousSourceStatuses: sourceStatuses,
-    });
+    }));
   });
 
   it("shows partial endpoints and a retry beside failed and current sources", async () => {
@@ -515,12 +528,12 @@ describe("RefreshData — currency rates refresh ordering", () => {
     const user = userEvent.setup();
     render(<RefreshData loading={false} />);
     await user.click(screen.getByRole("button", { name: "Refresh" }));
-    expect(vi.mocked(refreshAllData).mock.calls[0][1]).toEqual({
+    expect(vi.mocked(refreshAllData).mock.calls[0][1]).toEqual(expect.objectContaining({
       previousSourceStatuses: [{
         sourceId: "cex:0", label: "Main", kind: "exchange", provider: "Binance", hint: "#1",
         status: "ok", lastSuccessAt: "2026-10-17T12:30:00Z",
       }],
-    });
+    }));
   });
 
   it("ignores malformed saved source statuses", () => {
@@ -548,7 +561,7 @@ describe("RefreshData — currency rates refresh ordering", () => {
     await user.click(screen.getByRole("button", { name: "Source status" }));
     await user.click(screen.getByRole("button", { name: "Retry all failed" }));
     await waitFor(() => expect(refreshAllData).toHaveBeenCalledWith(
-      expect.any(Function), { previousSourceStatuses: statuses }, expect.any(Object), expect.any(Function),
+      expect.any(Function), expect.objectContaining({ previousSourceStatuses: statuses }), expect.any(Object), expect.any(Function),
     ));
   });
 
@@ -613,7 +626,7 @@ describe("RefreshData — currency rates refresh ordering", () => {
       expect(persistenceAttempts).toBe(2);
       expect(refreshAllData).toHaveBeenCalledWith(
         expect.any(Function),
-        {},
+        expect.objectContaining({ onSourceResult: expect.any(Function) }),
         {
           operationUuid: expect.stringMatching(
             /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,

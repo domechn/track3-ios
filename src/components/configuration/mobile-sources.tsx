@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 import { maskSensitive, truncateAddress } from "@/utils/attach-to";
 import { redactSecrets } from "@/middlelayers/security/redact";
-import { ChevronRightIcon, DotsHorizontalIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { CheckIcon, ChevronRightIcon, DotsHorizontalIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { ActionSheet, useHaptics } from "@/components/mobile";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
+import { Switch } from "@/components/ui/switch";
+import { getWalletLogo } from "@/lib/utils";
 import type { ExchangeRow, StockBrokerRow, WalletRow, SelectOption } from "./types";
 
 export type MobileSourcesProps = {
@@ -53,10 +55,12 @@ export function MobileSources(props: MobileSourcesProps) {
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const [providerQuery, setProviderQuery] = useState("");
   const start = (kind: Kind, original?: Draft) => {
     haptic("selection");
     setError("");
     setErrorField(undefined);
+    setProviderQuery("");
     setEditor({ kind, step: original ? 2 : 1, original, draft: original ? { ...original } : blank[kind]() });
   };
   const update = (patch: Record<string, string>) => {
@@ -135,22 +139,23 @@ export function MobileSources(props: MobileSourcesProps) {
   };
   const sections: { kind: Kind; label: string; add: string; rows: Draft[]; options: SelectOption[] }[] = [
     { kind: "exchange", label: t("config.exchanges"), add: t("mobile.sources.addExchange"), rows: props.exchanges, options: props.exchangeOptions },
-    { kind: "wallet", label: t("config.wallet"), add: t("mobile.sources.addWallet"), rows: props.wallets, options: props.walletOptions },
-    { kind: "broker", label: t("config.stockBrokers"), add: t("mobile.sources.addBroker"), rows: props.brokers, options: props.brokerOptions },
+    { kind: "wallet", label: t("mobile.sources.wallets"), add: t("mobile.sources.addWallet"), rows: props.wallets, options: props.walletOptions },
+    { kind: "broker", label: t("mobile.sources.brokers"), add: t("mobile.sources.addBroker"), rows: props.brokers, options: props.brokerOptions },
   ];
+  const providerOptions = sections.find((section) => section.kind === editor?.kind)?.options ?? [];
   return (
     <div className="ios-d3-sources">
       {props.exchanges.length + props.wallets.length + props.brokers.length === 0 && <div className="ios-d3-onboarding">
         <div className="ios-d3-onboarding-art" aria-hidden="true">
-          <svg viewBox="0 0 160 94" fill="none">
-            <rect x="26" y="12" width="108" height="70" rx="14" stroke="currentColor" strokeWidth="2" opacity=".35" />
-            <path d="M48 60h18l12-18 13 10 21-27" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="112" cy="25" r="5" fill="currentColor" />
+          <svg viewBox="0 0 160 160" fill="none">
+            <circle cx="80" cy="80" r="68" fill="currentColor" opacity=".08" />
+            <circle cx="80" cy="80" r="48" stroke="currentColor" strokeWidth="2" opacity=".3" />
+            <path d="M48 99h64M53 91l20-20 14 11 23-29" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="110" cy="53" r="5" fill="currentColor" />
           </svg>
         </div>
-        <h2>{t("mobile.sources.gettingStarted")}</h2>
         <ol aria-label={t("mobile.sources.gettingStarted")}>
-          {[1, 2, 3].map((step) => <li key={step}><span>{step}</span>{t(`mobile.sources.step.${step}`)}</li>)}
+          {[1, 2, 3].map((step) => <li key={step} className="ios-d3-onboarding-card"><span>{step}</span>{t(`mobile.sources.step.${step}`)}</li>)}
         </ol>
       </div>}
       {sections.map(({ kind, label, add, rows, options }) => (
@@ -159,43 +164,42 @@ export function MobileSources(props: MobileSourcesProps) {
             <h2 className="ios-d3-section-heading">{label}</h2>
             <Button className="ios-d3-text-action min-h-11" variant="ghost" onClick={() => start(kind)}>{add}</Button>
           </div>
-          <div className="ios-d3-source-group overflow-hidden rounded-2xl bg-card">
+          {(rows.length > 0 || props.exchanges.length + props.wallets.length + props.brokers.length > 0) && <div className="ios-d3-source-group overflow-hidden rounded-2xl bg-card">
             {rows.length === 0 ? <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.sources.empty")}</p> : rows.map((row, index) => {
               const identity = kind === "exchange" ? maskSensitive((row as ExchangeRow).apiKey)
                 : kind === "wallet" ? truncateAddress((row as WalletRow).address)
                 : maskSensitive((row as StockBrokerRow).queryId);
               const name = row.alias || options.find((option) => option.value === row.type)?.label || row.type;
               return <div key={`${row.type}-${index}`} className="ios-d3-source-row flex min-w-0 items-center gap-2 px-4 py-2">
-                <span className="ios-d3-source-avatar" aria-hidden="true">{name.slice(0, 2).toUpperCase()}</span>
+                <span className="ios-d3-source-avatar" aria-hidden="true"><img src={getWalletLogo(row.type)} alt="" />{row.type.slice(0, 2).toUpperCase()}</span>
                 <button className="min-h-11 min-w-0 flex-1 text-left" onClick={() => start(kind, row)}>
                   <span className="block truncate font-medium">{name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{identity}</span>
                 </button>
-                <button type="button" role="switch" aria-checked={row.active}
-                  className="ios-d3-source-switch" aria-label={`${t("mobile.sources.toggle")} ${name}`} onClick={() => {
+                <Switch checked={row.active} aria-label={`${t("mobile.sources.toggle")} ${name}`} onCheckedChange={() => {
                   haptic("selection");
                   if (kind === "exchange") props.onToggleExchange(row as ExchangeRow);
                   if (kind === "wallet") props.onToggleWallet(row as WalletRow);
                   if (kind === "broker") props.onToggleBroker(row as StockBrokerRow);
-                }}><span aria-hidden="true" /></button>
+                }} />
                 <button type="button" className="ios-d3-source-more" aria-label={t("mobile.sources.moreActions").replace("{source}", name)}
                   onClick={() => { haptic("selection"); setMenu({ kind, value: row, name }); }}><DotsHorizontalIcon aria-hidden="true" /></button>
               </div>;
             })}
-          </div>
+          </div>}
         </section>
       ))}
       {menu && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(undefined); }}
         title={menu.name} actions={[
           ...(props.isPro ? [{
-            label: t("mobile.sources.quickLookSource").replace("{source}", menu.name),
+            label: t("mobile.sources.quickLook"),
             onClick: () => {
               if (menu.kind === "exchange") props.onQuickLookExchange?.(menu.value as ExchangeRow);
               if (menu.kind === "wallet") props.onQuickLookWallet?.(menu.value as WalletRow);
               if (menu.kind === "broker") props.onQuickLookBroker?.(menu.value as StockBrokerRow);
             },
           }] : []),
-          { label: t("mobile.sources.deleteSource").replace("{source}", menu.name), destructive: true,
+          { label: t("common.delete"), destructive: true,
             onClick: () => setRemoval({ kind: menu.kind, value: menu.value }) },
         ]} />}
       {editor && <ModalPage title={t("mobile.sources.edit")} onDismiss={close}>
@@ -209,36 +213,39 @@ export function MobileSources(props: MobileSourcesProps) {
           </div>
           <div className="ios-d3-editor-intro">
             <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
-              {(sections.find((section) => section.kind === editor.kind)?.options.find((option) => option.value === editor.draft.type)?.label ?? editor.draft.type).slice(0, 2).toUpperCase()}
+              <img src={getWalletLogo(editor.draft.type)} alt="" />{editor.draft.type.slice(0, 2).toUpperCase()}
             </span>
             <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
           </div>
           {editor.step === 1 ? <>
-            <Label htmlFor="mobile-provider">{t("config.formType")}</Label>
-            <select id="mobile-provider" className="ios-d3-provider-select mt-2 min-h-12 w-full rounded-xl bg-card px-3" value={editor.draft.type} onChange={(event) => {
-              const type = event.target.value;
+            <Label htmlFor="mobile-provider-search">{t("config.formType")}</Label>
+            <Input id="mobile-provider-search" type="search" className="ios-d3-provider-search min-h-12" placeholder={t("mobile.sources.searchProvider")} value={providerQuery} onChange={(event) => setProviderQuery(event.target.value)} />
+            <div className="ios-d3-provider-list" role="group" aria-label={t("config.formType")}>
+              {providerOptions.filter((option) => option.label.toLowerCase().includes(providerQuery.toLowerCase())).map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={editor.draft.type === option.value} onClick={() => {
+              const type = option.value;
               if (editor.kind === "exchange" && type !== editor.draft.type) {
                 const { password: _password, passphrase: _passphrase, ...rest } = editor.draft as ExchangeRow;
                 setEditor({ ...editor, draft: { ...rest, type } });
               } else update({ type });
-            }}>
-              {sections.find((section) => section.kind === editor.kind)?.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            }}><span className="ios-d3-source-avatar" aria-hidden="true"><img src={getWalletLogo(option.value)} alt="" />{option.value.slice(0, 2).toUpperCase()}</span><span>{option.label}</span>{editor.draft.type === option.value ? <CheckIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}</button>)}
+            </div>
             <Button className="ios-d3-editor-primary min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}<ChevronRightIcon aria-hidden="true" /></Button>
           </> : <>
+            <div className="ios-d3-credential-group">
             <Field id="mobile-alias" label={t("config.formAlias")} value={editor.draft.alias ?? ""} onChange={(value) => update({ alias: value })} />
             {editor.kind === "exchange" && <>
-              <Field id="mobile-api-key" label={t("config.formApiKey")} value={(editor.draft as ExchangeRow).apiKey} onChange={(value) => update({ apiKey: value })} onPaste={editor.original ? undefined : () => void paste("apiKey")} readOnly={!!editor.original} invalid={errorField === "apiKey"} />
-              <Field id="mobile-secret" label={t("config.formApiSecret")} value={(editor.draft as ExchangeRow).secret} onChange={(value) => update({ secret: value })} secret onPaste={() => void paste("secret")} invalid={errorField === "secret"} />
-              {editor.draft.type === "okex" && <Field id="mobile-password" label={t("config.formPassword")} value={(editor.draft as ExchangeRow).password ?? ""} onChange={(value) => update({ password: value })} secret onPaste={() => void paste("password")} invalid={errorField === "password"} />}
-              {editor.draft.type === "bitget" && <Field id="mobile-passphrase" label={t("config.formPassphrase")} value={(editor.draft as ExchangeRow).passphrase ?? ""} onChange={(value) => update({ passphrase: value })} secret onPaste={() => void paste("passphrase")} invalid={errorField === "passphrase"} />}
+              <Field id="mobile-api-key" label={t("config.formApiKey")} value={(editor.draft as ExchangeRow).apiKey} onChange={(value) => update({ apiKey: value })} onPaste={editor.original ? undefined : () => void paste("apiKey")} readOnly={!!editor.original} invalid={errorField === "apiKey"} error={errorField === "apiKey" ? error : undefined} />
+              <Field id="mobile-secret" label={t("config.formApiSecret")} value={(editor.draft as ExchangeRow).secret} onChange={(value) => update({ secret: value })} secret onPaste={() => void paste("secret")} invalid={errorField === "secret"} error={errorField === "secret" ? error : undefined} />
+              {editor.draft.type === "okex" && <Field id="mobile-password" label={t("config.formPassword")} value={(editor.draft as ExchangeRow).password ?? ""} onChange={(value) => update({ password: value })} secret onPaste={() => void paste("password")} invalid={errorField === "password"} error={errorField === "password" ? error : undefined} />}
+              {editor.draft.type === "bitget" && <Field id="mobile-passphrase" label={t("config.formPassphrase")} value={(editor.draft as ExchangeRow).passphrase ?? ""} onChange={(value) => update({ passphrase: value })} secret onPaste={() => void paste("passphrase")} invalid={errorField === "passphrase"} error={errorField === "passphrase" ? error : undefined} />}
             </>}
-            {editor.kind === "wallet" && <Field id="mobile-address" label={t("config.formAddress")} value={(editor.draft as WalletRow).address} onChange={(value) => update({ address: value })} onPaste={editor.original ? undefined : () => void paste("address")} readOnly={!!editor.original} invalid={errorField === "address"} />}
+            {editor.kind === "wallet" && <Field id="mobile-address" label={t("config.formAddress")} value={(editor.draft as WalletRow).address} onChange={(value) => update({ address: value })} onPaste={editor.original ? undefined : () => void paste("address")} readOnly={!!editor.original} invalid={errorField === "address"} error={errorField === "address" ? error : undefined} />}
             {editor.kind === "broker" && <>
-              <Field id="mobile-token" label={t("config.formToken")} value={(editor.draft as StockBrokerRow).token} onChange={(value) => update({ token: value })} secret onPaste={() => void paste("token")} invalid={errorField === "token"} />
-              <Field id="mobile-query-id" label={t("config.queryId")} value={(editor.draft as StockBrokerRow).queryId} onChange={(value) => update({ queryId: value })} onPaste={editor.original ? undefined : () => void paste("queryId")} readOnly={!!editor.original} invalid={errorField === "queryId"} />
+              <Field id="mobile-token" label={t("config.formToken")} value={(editor.draft as StockBrokerRow).token} onChange={(value) => update({ token: value })} secret onPaste={() => void paste("token")} invalid={errorField === "token"} error={errorField === "token" ? error : undefined} />
+              <Field id="mobile-query-id" label={t("config.queryId")} value={(editor.draft as StockBrokerRow).queryId} onChange={(value) => update({ queryId: value })} onPaste={editor.original ? undefined : () => void paste("queryId")} readOnly={!!editor.original} invalid={errorField === "queryId"} error={errorField === "queryId" ? error : undefined} />
             </>}
-            {error && <p id="mobile-source-error" role="alert" className="text-sm text-destructive">{error}</p>}
+            </div>
+            {error && !errorField && <p id="mobile-source-error" role="alert" className="text-sm text-destructive">{error}</p>}
             <Button className="ios-d3-editor-primary min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
           </>}
         </div>
@@ -252,15 +259,15 @@ export function MobileSources(props: MobileSourcesProps) {
   );
 }
 
-function Field({ id, label, value, onChange, secret = false, onPaste, readOnly = false, invalid = false }: {
-  id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; readOnly?: boolean; invalid?: boolean;
+function Field({ id, label, value, onChange, secret = false, onPaste, readOnly = false, invalid = false, error }: {
+  id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; readOnly?: boolean; invalid?: boolean; error?: string;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
   return <div className="ios-d3-source-field space-y-2">
     <Label htmlFor={id}>{label}</Label>
     <div className="ios-d3-field-control flex gap-2">
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? "mobile-source-error" : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? `${id}-error` : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
       {secret && <button type="button" className="ios-d3-reveal" aria-label={`${t("mobile.sources.holdReveal")} ${label}`}
         onPointerDown={() => setRevealed(true)} onPointerUp={() => setRevealed(false)}
         onPointerCancel={() => setRevealed(false)} onPointerLeave={() => setRevealed(false)}
@@ -268,5 +275,6 @@ function Field({ id, label, value, onChange, secret = false, onPaste, readOnly =
         onKeyUp={() => setRevealed(false)}><EyeOpenIcon aria-hidden="true" /></button>}
       {onPaste && <Button variant="outline" className="min-h-12" onClick={onPaste}>{t("mobile.sources.paste")}</Button>}
     </div>
+    {error && <p id={`${id}-error`} role="alert" className="px-4 text-sm text-destructive">{error}</p>}
   </div>;
 }

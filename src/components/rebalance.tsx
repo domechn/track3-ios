@@ -256,7 +256,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
             <CardHeader className="px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base">{t("rebalance.targets")}</CardTitle>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="ios-d3-rebalance-presets flex flex-wrap gap-1.5">
                   <Button size="sm" variant="outline" disabled={!holdings.length} onClick={() => applyPreset(true)}>{t("rebalance.equalWeight")}</Button>
                   <Button size="sm" variant="outline" disabled={!holdings.length} onClick={() => applyPreset(false)}>{t("rebalance.currentHoldings")}</Button>
                   <Button size="sm" variant="outline" disabled={!targets.length} onClick={() => {
@@ -335,13 +335,9 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                       aria-label={t("rebalance.increaseTarget").replace("{asset}", labelFor(target))}
                       onClick={() => updateTarget(index, { ...target, percent: stepPercent(target.percent, 1) })}>+</Button>
                   </div>}
-                  {mobile && <div role="progressbar"
-                    aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
-                    aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number.isNaN(target.percent) ? 0 : target.percent}
-                    className="ios-d3-target-bar col-span-2"><span style={{ width: `${Math.max(0, Math.min(100, target.percent || 0))}%` }} /></div>}
-                  <Button className={`${mobile ? "h-11 w-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
+                  <Button className={`${mobile ? "ios-d3-target-remove h-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
                     aria-label={t("rebalance.remove").replace("{asset}", labelFor(target))}
-                    onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>×</Button>
+                    onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>{mobile ? t("rebalance.remove").replace("{asset}", labelFor(target)) : "×"}</Button>
                 </div>
               ))}
               <div className="flex flex-wrap items-end justify-between gap-2 border-t pt-3">
@@ -408,13 +404,13 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                 </CardHeader>
                 <CardContent className="space-y-2 px-4 pb-4">
                   {visual?.trades.length ? visual.trades.map((row) => (
-                    <div key={`${row.assetType}:${row.symbol}`} className={`ios-d3-trade flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${row.tradeValue > 0 ? "ios-d3-buy" : "ios-d3-sell"}`}>
-                      <p className="font-medium">
+                    <div key={`${row.assetType}:${row.symbol}`} className={`ios-d3-trade flex flex-nowrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${row.tradeValue > 0 ? "ios-d3-buy" : "ios-d3-sell"}`}>
+                      <p className="min-w-0 truncate font-medium">
                         {t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
-                        {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: 8 })} `}
+                        {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: mobile ? 4 : 8 })} `}
                         {row.symbol}
                       </p>
-                      <span className="tabular-nums text-muted-foreground">~{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">~{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
                     </div>
                   )) : <p className="text-sm text-muted-foreground">{t("rebalance.noTrade")}</p>}
                   <div className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">

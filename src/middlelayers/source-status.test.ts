@@ -7,6 +7,16 @@ it("loads old saved statuses with their original label", () => {
   expect(sourceIdentity({ sourceId: "btc:0", label: "Main", status: "failed" })).toBe("Main");
 });
 
+it("retains valid source timing and drops malformed timestamps", () => {
+  expect(normalizeSourceStatuses([
+    { sourceId: "a", label: "A", status: "ok", startedAt: "2026-01-01T00:00:00.000Z", finishedAt: "2026-01-01T00:00:01.000Z" },
+    { sourceId: "b", label: "B", status: "failed", startedAt: "secret", finishedAt: "broken" },
+  ])).toEqual([
+    { sourceId: "a", label: "A", status: "ok", startedAt: "2026-01-01T00:00:00.000Z", finishedAt: "2026-01-01T00:00:01.000Z" },
+    { sourceId: "b", label: "B", status: "failed" },
+  ]);
+});
+
 it("rejects unmasked hints and upstream error text at the storage boundary", () => {
   const statuses = normalizeSourceStatuses([{
     sourceId: "cex:0", label: "Main", kind: "exchange", provider: "Binance",

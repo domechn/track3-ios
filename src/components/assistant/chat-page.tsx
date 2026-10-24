@@ -539,7 +539,7 @@ function ChatContent({
         onDecideAction={(id, decision) => void chat.decideAction(id, decision)}
         canDecideAction={!!sessionId && config.allowActions !== false && !chat.isStreaming && !saveError}
       />
-      {chat.messages.length > 0 && (
+      {chat.messages.length > 0 && !isIOS() && (
         <QuickActions
           disabled={chat.isStreaming}
           onRun={(key) => {
@@ -572,8 +572,8 @@ function ChatHeader({
   const { t } = useTranslation();
   const percent = Math.min(100, Math.round(contextTokens / config.contextSize * 100));
   return (
-    <CardHeader className="ios-d3-chat-header flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:flex-wrap touch:gap-y-1 touch:px-3">
-      <div className="flex min-w-0 items-center gap-3 touch:w-full">
+    <CardHeader className="ios-d3-chat-header flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:px-3">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onToggleSidebar}

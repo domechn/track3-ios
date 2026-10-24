@@ -177,13 +177,13 @@ export default function GoalsAlerts() {
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="space-y-1 text-sm">
+        {!isIOS() && <label className="space-y-1 text-sm">
           <span>{t("goals.kind")}</span>
           <select className="h-10 w-full rounded-md border bg-background px-3" value={draft.kind}
             onChange={(e) => setDraft({ ...draft, kind: e.target.value as AlertKind })}>
             {templates.map((kind) => <option key={kind} value={kind}>{t(`goals.kind.${kind}`)}</option>)}
           </select>
-        </label>
+        </label>}
         {needsAsset(draft.kind) && <>
           <label className="space-y-1 text-sm">
             <span>{t("goals.assetType")}</span>
@@ -229,7 +229,7 @@ export default function GoalsAlerts() {
         </label>
       </div>
       <p className="text-xs text-muted-foreground">{t("goals.units")}</p>
-      <div className="flex gap-2">
+      <div className="ios-d3-goal-editor-actions flex gap-2">
         <Button onClick={() => void save()}>{t("goals.saveRule")}</Button>
         {draft.id > 0 && <Button variant="outline" onClick={() => setDraft(emptyDraft)}>{t("common.cancel")}</Button>}
       </div>
@@ -263,7 +263,7 @@ export default function GoalsAlerts() {
         <Button type="button" variant="outline" className="order-last min-h-11" onClick={() => setManualOpen(true)}>{t("goals.mobile.add")}</Button>
         {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
           <div className="ios-d3-goal-editor">
-          <Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button>
+          <div className="ios-d3-goal-editor-nav"><Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button><h2>{t(draft.id ? "goals.editRule" : "goals.newRule")}</h2></div>
           {editor}
           </div>
         </ModalPage>}
@@ -316,7 +316,7 @@ export default function GoalsAlerts() {
                       </label>
                       <Button size="sm" variant="outline" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
                       <ConfirmDeleteDialog
-                        trigger={<Button size="sm" variant="ghost">{t("common.delete")}</Button>}
+                        trigger={<Button size="sm" variant="ghost" className="text-destructive">{t("common.delete")}</Button>}
                         title={t("common.delete")}
                         description={t("goals.deleteConfirm")}
                         cancelLabel={t("common.cancel")}

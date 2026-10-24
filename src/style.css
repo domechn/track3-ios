@@ -239,6 +239,7 @@ html {
 }
 @media (max-width: 950px) and (pointer: coarse) {
   .ios-switch { width: 51px; height: 44px; background: transparent; }
+  .ios-switch[data-state="checked"] { background: transparent; }
   .ios-switch::before { content: ""; position: absolute; width: 51px; height: 31px; left: 0; border-radius: 999px; background: hsl(var(--input)); }
   .ios-switch[data-state="checked"]::before { background: #34c759; }
   .dark .ios-switch[data-state="checked"]::before { background: #30d158; }

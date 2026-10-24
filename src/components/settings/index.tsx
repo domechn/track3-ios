@@ -19,6 +19,8 @@ import {
   TokensIcon,
   EyeNoneIcon,
   FileTextIcon,
+  BarChartIcon,
+  ChatBubbleIcon,
 } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
@@ -60,12 +62,12 @@ const settingsTabs = [
 
 const mobileSettings = [
   { key: "settings.mobile.sources", href: "/settings/configuration?section=sources", icon: TokensIcon, tone: "blue", group: "portfolio" },
-  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: GlobeIcon, tone: "green", group: "portfolio" },
+  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: BarChartIcon, tone: "green", group: "portfolio" },
   { key: "settings.tab.appearance", href: "/settings/appearance?section=theme", icon: SunIcon, tone: "orange", group: "preferences" },
   { key: "settings.mobile.language", href: "/settings/appearance?section=language", icon: GlobeIcon, tone: "blue", group: "preferences" },
   { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist", icon: EyeNoneIcon, tone: "gray", group: "preferences" },
   { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro", icon: RocketIcon, tone: "orange", group: "preferences" },
-  { key: "settings.mobile.ai", href: "/settings/assistant", icon: RocketIcon, tone: "blue", group: "preferences" },
+  { key: "settings.mobile.ai", href: "/settings/assistant", icon: ChatBubbleIcon, tone: "blue", group: "preferences" },
   { key: "settings.mobile.security", href: "/settings/data?section=security", icon: LockClosedIcon, tone: "green", group: "privacy" },
   { key: "settings.mobile.backup", href: "/settings/data?section=backup", icon: ArchiveIcon, tone: "blue", group: "privacy" },
   { key: "settings.mobile.sync", href: "/settings/sync", icon: UpdateIcon, tone: "green", group: "privacy" },

@@ -73,6 +73,9 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await capture(page, phone.name, theme, "more");
     await page.goto("/#/goals");
     await page.getByRole("button", { name: "Add alert" }).click();
+    const saveRule = await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).boundingBox();
+    const goalEditor = await page.locator("#goal-rule-editor").boundingBox();
+    expect(saveRule!.width).toBeGreaterThan(goalEditor!.width * 0.8);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-goal-editor.png` });
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("spinbutton", { name: "Threshold" }).fill("90000");
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).click();
@@ -80,7 +83,12 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await capture(page, phone.name, theme, "goals");
     await expect(page.getByRole("progressbar", { name: /Portfolio value goal/i })).toBeVisible();
-    await page.locator(".ios-d3-goal-rule").first().scrollIntoViewIfNeeded();
+    await page.locator(".ios-d3-goal-rule").first().evaluate((element) => element.scrollIntoView({ block: "start" }));
+    const goalProgress = await page.locator(".ios-d3-goal-rule").first().getByRole("progressbar").boundingBox();
+    const goalTabBar = await page.locator(".mobile-tab-bar").boundingBox();
+    const goalTopBar = await page.locator("#app-top-bar").boundingBox();
+    expect(goalProgress!.y).toBeGreaterThanOrEqual(goalTopBar!.y + goalTopBar!.height);
+    expect(goalProgress!.y + goalProgress!.height).toBeLessThanOrEqual(goalTabBar!.y);
     await capture(page, phone.name, theme, "goal-progress");
 
     await page.goto("/#/rebalance");
@@ -102,13 +110,24 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.getByText("Hello from SSE")).toBeVisible();
+    const reply = await page.getByText("Hello from SSE").boundingBox();
+    const composerAfterReply = await page.locator(".ios-d3-chat-composer").boundingBox();
+    const tabBar = await page.locator(".mobile-tab-bar").boundingBox();
+    expect(reply).not.toBeNull();
+    expect(composerAfterReply).not.toBeNull();
+    expect(tabBar).not.toBeNull();
+    expect(reply!.y + reply!.height).toBeLessThanOrEqual(composerAfterReply!.y);
+    expect(composerAfterReply!.y + composerAfterReply!.height).toBeLessThanOrEqual(tabBar!.y);
+    expect(chatHeader!.height).toBeLessThanOrEqual(56);
     await capture(page, phone.name, theme, "assistant-chat");
 
     await page.goto("/#/overview");
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
+    await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh.png` });
     await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
+    await expect(page.locator("[data-source-status-row]").first()).toContainText(/\d+(\.\d+)?s/);
     await expect(page.locator(".ios-d3-toast-viewport")).toHaveCount(1);
     await expect(page.locator(".ios-d3-toast-viewport")).toBeHidden();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh-results.png` });

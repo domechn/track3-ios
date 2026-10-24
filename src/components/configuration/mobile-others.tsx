@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
+import { ActionSheet } from "@/components/mobile";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import type { OtherRow } from "./types";
 
 export function MobileOthers(props: {
@@ -11,10 +13,12 @@ export function MobileOthers(props: {
   onSave: (index: number | null, value: OtherRow) => void;
   onRemove: (index: number) => void;
   onAttach: (index: number) => void;
+  hideEmpty?: boolean;
 }) {
   const { t } = useTranslation();
   const [editor, setEditor] = useState<{ index: number | null; value: OtherRow; amount: string }>();
   const [removal, setRemoval] = useState<number | null>(null);
+  const [menu, setMenu] = useState<number | null>(null);
   const [error, setError] = useState("");
   const open = (index: number | null) => {
     const value = index === null ? { symbol: "", amount: 0, alias: "" } : props.others[index];
@@ -37,17 +41,20 @@ export function MobileOthers(props: {
       <Button variant="ghost" className="ios-d3-text-action min-h-11" onClick={() => open(null)}>{t("config.addSymbol")}</Button>
     </div>
     <div className="ios-d3-others-group overflow-hidden rounded-2xl bg-card">
-      {props.others.length === 0 && <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.others.empty")}</p>}
+      {props.others.length === 0 && !props.hideEmpty && <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.others.empty")}</p>}
       {props.others.map((other, index) => <div key={`${other.symbol}-${index}`} className="ios-d3-others-row flex min-w-0 items-center gap-2 px-4 py-2">
         <span className="ios-d3-source-avatar" aria-hidden="true">{other.symbol.slice(0, 2).toUpperCase()}</span>
         <button className="min-h-11 min-w-0 flex-1 text-left" aria-label={`${t("goals.edit")} ${other.symbol}`} onClick={() => open(index)}>
           <span className="block truncate font-medium">{other.alias || other.symbol}</span>
           <span className="block truncate text-xs text-muted-foreground">{other.amount.toLocaleString()} {other.symbol}</span>
         </button>
-        <button className="min-h-11 rounded-lg px-2 text-sm text-primary" aria-label={`${t("config.others.attachTo")} ${other.symbol}`} onClick={() => props.onAttach(index)}>{t("config.others.attachTo")}</button>
-        <button className="min-h-11 min-w-11 text-destructive" aria-label={`${t("common.delete")} ${other.symbol}`} onClick={() => setRemoval(index)}>×</button>
+        <button className="ios-d3-source-more" aria-label={t("mobile.sources.moreActions").replace("{source}", other.symbol)} onClick={() => setMenu(index)}><DotsHorizontalIcon aria-hidden="true" /></button>
       </div>)}
     </div>
+    {menu !== null && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(null); }} title={props.others[menu]?.symbol ?? ""} actions={[
+      { label: t("config.others.attachTo"), onClick: () => props.onAttach(menu) },
+      { label: t("common.delete"), destructive: true, onClick: () => setRemoval(menu) },
+    ]} />}
     {editor && <ModalPage title={t("mobile.others.edit")} onDismiss={() => setEditor(undefined)}>
       <div className="ios-d3-other-editor mx-auto max-w-xl space-y-5">
         <div className="ios-d3-editor-nav"><Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button></div>

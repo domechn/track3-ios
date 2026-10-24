@@ -1218,6 +1218,7 @@ const App = ({
       />
       <MobileOthers
         others={others}
+        hideEmpty={exchanges.length + wallets.length + stockBrokers.length + others.length === 0}
         onSave={(index, value) => {
           if (index === null) handleAddOther(value);
           else {

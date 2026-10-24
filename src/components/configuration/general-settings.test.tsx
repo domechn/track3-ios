@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { isIOS } from "@/utils/platform";
 vi.mock("@/utils/platform", async (original) => ({
@@ -58,6 +58,17 @@ describe("GeneralSettings", () => {
     render(<GeneralSettings {...baseProps} />);
     expect(screen.getByRole("switch", { name: /Group stable coins/i })).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /Hide inactive/i })).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+  });
+
+  it("opens a pushed currency picker with the selected value in the row", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<GeneralSettings {...baseProps} />);
+    expect(screen.getByRole("button", { name: /Base Currency.*USD/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Base Currency.*USD/ }));
+    expect(screen.getByRole("dialog", { name: "Base Currency" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /EUR - Euro/ }));
+    expect(baseProps.onPreferCurrencyChange).toHaveBeenCalledWith("EUR");
     vi.mocked(isIOS).mockReturnValue(false);
   });
 
