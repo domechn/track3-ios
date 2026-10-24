@@ -18,6 +18,7 @@ Track3 uses the iOS grouped layout: quiet surfaces, one indigo-blue accent, prom
 | Gain | `--ios-gain` (`#248A3D` for readable light text; chart green is `#34C759`) | `#30D158` |
 | Loss | `--ios-loss` (`#D70015` for readable light text; chart red is `#FF3B30`) | `#FF453A` |
 | Inset separator | `--ios-separator`, 0.5 px | same token |
+| Segment track / thumb | `--ios-segment-track` / `--ios-segment-selected` | same tokens, with the selected thumb lighter than its track |
 
 Charts use `--ios-chart-1` through `--ios-chart-6`, with the accent first and five muted hues after it. The only fill gradient is the vertical fade under a trend line. Avoid drop shadows on content cards.
 
@@ -27,13 +28,15 @@ Use `ios-large-title` (34/700), `ios-title` (22/700), `ios-headline` (17/600), `
 
 ## Components and usage
 
-Import phone primitives from `@/components/mobile`: `MobileCard`, `InsetGroup`, `ListRow`, `SectionHeader`, `SegmentedControl`, `BottomSheet`, `IconButton`, `DeltaPill`, `AnimatedAmount`, `MobileSkeleton`, `EmptyState`, `MobileIcon`, `MobilePage`, and `MobileNavigation`. `src/components/mobile/mobile.css` owns their visual rules. Keep labels translated through `useTranslation`; do not put data values or symbols through `t()`.
+Import phone primitives from `@/components/mobile`: `MobileCard`, `InsetGroup`, `ListRow`, `SectionHeader`, `SegmentedControl`, `BottomSheet`, `IconButton`, `Pill`, `DeltaPill`, `AnimatedAmount`, `MobileSkeleton`, `EmptyState`, `MobileIcon`, `MobilePage`, and `MobileNavigation`. `src/components/mobile/mobile.css` owns their visual rules. Keep labels translated through `useTranslation`; do not put data values or symbols through `t()`.
 
-Use `MobileCard` for one metric or chart, `InsetGroup` and `ListRow` for settings and allocation, and `SectionHeader` immediately above a group. Use `DeltaPill` with the numeric signed value. `IconButton` requires a readable `label`. `EmptyState` needs a translated `illustrationLabel` and a primary action that goes directly to source setup. Sheets keep their grabber and restore focus. Segments expose the selected item as a radio control.
+Use `MobileCard` for one metric or chart, `InsetGroup` and `ListRow` for settings and allocation, and `SectionHeader` immediately above a group. Use `Pill` for neutral labels and `DeltaPill` with a numeric signed value. `IconButton` requires a readable `label`. `EmptyState` needs a translated `illustrationLabel` and a primary action that goes directly to source setup. Sheets keep their grabber and restore focus. Segments expose the selected item as a radio control.
 
 `AnimatedAmount` takes a raw number and the existing currency formatter; it animates only when the value changes and skips animation when reduced motion is requested. The Overview range segments filter points inside the portfolio date selection; they do not change the saved date selection or data queries. Gain and loss pills follow the user's quote-color convention.
 
 The tab bar and compact navigation bar use blur and a hairline. The Overview large title and hero value remain visible at the top of the page; the compact value appears in the top bar after scrolling. Use `MobileIcon` for shell icons. Keep existing route targets and per-tab stacks.
+
+The Overview P&L canvas has a fixed 172 px phone height so responsive chart resizing cannot expand its flex column. Its x labels use the same localized short date style as the hero chart. Allocation rows use the same palette index as the donut slice, including the shared Other slice on later pages.
 
 ## Motion and access
 

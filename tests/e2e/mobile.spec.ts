@@ -72,7 +72,25 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     const movers = (await page.locator(".profit-mobile-list").allTextContents()).join(" ");
     expect(movers).toMatch(/\+\$/);
     expect(movers).toMatch(/-\$/);
+    const chart = page.locator(".overview-main-grid canvas").last();
+    const initialHeight = (await chart.boundingBox())?.height;
+    expect(initialHeight).toBeGreaterThanOrEqual(150);
+    expect(initialHeight).toBeLessThanOrEqual(190);
+    await page.waitForTimeout(500);
+    expect((await chart.boundingBox())?.height).toBe(initialHeight);
+    expect(await page.locator(".mobile-hero-value").evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(44);
+    await expect(page.locator(".mobile-allocation-row .mobile-allocation-swatch")).toHaveCount(5);
+    await expect(page.locator(".mobile-allocation-center")).toContainText("$");
+    const [gains, losses] = await page.locator(".profit-mobile-list").allTextContents();
+    expect(gains).not.toContain("-$");
+    expect(losses).not.toContain("+$");
     await expect(page.getByRole("region", { name: "Insights" })).not.toContainText("No significant changes yet");
+    await expect(page.getByRole("region", { name: "Insights" })).toContainText("$7,298.27");
+    await expect(page.locator(".mobile-hero-change")).not.toContainText("2026-");
+    await expect(page.locator("#app-top-bar .mobile-nav-brand")).toBeVisible();
+    await expect(page.locator(".overview-insights .mobile-section-header")).toContainText("Insights");
+    await expect(page.getByRole("button", { name: "Show percentage change in chart" })).toContainText("Percent");
+    await expect(page.getByRole("button", { name: "Switch total value base currency" })).toContainText("BTC base");
   } finally {
     await context.close();
   }
@@ -167,6 +185,11 @@ for (const size of sizes) {
         await page.goto("/#/overview");
         await page.reload();
         await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+        await page.locator(".overview-main-grid > :nth-child(2)").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await expect.poll(() => page.locator(".overview-main-grid > :nth-child(2)")
+          .evaluate((card) => Math.round(card.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-performance.png` });
         await page.locator(".overview-allocation-card").scrollIntoViewIfNeeded();
         await page.locator(".overview-allocation-card").evaluate((card) =>
           window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
@@ -179,6 +202,9 @@ for (const size of sizes) {
         expect(await page.locator(".mobile-header-total-value").evaluate((node) =>
           node.scrollWidth <= node.clientWidth + 1)).toBe(true);
         await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-details.png` });
+        await page.locator(".overview-movers-card").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-movers.png` });
         await page.locator(".overview-source-teaser").scrollIntoViewIfNeeded();
         await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-bottom.png` });
         await page.emulateMedia({ colorScheme: "dark" });
@@ -194,6 +220,11 @@ for (const size of sizes) {
         await page.goto("/#/overview");
         await page.reload();
         await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+        await page.locator(".overview-main-grid > :nth-child(2)").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await expect.poll(() => page.locator(".overview-main-grid > :nth-child(2)")
+          .evaluate((card) => Math.round(card.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-performance-dark.png` });
         await page.locator(".overview-allocation-card").scrollIntoViewIfNeeded();
         await page.locator(".overview-allocation-card").evaluate((card) =>
           window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
@@ -201,6 +232,9 @@ for (const size of sizes) {
           .evaluate((card) => Math.round(card.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
         await expect(page.locator(".mobile-header-total-value")).toBeVisible();
         await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-details-dark.png` });
+        await page.locator(".overview-movers-card").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-movers-dark.png` });
         await page.locator(".overview-source-teaser").scrollIntoViewIfNeeded();
         await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-bottom-dark.png` });
       }

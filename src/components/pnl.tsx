@@ -185,7 +185,7 @@ const App = ({
             currency={currency}
             dateRange={dateRange}
             quoteColor={quoteColor}
-            className="min-h-[120px] flex-1"
+            className="overview-pnl-chart min-h-[120px] flex-1"
           />
         </CardContent>
       </Card>

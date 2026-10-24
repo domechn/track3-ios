@@ -70,7 +70,7 @@ test("the phone shell applies top and side safe-area insets once", async ({ page
 for (const phone of phones) {
   test(`portfolio routes fit iPhone ${phone.name} with native controls`, async ({ page }) => {
     await page.setViewportSize({ width: phone.width, height: phone.height });
-    await installTauriBridge(page);
+    await installTauriBridge(page, undefined, false, false, false, false, true);
     mkdirSync("test-results/mobile", { recursive: true });
     for (const [route, title] of [
       ["overview", "Overview"],
@@ -100,6 +100,16 @@ for (const phone of phones) {
       await expect(page.locator("#app-main-content")).not.toContainText("Loading page");
       await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
       await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-${route}.png` });
+      if (route === "overview") {
+        await page.emulateMedia({ colorScheme: "dark" });
+        await page.evaluate(() => localStorage.setItem("track3-ui-theme", "system"));
+        await page.reload();
+        await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+        await expect(page.locator("html")).toHaveClass(/dark/);
+        await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-overview-dark.png` });
+        await page.emulateMedia({ colorScheme: "light" });
+        await page.reload();
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
       const tab = page.locator(".mobile-tab-bar");
       const tabBox = (await tab.boundingBox())!;

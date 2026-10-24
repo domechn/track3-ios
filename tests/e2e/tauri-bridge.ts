@@ -56,10 +56,14 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     for (let day = 0; day < 60; day++) {
       const uuid = `demo-${String(day).padStart(2, "0")}`;
       const createdAt = new Date(Date.UTC(2026, 7, 24 + day)).toISOString();
-      const market = 0.84 + day * 0.005 + 0.1 * Math.sin(day * 0.4);
+      const dailyMove = [0.004, -0.012, 0.008, 0.015, -0.006, 0.003, -0.009, 0.011, -0.004];
+      const market = 0.86 + day * 0.004
+        + (day >= 13 ? -0.055 : 0) + (day >= 27 ? 0.045 : 0)
+        + (day >= 40 ? -0.035 : 0) + (day >= 51 ? 0.065 : 0)
+        + dailyMove[day % dailyMove.length];
       for (const [index, holding] of holdings.entries()) {
         const value = Math.round(holding.base * (holding.symbol === "USDC"
-          ? 1 : market * (1 + 0.08 * Math.sin(day * 0.3 + index * 1.4))) * 100) / 100;
+          ? 1 : market * (1 + dailyMove[(day + index * 2) % dailyMove.length] * (index + 2))) * 100) / 100;
         db.run(`INSERT INTO assets_v2 (uuid, createdAt, wallet, asset_type, symbol, amount, value, price)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [uuid, createdAt, holding.wallet, holding.type, holding.symbol, holding.amount, value, value / holding.amount]);

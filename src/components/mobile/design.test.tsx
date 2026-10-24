@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AnimatedAmount, DeltaPill, EmptyState, IconButton, MobileCard, SectionHeader } from "./index";
+import { AnimatedAmount, DeltaPill, EmptyState, IconButton, MobileCard, Pill, SectionHeader } from "./index";
 
 describe("phone design components", () => {
   it("gives gain and loss amounts distinct readable labels", () => {
@@ -13,6 +13,11 @@ describe("phone design components", () => {
   it("honors the selected red-up quote convention", () => {
     render(<DeltaPill value={2} quoteColor="red-up-green-down">+2%</DeltaPill>);
     expect(screen.getByText("+2%")).toHaveAttribute("data-tone", "loss");
+  });
+
+  it("offers a neutral pill for non-delta labels", () => {
+    render(<Pill>Core holding</Pill>);
+    expect(screen.getByText("Core holding")).toHaveClass("mobile-pill");
   });
 
   it("offers an actionable first launch state", () => {

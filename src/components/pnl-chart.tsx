@@ -19,6 +19,7 @@ import { Bar } from "react-chartjs-2";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
 import { useTranslation } from "@/i18n";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "PNL of Asset";
 
@@ -33,7 +34,8 @@ const App = ({
   quoteColor: QuoteColor;
   className?: string;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
   const { needResize } = useContext(ChartResizeContext);
   const [pnlChartData, setPnlChartData] = useState<PNLChartData>([]);
   const [chartWidth, setChartWidth] = useState(600);
@@ -142,11 +144,13 @@ const App = ({
             const end = data.length - 1;
             // only show start and end date
             if (index === start) {
-              return timeToDateStr(data[index].timestamp);
+              return isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(data[index].timestamp)) : timeToDateStr(data[index].timestamp);
             }
 
             if (index === end) {
-              return timeToDateStr(data[index].timestamp);
+              return isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(data[index].timestamp)) : timeToDateStr(data[index].timestamp);
             }
 
             return "";
@@ -155,6 +159,7 @@ const App = ({
         grid: {
           display: false,
         },
+        border: { display: !isMobile },
       },
       y: {
         title: {
@@ -167,12 +172,13 @@ const App = ({
           precision: 2,
           maxTicksLimit: 4,
           callback: (value: any) => {
-            return simplifyNumber(value);
+            return value === 0 ? "0" : simplifyNumber(value);
           },
         },
         grid: {
           ...glassScaleOptions.grid,
         },
+        border: { display: !isMobile },
       },
     },
   };

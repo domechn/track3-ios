@@ -116,9 +116,10 @@ describe("Profit loading", () => {
         dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
         quoteColor="green-up-red-down"
       /></MemoryRouter>);
-      await waitFor(() => expect(container.querySelectorAll(".profit-mobile-list .mobile-list-row")).toHaveLength(4));
+      await waitFor(() => expect(container.querySelectorAll(".profit-mobile-list .mobile-list-row")).toHaveLength(2));
       expect(container.querySelector("table")).toBeNull();
       expect(container.querySelector(".profit-mobile-list .mobile-list-row")?.getAttribute("href")).toMatch(/^#\/coins\/BTC/);
+      expect(container.querySelectorAll(".profit-mobile-list")).toHaveLength(1);
     } finally {
       window.matchMedia = oldMatchMedia;
     }

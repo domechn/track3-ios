@@ -227,6 +227,10 @@ const App = ({
     () => timeToDateStr(assetChangeData.timestamps[visibleIndices[0] ?? 0] ?? 0),
     [assetChangeData, visibleIndices],
   );
+  const displayedFirstDate = isMobile && assetChangeData.timestamps.length
+    ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })
+      .format(new Date(assetChangeData.timestamps[visibleIndices[0] ?? 0]))
+    : firstDate;
 
   const totalValueShower = useMemo(
     () =>
@@ -461,6 +465,7 @@ const App = ({
           grid: {
             display: false,
           },
+          border: { display: !isMobile },
         },
         y: {
           title: {
@@ -481,6 +486,7 @@ const App = ({
           grid: {
             ...glassScaleOptions.grid,
           },
+          border: { display: !isMobile },
         },
       },
     }),
@@ -531,13 +537,14 @@ const App = ({
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {isMobile ? t("overview.portfolioValue") : t("totalValue.title").replace("{currency}", totalValueShower.currencyName())}
           </CardTitle>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 mobile-hero-tools">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="touch:h-11 touch:w-11 text-muted-foreground h-8 w-8"
               aria-label={t("totalValue.showPercentage")}
+              aria-pressed={showPercentageInChart}
               onClick={() => setShowPercentageInChart(!showPercentageInChart)}
             >
               <svg
@@ -556,6 +563,7 @@ const App = ({
                   fill="currentColor"
                 ></path>
               </svg>
+              <span className="mobile-hero-tool-label">{t("overview.percentChart")}</span>
             </Button>
             <Button
               type="button"
@@ -563,6 +571,7 @@ const App = ({
               size="icon"
               className="touch:h-11 touch:w-11 text-muted-foreground h-8 w-8"
               aria-label={t("totalValue.switchBase")}
+              aria-pressed={btcAsBase}
               onClick={() => setBtcAsBase(!btcAsBase)}
             >
               <svg
@@ -582,11 +591,12 @@ const App = ({
                   clipRule="evenodd"
                 ></path>
               </svg>
+              <span className="mobile-hero-tool-label">{t("overview.btcBase")}</span>
             </Button>
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">
-          <div className="text-2xl font-semibold tabular-nums tracking-tight mobile-hero-value">
+          <div className={`${isMobile ? "" : "text-2xl"} font-semibold tabular-nums tracking-tight mobile-hero-value`}>
             {isMobile && !btcAsBase
               ? <AnimatedAmount value={currencyWrapper(currency)(totalValue)}
                   format={(value) => currency.symbol + prettyNumberToLocaleString(value)} />
@@ -603,7 +613,7 @@ const App = ({
             >
               {isMobile ? <DeltaPill value={totalValue - firstTotalValue} quoteColor={quoteColor}>{changedValueOrPercentage}</DeltaPill> : changedValueOrPercentage}
             </button>{" "}
-            {t("totalValue.from").replace("{date}", firstDate)}
+            {t("totalValue.from").replace("{date}", displayedFirstDate)}
           </p>
           <div className="min-h-[120px] flex-1 mobile-hero-chart" onPointerLeave={() => setScrubIndex(null)}>
             {isMobile && scrubIndex !== null && plottedTimestamps[scrubIndex] !== undefined &&
@@ -615,7 +625,7 @@ const App = ({
             <Line role="img" aria-label={t("totalValue.chartSummary")
               .replace("{value}", totalValueShower.formatTotalValue())
               .replace("{change}", changedValueOrPercentage)
-              .replace("{date}", firstDate)}
+              .replace("{date}", displayedFirstDate)}
               options={options as any} data={lineDataMemo} />
           </div>
           {isMobile && plottedTimestamps.length > 0 && <div className="mobile-hero-dates" aria-hidden="true">

@@ -22,6 +22,10 @@ export function DeltaPill({ value, children, className, quoteColor = "green-up-r
       : (value > 0) === (quoteColor === "green-up-red-down") ? "gain" : "loss"}>{children}</span>;
 }
 
+export function Pill({ children, className }: PropsWithChildren<{ className?: string }>) {
+  return <span className={cn("mobile-pill", className)}>{children}</span>;
+}
+
 export function IconButton({ label, className, children, ...props }: PropsWithChildren<
   ButtonHTMLAttributes<HTMLButtonElement> & { label: string }
 >) {

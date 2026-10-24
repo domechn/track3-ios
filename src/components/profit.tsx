@@ -31,7 +31,7 @@ import {
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import ProfitAttribution from "./profit-attribution";
-import { ListRow, useIsMobile } from "./mobile";
+import { ListRow, SegmentedControl, useIsMobile } from "./mobile";
 
 function getToneBadgeClass(value: number, quoteColor: QuoteColor) {
   const tone = positiveNegativeColor(value, quoteColor);
@@ -126,11 +126,11 @@ const App = ({
   }, [coinsProfit]);
 
   const topProfitData = useMemo(
-    () => coinsProfit.slice(-5).reverse(),
+    () => coinsProfit.filter((coin) => coin.value > 0).slice(-5).reverse(),
     [coinsProfit],
   );
   const topLossData = useMemo(
-    () => coinsProfit.slice(0, 5),
+    () => coinsProfit.filter((coin) => coin.value < 0).slice(0, 5),
     [coinsProfit],
   );
 
@@ -275,8 +275,10 @@ const App = ({
         </span>}>
         <span className="flex min-w-0 items-center gap-2">
           <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground mobile-mover-rank">#{index + 1}</span>
-          <img className="h-6 w-6 shrink-0 rounded-full"
-            src={resolveAssetLogoSrc(row, logoMap[key])} alt={formatAssetLabel(row)} />
+          {row.assetType === "stock"
+            ? <span className="mobile-stock-mark" aria-hidden="true">{row.symbol.slice(0, 1)}</span>
+            : <img className="h-6 w-6 shrink-0 rounded-full"
+                src={resolveAssetLogoSrc(row, logoMap[key])} alt="" />}
           <AssetLabel asset={row} labelClassName="truncate text-sm font-medium"
             badgeClassName="hidden" />
         </span>
@@ -285,25 +287,28 @@ const App = ({
   </div>;
 
   return (
-    <Card>
-      <CardHeader className="space-y-2 pb-2">
+    <Card className={isMobile ? "overview-movers-card" : undefined}>
+      <CardHeader className={`space-y-2 pb-2${isMobile ? " mobile-movers-header" : ""}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          {!isMobile && <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("profit.title")}
-          </CardTitle>
-          {view === "summary" && <div className="text-xs text-muted-foreground">
+          </CardTitle>}
+          {!isMobile && view === "summary" && <div className="text-xs text-muted-foreground">
             {t("profit.totalLabel")
               .replace("{n}", String(coinsProfit.length))
               .replace("{up}", String(positiveCount))
               .replace("{down}", String(negativeCount))}
           </div>}
+          {isMobile ? <SegmentedControl value={view} onChange={setView} label={t("profit.title")}
+            options={[{ value: "summary", label: t("profit.attribution.summary") },
+              { value: "attribution", label: t("profit.attribution.tab") }]} /> :
           <ButtonGroup value={view} onValueChange={(value) => setView(value as "summary" | "attribution")} aria-label={t("profit.title")} className="h-auto">
             <ButtonGroupItem value="summary" className="touch:min-h-11 px-2 text-xs sm:px-3">{t("profit.attribution.summary")}</ButtonGroupItem>
             <ButtonGroupItem value="attribution" className="touch:min-h-11 px-2 text-xs sm:px-3">{t("profit.attribution.tab")}</ButtonGroupItem>
-          </ButtonGroup>
+          </ButtonGroup>}
         </div>
         {view === "summary" && <>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3 mobile-movers-total">
           <div className="space-y-1">
             <div className={`text-xl font-semibold tracking-tight ios-money ${totalToneClass}`}>
               {(profit < 0 ? "-" : "+") +
@@ -332,22 +337,22 @@ const App = ({
           <ProfitAttribution currency={currency} dateRange={dateRange} quoteColor={quoteColor} />
         ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
+          {topProfitData.length > 0 && <div className="space-y-1">
             <div className="text-xs text-muted-foreground font-medium">
-              {t("profit.topProfit")}
+              {t(isMobile ? "overview.gainers" : "profit.topProfit")}
             </div>
             {isMobile ? renderMobileRows(topProfitData) : <Table>
               <TableBody>{renderRows(topProfitData)}</TableBody>
             </Table>}
-          </div>
-          <div className="space-y-1">
+          </div>}
+          {topLossData.length > 0 && <div className="space-y-1">
             <div className="text-xs text-muted-foreground font-medium">
-              {t("profit.topLoss")}
+              {t(isMobile ? "overview.decliners" : "profit.topLoss")}
             </div>
             {isMobile ? renderMobileRows(topLossData) : <Table>
               <TableBody>{renderRows(topLossData)}</TableBody>
             </Table>}
-          </div>
+          </div>}
         </div>
         {coinsProfit.length === 0 && (
           <div className="flex items-center justify-center text-lg text-muted-foreground py-6">

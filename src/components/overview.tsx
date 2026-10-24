@@ -63,6 +63,11 @@ const App = ({
   }, []);
 
   const loadingContextValue = useMemo(() => ({ reportLoaded }), [reportLoaded]);
+  const moreContent = <StaggerContainer className="space-y-3">
+    <FadeUp><AssetsPercentageChange dateRange={dateRange} /></FadeUp>
+    <FadeUp><TopCoinsRank dateRange={dateRange} /></FadeUp>
+    <FadeUp><TopCoinsPercentageChange dateRange={dateRange} /></FadeUp>
+  </StaggerContainer>;
 
   return (
     <OverviewLoadingContext.Provider value={loadingContextValue}>
@@ -107,7 +112,16 @@ const App = ({
                 quoteColor={quoteColor}
               />
             </FadeUp>
-            {isMobile && <FadeUp><InsightsCard currency={currency} /></FadeUp>}
+            {isMobile && <FadeUp><MobileCard className="overview-more-disclosure">
+              <CollapsibleTrigger asChild>
+                <button type="button" className="mobile-list-row" aria-label={isShowMore ? t("common.showLess") : t("common.showMore")}>
+                  <span className="mobile-list-label">{isShowMore ? t("overview.lessAnalytics") : t("overview.moreAnalytics")}</span>
+                  <CaretSortIcon aria-hidden="true" />
+                </button>
+              </CollapsibleTrigger>
+            </MobileCard></FadeUp>}
+            {isMobile && <CollapsibleContent>{moreContent}</CollapsibleContent>}
+            {isMobile && <FadeUp><InsightsCard currency={currency} overview /></FadeUp>}
             {isMobile && <FadeUp>
               <SectionHeader>{t("overview.sources")}</SectionHeader>
               <MobileCard className="overview-source-teaser">
@@ -116,7 +130,7 @@ const App = ({
               </MobileCard>
             </FadeUp>}
           </StaggerContainer>
-          <CollapsibleTrigger asChild className="my-3 w-full">
+          {!isMobile && <CollapsibleTrigger asChild className="my-3 w-full">
             <Button
               variant="ghost"
               className="text-muted-foreground hover:text-foreground border-t border-border/40 rounded-none hover:bg-muted/50"
@@ -124,20 +138,8 @@ const App = ({
               {isShowMore ? t("common.showLess") : t("common.showMore")}
               <CaretSortIcon className="ml-1 h-4 w-4" />
             </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <StaggerContainer className="space-y-3">
-              <FadeUp>
-                <AssetsPercentageChange dateRange={dateRange} />
-              </FadeUp>
-              <FadeUp>
-                <TopCoinsRank dateRange={dateRange} />
-              </FadeUp>
-              <FadeUp>
-                <TopCoinsPercentageChange dateRange={dateRange} />
-              </FadeUp>
-            </StaggerContainer>
-          </CollapsibleContent>
+          </CollapsibleTrigger>}
+          {!isMobile && <CollapsibleContent>{moreContent}</CollapsibleContent>}
         </Collapsible>}
         {pageLoading && (
           <div

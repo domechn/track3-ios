@@ -53,6 +53,8 @@
     --ios-gain: #248a3d;
     --ios-loss: #d70015;
     --ios-separator: rgba(60, 60, 67, .18);
+    --ios-segment-track: #e3e3e9;
+    --ios-segment-selected: #ffffff;
     --ios-chart-1: #315cbe;
     --ios-chart-2: #5f8cce;
     --ios-chart-3: #79aaa5;
@@ -101,6 +103,8 @@
     --ios-gain: #30d158;
     --ios-loss: #ff453a;
     --ios-separator: rgba(84, 84, 88, .36);
+    --ios-segment-track: #2c2c2e;
+    --ios-segment-selected: #48484a;
     --ios-chart-1: #6d97fa;
     --ios-chart-2: #85ade0;
     --ios-chart-3: #79b6ac;

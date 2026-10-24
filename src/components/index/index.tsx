@@ -154,6 +154,7 @@ function TopBar({
           onClick={onBack} aria-label={t("common.back", "Back")}>
           <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
         </button>}
+        {mobile && !compactTitle && !onBack && <span className="mobile-nav-brand">Track3</span>}
         {compactTitle && <span className={`mobile-compact-title${overview ? " mobile-overview-compact-title" : ""}`}>{compactTitle}</span>}
         {(!mobile || compactTitle) && !(mobile && onBack && compactTitle) &&
           <MobileHeaderTotal currency={currentCurrency} live={isProUser}

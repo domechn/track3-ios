@@ -3,6 +3,29 @@
 The earlier S1–S5 sections record their handoff results. The current state
 for this worktree is D1 below.
 
+## D1 reviewer closeout
+
+- CI run `40070631313` failed two phone viewport checks because the responsive
+  P&L chart grew its unbounded flex container. The phone chart now has a fixed
+  172 px height. A browser check verifies that the canvas stays that height
+  after resize and that the allocation card can be scrolled into view.
+- The hero value now outranks the title. The light and dark segmented controls
+  have a distinct track and selected thumb. Allocation rows match donut
+  colors; the donut shows its total. Movers exclude opposite-sign and duplicate
+  rows, use the same stock mark as allocation, and place the view control
+  above the net value. Insights use a section header and a currency symbol.
+  The extra analytics cards open from a phone inset row.
+- The screenshot fixture now follows a varied 60-day trend. The parity suite
+  uses it for iPhone SE and iPhone 14 captures and adds dark Overview captures.
+  The viewport suite adds light and dark performance and mover captures.
+  The completed phone run writes 121 PNGs under `test-results/mobile/`.
+  The 320 and 390 px scroll checks pass locally. The previous CI failure has
+  not yet been checked in a new CI run.
+- Local checks in this closeout: `tsc --noEmit` passed, 1,815 Vitest tests in
+  221 files passed, and all 84 phone Playwright tests passed. Browser captures
+  were inspected at 320 and 390 px. These checks do not verify signed-device
+  behavior.
+
 ## D1 visual foundation, shell, and Overview
 
 - Added [DESIGN.md](DESIGN.md) with the phone color, type, spacing, motion,
@@ -24,18 +47,15 @@ for this worktree is D1 below.
   The 7D and 30D P&L labels replace the old 7T and 30T wording; their
   existing calculations still use historical snapshot offsets.
 - Browser screenshots for the Overview and shell are generated in
-  `test-results/mobile/` at iPhone SE (320×568) and iPhone 14 (390×844) in
+  `test-results/mobile/` at the compact 320×568 viewport and iPhone 14
+  (390×844) in
   light and dark, including scrolled Overview captures. First launch also has
   a light and dark capture at 390 px. The route sweep captures other primary
   routes. Screens owned by the later D2/D3 redesign
   steps still use their existing content styling. Browser screenshots do
   not validate signed-device behavior listed below.
-- Local D1 checks passed: frontend and browser TypeScript checks,
-  1,814 Vitest tests in 221 files, all 84 phone Playwright tests, and the
-  frontend production build. The phone suite and focused first-launch check
-  left 110 PNGs under `test-results/mobile/`. The new Overview screenshots
-  were visually inspected at 320 and 390 px in both themes. No D1 CI run or signed-device
-  check has been performed in this worktree.
+- The original D1 local checks passed before CI run `40070631313`; that run
+  exposed the P&L resizing failure described above.
 
 ## S5 reviewer closeout
 

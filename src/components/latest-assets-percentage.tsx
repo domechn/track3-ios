@@ -199,7 +199,7 @@ const App = ({
     if (d.length <= count) {
       return d;
     }
-    const sorted = d.sort((a, b) => b.percentage - a.percentage);
+    const sorted = [...d].sort((a, b) => b.percentage - a.percentage);
     const top = sorted.slice(0, count);
     const other = sorted.slice(count);
 
@@ -350,9 +350,13 @@ const App = ({
       <div className="mobile-allocation-rows">
         {pagedLatestAssetsPercentageData.map((asset) => {
           const reference = { symbol: asset.coin, assetType: asset.assetType };
+          const chartIndex = percentageData.findIndex((part) =>
+            part.coin === asset.coin && "assetType" in part && part.assetType === asset.assetType);
           return <Link key={getAssetLogoKey(reference)} to={buildAssetDetailsPath(reference)}
             className="mobile-list-row mobile-allocation-row"
             aria-label={t("common.openAssetDetails").replace("{asset}", formatAssetLabel(reference))}>
+            <span className="mobile-allocation-swatch" aria-hidden="true"
+              style={{ backgroundColor: palette[chartIndex < 0 ? percentageData.length - 1 : chartIndex].main }} />
             {asset.assetType === "stock"
               ? <span className="mobile-stock-mark" aria-hidden="true">{asset.coin.slice(0, 1)}</span>
               : <img src={resolveAssetLogoSrc(reference, logoMap[getAssetLogoKey(reference)])} alt="" />}
@@ -386,6 +390,12 @@ const App = ({
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5 mobile-allocation-layout">
             <div className="col-span-2 md:col-span-3 h-[330px] mobile-allocation-chart">
               {renderDoughnut()}
+              {isMobile && <div className="mobile-allocation-center">
+                <span>{t("overview.allocation")}</span>
+                <strong className="ios-money">{currency.symbol + prettyNumberToLocaleString(
+                  currencyWrapper(currency)(latestAssetsPercentageData.reduce((sum, asset) => sum + asset.value, 0)),
+                )}</strong>
+              </div>}
             </div>
             <div className="col-span-2 md:col-span-2 flex flex-col items-start justify-center">
               {isMobile ? renderMobileHoldingList() : renderTokenHoldingList()}
