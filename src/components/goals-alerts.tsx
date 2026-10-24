@@ -247,7 +247,7 @@ export default function GoalsAlerts() {
         <span className="ios-d3-pushed-title">{t("goals.title")}</span>, document.getElementById("app-top-bar")!)}
       <div className="ios-d3-goals-heading flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
+          <h1 className={isIOS() ? "ios-large-title" : "text-2xl font-semibold"}>{t("goals.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
         </div>
         {isIOS() && <Button type="button" variant="ghost" className="ios-d3-goals-add" aria-label={t("goals.mobile.add")} onClick={() => setManualOpen(true)}><span aria-hidden="true">+</span></Button>}
@@ -282,7 +282,7 @@ export default function GoalsAlerts() {
         {editor}
       </details>}
       {loading ? <FinanceChartSkeleton /> : <GoalChart rules={rules} snapshots={snapshots} portfolioValues={portfolioValues} />}
-      <Card>
+      <Card className="ios-d3-rules-card">
         <CardHeader className="pb-3"><CardTitle className="text-base">{t("goals.rules")}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {loading ? <p className="text-sm text-muted-foreground">{t("goals.loading")}</p>

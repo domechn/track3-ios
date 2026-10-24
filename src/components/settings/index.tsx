@@ -65,17 +65,17 @@ const settingsTabs = [
 ];
 
 const mobileSettings = [
-  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources", icon: TokensIcon, tone: "blue", group: "portfolio" },
-  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: BarChartIcon, tone: "green", group: "portfolio" },
-  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme", icon: SunIcon, tone: "orange", group: "preferences" },
-  { key: "settings.mobile.language", href: "/settings/appearance?section=language", icon: GlobeIcon, tone: "blue", group: "preferences" },
-  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist", icon: EyeNoneIcon, tone: "gray", group: "preferences" },
-  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro", icon: RocketIcon, tone: "orange", group: "preferences" },
-  { key: "settings.mobile.ai", href: "/settings/assistant", icon: ChatBubbleIcon, tone: "blue", group: "preferences" },
-  { key: "settings.mobile.security", href: "/settings/data?section=security", icon: LockClosedIcon, tone: "green", group: "privacy" },
-  { key: "settings.mobile.backup", href: "/settings/data?section=backup", icon: ArchiveIcon, tone: "blue", group: "privacy" },
-  { key: "settings.mobile.sync", href: "/settings/sync", icon: UpdateIcon, tone: "green", group: "privacy" },
-  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about", icon: FileTextIcon, tone: "gray", group: "privacy" },
+  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources", icon: TokensIcon, group: "portfolio" },
+  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: BarChartIcon, group: "portfolio" },
+  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme", icon: SunIcon, group: "preferences" },
+  { key: "settings.mobile.language", href: "/settings/appearance?section=language", icon: GlobeIcon, group: "preferences" },
+  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist", icon: EyeNoneIcon, group: "preferences" },
+  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro", icon: RocketIcon, group: "preferences" },
+  { key: "settings.mobile.ai", href: "/settings/assistant", icon: ChatBubbleIcon, group: "preferences" },
+  { key: "settings.mobile.security", href: "/settings/data?section=security", icon: LockClosedIcon, group: "privacy" },
+  { key: "settings.mobile.backup", href: "/settings/data?section=backup", icon: ArchiveIcon, group: "privacy" },
+  { key: "settings.mobile.sync", href: "/settings/sync", icon: UpdateIcon, group: "privacy" },
+  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about", icon: FileTextIcon, group: "privacy" },
 ] as const;
 
 function TabLink({
@@ -126,7 +126,7 @@ const App = () => {
           topBar)}
         {isHub ? (
           <>
-            <h1 className="ios-d3-large-title px-1 pt-2">{t("settings.title")}</h1>
+            <h1 className="ios-large-title mb-5 pt-2">{t("settings.title")}</h1>
             <nav aria-label={t("settings.sectionsAriaLabel")} onClickCapture={() => haptic("selection")}>
               {(["portfolio", "preferences", "privacy"] as const).map((group) => <InsetGroup key={group} title={t(`settings.mobile.group.${group}`)}>
                 {mobileSettings.filter((item) => item.group === group).map((item) => {
@@ -136,7 +136,7 @@ const App = () => {
                       : item.key === "settings.tab.appearance" ? theme === "system" ? t("settings.mobile.system") : t(`appearance.theme.${theme}`)
                         : undefined;
                   return <ListRow key={item.href} href={`#${item.href}`} value={value}>
-                    <span aria-hidden="true" className={`ios-d3-settings-icon ios-d3-tone-${item.tone}`}><Icon /></span>
+                    <span aria-hidden="true" className="ios-d3-settings-icon"><Icon /></span>
                     {t(item.key)}
                   </ListRow>;
                 })}
@@ -145,8 +145,8 @@ const App = () => {
           </>
         ) : (
           <>
-            <header className="space-y-3 px-1 pt-1">
-              <h1 className="ios-d3-large-title">{t(title ?? "settings.title")}</h1>
+            <header className="space-y-3 pt-1">
+              <h1 className="ios-large-title mb-5">{t(title ?? "settings.title")}</h1>
             </header>
             <div className="ios-d3-settings-page"><Outlet /></div>
           </>

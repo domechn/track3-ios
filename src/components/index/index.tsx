@@ -397,7 +397,7 @@ function Layout({
             <MobilePage title={routeTitle(location.pathname, t)} />
           </div>}
           <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
-            {mobile && loadFailed ? <div className="mobile-card mobile-empty-state mobile-data-error" role="alert">
+            {mobile && loadFailed ? <div className="mobile-empty-state mobile-data-error" role="alert">
               <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
                 <circle cx="56" cy="56" r="48" fill="currentColor" opacity=".08" />
                 <circle cx="56" cy="56" r="33" stroke="currentColor" strokeWidth="2.5" />

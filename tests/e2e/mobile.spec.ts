@@ -407,6 +407,7 @@ test("Overview cards and source labels fit the phone layout", async ({ browser }
     await expect(wrapper).toHaveCount(1);
     await expect(pnl.locator(".overview-pnl-card-content")).toHaveCSS("padding-right", "18px");
     await expect(pnl.locator(".overview-pnl-metric").nth(1)).toHaveCSS("border-right-width", "0px");
+    await expect(pnl.locator(".overview-pnl-metric").last()).toHaveCSS("border-right-width", "0px");
     expect(await pnl.locator(".overview-pnl-metric-value").first().evaluate((node) => getComputedStyle(node).fontFamily))
       .toMatch(/^-apple-system/);
     expect((await pnl.boundingBox())!.y + (await pnl.boundingBox())!.height)
@@ -453,7 +454,7 @@ test("Overview range chips change the chart start and hero delta", async ({ brow
     await page.goto("/#/overview");
     await expect(page.locator(".mobile-hero-dates")).toContainText("Aug 24");
     const allDelta = await page.locator(".mobile-hero-change").textContent();
-    await page.getByRole("radio", { name: "1W" }).click();
+    await page.getByRole("radio", { name: "7D" }).click();
     await expect(page.locator(".mobile-hero-dates")).toContainText("Oct 15");
     await expect.poll(() => page.locator(".mobile-hero-change").textContent()).not.toBe(allDelta);
   } finally {

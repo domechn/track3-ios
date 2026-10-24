@@ -242,7 +242,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
       {mobile && document.getElementById("app-top-bar") && createPortal(
         <span className="ios-d3-pushed-title">{t("rebalance.title")}</span>, document.getElementById("app-top-bar")!)}
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("rebalance.title")}</h1>
+        <h1 className={mobile ? "ios-large-title" : "text-2xl font-semibold tracking-tight"}>{t("rebalance.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("rebalance.description")}</p>
       </header>
       <AISetupCard page="rebalance"

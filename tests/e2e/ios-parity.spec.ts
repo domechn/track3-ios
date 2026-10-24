@@ -99,7 +99,7 @@ for (const phone of phones) {
       await expect(page.locator("#app-main-content")).not.toContainText("Loading page");
       await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
       if (route === "summary") {
-        await expect(page.getByText("Profit Metrics", { exact: true })).toBeAttached();
+        await expect(page.getByText("Profit metrics", { exact: true })).toBeAttached();
         await expect(page.getByRole("heading", { name: "Returns" })).toBeAttached();
       }
       await page.evaluate(() => document.fonts.ready);

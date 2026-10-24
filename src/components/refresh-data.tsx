@@ -327,7 +327,7 @@ const App = ({
               const StatusIcon = completed?.status === "stale" || completed?.status === "partial" ? ExclamationTriangleIcon
                   : completed ? CheckIcon : UpdateIcon;
               const label = sourceLabel(pending);
-              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row px-4 py-3">
+              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center justify-between gap-3 px-4 py-3">
                 <div className="ios-d3-refresh-row-main">
                   <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" || completed.status === "partial" ? "text-amber-600" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
                   <div className="ios-d3-refresh-row-content">
@@ -347,7 +347,7 @@ const App = ({
               const StatusIcon = statusIcon[source.status];
               return (
               <div key={source.sourceId} role="group" aria-label={displayIdentity(source)}
-                data-source-status-row className="ios-d3-refresh-row px-4 py-3">
+                data-source-status-row className="ios-d3-refresh-row flex items-center justify-between gap-3 px-4 py-3">
                 <div className="ios-d3-refresh-row-main">
                   {isIOS() && <StatusIcon aria-hidden="true" className={`mt-1 h-5 w-5 shrink-0 ${source.status === "ok" ? "text-green-600 dark:text-green-400" : source.status === "failed" ? "text-destructive" : "text-amber-600"}`} />}
                   <div className="ios-d3-refresh-row-content">

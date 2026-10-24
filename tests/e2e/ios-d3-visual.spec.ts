@@ -6,6 +6,7 @@ test.use({
   isMobile: true,
   hasTouch: true,
   reducedMotion: "reduce",
+  deviceScaleFactor: 2,
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 });
 
@@ -36,7 +37,7 @@ async function capture(page: Page, phone: string, theme: string, name: string) {
   await page.evaluate(() => document.fonts.ready);
   const image = await page.screenshot({ path: `test-results/mobile/d3-${phone}-${theme}-${name}.png` });
   const width = page.viewportSize()!.width;
-  expect(image.readUInt32BE(16)).toBe(width);
+  expect(image.readUInt32BE(16)).toBe(width * 2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 }
 
@@ -206,6 +207,8 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     const quickBounds = (await quickActions.boundingBox())!;
     expect(quickBounds.x).toBe(0);
     expect(quickBounds.width).toBe(phone.width);
+    const trailingAction = (await page.getByTestId("quick-action-operations").boundingBox())!;
+    expect(trailingAction.x + trailingAction.width).toBeLessThanOrEqual(phone.width - 16);
     expect(await page.getByTestId("quick-action-analysis").evaluate((node) => getComputedStyle(node).backgroundColor))
       .toBe(insightFill);
     const chatHeaderAfterReply = await page.locator(".ios-d3-chat-header").boundingBox();

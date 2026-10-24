@@ -489,7 +489,7 @@ const App = ({
             callback: (value: any) => {
               return showPercentageInChart
                 ? `${value.toLocaleString()}%`
-                : simplifyNumber(value);
+                : isMobile ? simplifyNumber(value).replace(/^-/, "−") : simplifyNumber(value);
             },
           },
           grid: {

@@ -37,7 +37,7 @@ export function useIsMobile() {
 }
 
 export function LargeTitle({ children, className }: React.PropsWithChildren<{ className?: string }>) {
-  return <h1 className={cn("mobile-large-title", className)}>{children}</h1>;
+  return <h1 className={cn("ios-large-title mobile-large-title", className)}>{children}</h1>;
 }
 
 export function MobilePage({

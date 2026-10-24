@@ -6,6 +6,8 @@ import { useTranslation } from "@/i18n";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
 import { ActionSheet } from "@/components/mobile";
 import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { getWalletLogo } from "@/lib/utils";
+import UnknownLogo from "@/assets/icons/unknown-logo.svg";
 import type { OtherRow } from "./types";
 
 export function MobileOthers(props: {
@@ -45,7 +47,9 @@ export function MobileOthers(props: {
     {!props.hideEmpty && <div className="ios-d3-others-group overflow-hidden rounded-2xl bg-card">
       {props.others.length === 0 && !props.hideEmpty && <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.others.empty")}</p>}
       {props.others.map((other, index) => <div key={`${other.symbol}-${index}`} className="ios-d3-others-row flex min-w-0 items-center gap-2 px-4 py-2">
-        <span className="ios-d3-source-avatar" aria-hidden="true">{other.symbol.slice(0, 2).toUpperCase()}</span>
+        <span className="ios-d3-source-avatar" aria-hidden="true">
+          {getWalletLogo(other.symbol) === UnknownLogo ? other.symbol.slice(0, 2).toUpperCase() : <img src={getWalletLogo(other.symbol)} alt="" />}
+        </span>
         <button className="min-h-11 min-w-0 flex-1 text-left" aria-label={`${t("goals.edit")} ${other.symbol}`} onClick={() => open(index)}>
           <span className="block truncate font-medium">{other.alias || other.symbol}</span>
           <span className="block truncate text-xs text-muted-foreground">{other.amount.toLocaleString()} {other.symbol}</span>

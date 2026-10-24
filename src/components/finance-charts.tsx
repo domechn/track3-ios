@@ -16,10 +16,13 @@ import { useIsMobile } from "./mobile";
 const chartPalette = () => document.documentElement.classList.contains("dark")
   ? ["#6d97fa", "#85ade0", "#79b6ac", "#b9a3cb", "#bda887", "#929bb1"]
   : ["#315cbe", "#5f8cce", "#79aaa5", "#b39ac4", "#c4aa89", "#8e94a8"];
-const tone = (positive: boolean, quoteColor: QuoteColor) =>
-  (positive === (quoteColor === "green-up-red-down"))
+const tone = (positive: boolean, quoteColor: QuoteColor, mobile: boolean) => {
+  const gain = positive === (quoteColor === "green-up-red-down");
+  if (!mobile) return gain
     ? document.documentElement.classList.contains("dark") ? "#30d158" : "#248a3d"
     : document.documentElement.classList.contains("dark") ? "#ff453a" : "#d70015";
+  return getComputedStyle(document.documentElement).getPropertyValue(gain ? "--ios-gain" : "--ios-loss").trim();
+};
 function useChartOptions() {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
@@ -97,7 +100,7 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
       ].map(({ key, value, rate, rateKey }) => <Card key={key} className="min-w-0">
         <CardContent className="space-y-1 p-3">
           <p className="cost-metric-label text-xs text-muted-foreground">{t(key)}</p>
-          <p className="cost-metric-value truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor) }}>
+          <p className="cost-metric-value truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor, isMobile) }}>
             {isMobile
               ? `${value > 0 ? "+" : value < 0 ? "−" : ""}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD`}
@@ -111,15 +114,15 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
         <Bar aria-label={visual.gains.map((row) => `${row.label}: ${row.value.toFixed(2)} USD`).join("; ")}
           role="img" data={{ labels: visual.gains.map((row) => row.label), datasets: [{
             data: visual.gains.map((row) => row.value),
-            backgroundColor: visual.gains.map((row) => tone(row.value >= 0, quoteColor)),
+            backgroundColor: visual.gains.map((row) => tone(row.value >= 0, quoteColor, isMobile)),
             borderRadius: 3,
           }] }} options={{ ...chartOptions, indexAxis: "y" as const }} />
       </ChartPanel>
       <ChartPanel title={t("finance.cumulativeGains")} empty={!visual.cumulative.length}>
         <Line aria-label={visual.cumulative.map((row) => `${row.date}: ${row.value.toFixed(2)} USD`).join("; ")}
           role="img" data={{ labels: visual.cumulative.map((row) => row.date), datasets: [{
-            data: visual.cumulative.map((row) => row.value), borderColor: tone(true, quoteColor),
-            backgroundColor: `${tone(true, quoteColor)}20`, fill: true, tension: 0.2, pointRadius: 2,
+            data: visual.cumulative.map((row) => row.value), borderColor: tone(true, quoteColor, isMobile),
+            backgroundColor: `${tone(true, quoteColor, isMobile)}20`, fill: true, tension: 0.2, pointRadius: 2,
           }] }} options={chartOptions} plugins={[{
             id: "tax-year-markers",
             afterDraw(chart: ChartJS<"line">) {
@@ -171,6 +174,7 @@ export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
   rules: AlertRule[]; snapshots: AlertSnapshot[]; portfolioValues?: Array<{ date: string; value: number }>;
 }) {
   const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
   const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = goalVisuals(rules, snapshots);
@@ -190,7 +194,10 @@ export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
         })),
       ] }} options={{ ...chartOptions, scales: {
         ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: {
-          ...chartOptions.scales.y.ticks, callback: (value: string | number) => valueFormatter.format(Number(value)),
+          ...chartOptions.scales.y.ticks, callback: (value: string | number) => {
+            const label = valueFormatter.format(Number(value));
+            return isMobile ? label.toLowerCase() : label;
+          },
         } },
       } }} />
   </ChartPanel>;
@@ -200,6 +207,7 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
   result: RebalanceResult; quoteColor: QuoteColor; tolerancePercent: number;
 }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = rebalanceVisuals(result);
@@ -219,7 +227,7 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
       <Bar role="img" aria-label={`${visual.labels.map((label, index) => `${label}: ${visual.deviations[index].toFixed(1)} ${t("rebalance.percentagePoints")}`).join("; ")}; ${t("finance.toleranceBand")} ±${tolerancePercent}%`}
         data={{ labels: visual.labels, datasets: [{
           data: visual.deviations,
-          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor)),
+          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor, isMobile)),
         }] }} options={labeledOptions}
         plugins={[{
           id: "tolerance-band",

@@ -139,12 +139,12 @@ describe("Profit loading", () => {
         showRangeControl
         quoteColor="green-up-red-down"
       /></MemoryRouter>);
-      expect(screen.getByRole("radio", { name: "ALL" })).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
       fireEvent.click(screen.getByRole("radio", { name: "7D" }));
       await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
         start: new Date(2024, 3, 24), end: new Date(2024, 3, 30, 23, 59, 59),
       }));
-      fireEvent.click(screen.getByRole("radio", { name: "ALL" }));
+      fireEvent.click(screen.getByRole("radio", { name: "All" }));
       await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
         start: new Date(2024, 0, 1), end: new Date(2024, 3, 30, 23, 59, 59),
       }));
