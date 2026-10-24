@@ -54,8 +54,9 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
 
   const totals = data.attribution.totals;
   const max = Math.max(...groups.map((group) => Math.abs(group.priceEffect)), 1);
-  const contributors = groups.filter((group) => group.priceEffect > 0).sort((a, b) => b.priceEffect - a.priceEffect).slice(0, 5);
-  const detractors = groups.filter((group) => group.priceEffect < 0).sort((a, b) => a.priceEffect - b.priceEffect).slice(0, 5);
+  const contributors = groups.filter((group) => group.priceEffect > 0).sort((a, b) => b.priceEffect - a.priceEffect);
+  const detractors = groups.filter((group) => group.priceEffect < 0).sort((a, b) => a.priceEffect - b.priceEffect);
+  const otherChanges = groups.filter((group) => group.priceEffect === 0);
   const bars = (items: typeof groups, emptyKey: string) => (
     items.length === 0 ? <p className="text-xs text-muted-foreground">{label(emptyKey)}</p> :
     <ol className="space-y-2">
@@ -96,6 +97,10 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor }: {
     <figure className="grid gap-4 sm:grid-cols-2" aria-label={label("chart")}>
       <section className="space-y-2"><h3 className="text-xs font-medium text-muted-foreground">{label("contributors")}</h3>{bars(contributors, "noMarketChange")}</section>
       <section className="space-y-2"><h3 className="text-xs font-medium text-muted-foreground">{label("detractors")}</h3>{bars(detractors, "noDetractors")}</section>
+      {isMobile && otherChanges.length > 0 && <section className="space-y-2 sm:col-span-2">
+        <h3 className="text-xs font-medium text-muted-foreground">{label("otherChanges")}</h3>
+        {bars(otherChanges, "noMarketChange")}
+      </section>}
     </figure>
     {!isMobile && <div className="max-w-full overflow-x-auto rounded-md border border-border/50">
       <Table className="min-w-[580px] text-xs sm:text-sm">

@@ -30,7 +30,7 @@ import { useIsMobile } from "@/components/mobile";
 const chartName = "Coins Percentage Overview";
 
 const App = ({ dateRange }: { dateRange: TDateRange }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const { resolvedTheme } = useTheme();
   const chartColors = getChartPalette(isMobile, resolvedTheme);
@@ -120,6 +120,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
     () => ({
       maintainAspectRatio: false,
       responsive: true,
+      animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : undefined,
       onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
       hover: {
         mode: "index" as const,
@@ -164,7 +165,17 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
           ticks: {
             ...glassScaleOptions.ticks,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: isMobile ? 4 : 6,
+            maxRotation: isMobile ? 0 : undefined,
+            minRotation: isMobile ? 0 : undefined,
+            callback: function (this: { getLabelForValue: (value: number) => string }, value: number) {
+              const label = this.getLabelForValue(value);
+              if (!isMobile) return label;
+              const date = new Date(label);
+              return Number.isNaN(date.getTime()) ? label : new Intl.DateTimeFormat(
+                locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" },
+              ).format(date);
+            },
           },
           grid: { display: false },
         },
@@ -186,7 +197,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
         },
       },
     }),
-    []
+    [isMobile, locale]
   );
 
   const preparedData = useMemo(() => {

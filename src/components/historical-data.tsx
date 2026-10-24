@@ -1013,10 +1013,13 @@ const App = ({
               <div className="history-record-region relative">
                 {isMobile && <div className="history-mobile-list">
                   {groupHistoryMonths(data).map((group) => <section key={group.key} className="history-month-section">
-                    <h2 className="history-month-heading">{new Intl.DateTimeFormat(
-                      locale === "zh" ? "zh-CN" : "en-US",
-                      { month: "long", year: "numeric" },
-                    ).format(new Date(`${group.key}-01T12:00:00`))}</h2>
+                    <h2 className="history-month-heading">
+                      <span>{new Intl.DateTimeFormat(
+                        locale === "zh" ? "zh-CN" : "en-US",
+                        { month: "long", year: "numeric" },
+                      ).format(new Date(`${group.key}-01T12:00:00`))}</span>
+                      <strong className="ios-money">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(group.rows[0].total))}</strong>
+                    </h2>
                     <div className="history-month-rows">
                   {group.rows.map((row) => {
                     const isLatest = dataPage === 0 && data[0]?.id === row.id;

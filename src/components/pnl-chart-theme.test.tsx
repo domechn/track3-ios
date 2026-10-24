@@ -13,7 +13,7 @@ vi.mock("@/middlelayers/charts", () => ({
 
 const barProps = vi.hoisted(() => ({ current: null as null | {
   data: { datasets: { backgroundColor: string }[] };
-  options: { plugins: { tooltip: { enabled: boolean } }; scales: { x: { ticks: { display?: boolean } }; y: { min?: number; max?: number } } };
+  options: { plugins: { tooltip: { enabled: boolean } }; scales: { x: { ticks: { display?: boolean } }; y: { min?: number; max?: number; ticks: { stepSize?: number; maxTicksLimit?: number } } } };
 } }));
 vi.mock("react-chartjs-2", async () => {
   const { forwardRef } = await import("react");
@@ -78,8 +78,10 @@ it("keeps phone P&L scale close to the actual loss and gain", async () => {
     { timestamp: 1713312000000, totalValue: 11600 },
   ]);
   renderChart();
-  await waitFor(() => expect(barProps.current?.options.scales.y.min).toBe(-6000));
+  await waitFor(() => expect(barProps.current?.options.scales.y.min).toBe(-8000));
   expect(barProps.current?.options.scales.y.max).toBe(8000);
+  expect(barProps.current?.options.scales.y.ticks.stepSize).toBe(4000);
+  expect(barProps.current?.options.scales.y.ticks.maxTicksLimit).toBe(6);
 });
 
 it("uses only the readable scrub chip on phones and keeps the desktop tooltip", () => {

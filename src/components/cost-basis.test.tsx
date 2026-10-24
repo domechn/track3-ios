@@ -74,6 +74,19 @@ it("expands phone cost lots inline with their signed gain", async () => {
   expect(within(realized).getAllByText("+100.00")).toHaveLength(2);
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+
+it("uses the same signed two-decimal gain in phone asset rows", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  vi.mocked(loadCostBasisReport).mockResolvedValue({
+    ...report, assets: [{ ...report.assets[0], gainLoss: 1891.2 }],
+  } as never);
+  render(<CostBasisPage />);
+  fireEvent.click(await screen.findByText("Details"));
+  const assets = screen.getByRole("heading", { name: "By asset" }).closest("section")!;
+  expect(within(assets).getByText("+1,891.20")).toBeInTheDocument();
+});
 it("keeps manual setup open after a filter reload", async () => {
   render(<CostBasisPage />);
   await screen.findAllByText("BTC");

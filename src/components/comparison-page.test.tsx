@@ -53,6 +53,18 @@ beforeEach(() => {
 });
 
 describe("Comparison page", () => {
+  it("keeps the desktop currency spacing in comparison totals", async () => {
+    vi.mocked(queryAllDataDates).mockResolvedValue([
+      { id: "head", date: "2024-04-16", createdAt: "2024-04-16T00:00:00Z" },
+      { id: "base", date: "2024-04-15", createdAt: "2024-04-15T00:00:00Z" },
+    ]);
+    vi.mocked(queryCoinDataByUUID).mockResolvedValue([
+      { symbol: "BTC", assetType: "crypto", amount: 1, value: 1000, price: 1000 },
+    ]);
+    render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(document.querySelector(".comparison-total-grid")).toHaveTextContent("$ 1,000.00");
+  });
   it("consumes an assistant comparison date selection after applying it", async () => {
     localStorage.setItem(COMPARISON_DATES_KEY, JSON.stringify({ base: "2024-04-15", head: "2024-04-16" }));
     vi.mocked(queryAllDataDates).mockResolvedValue([

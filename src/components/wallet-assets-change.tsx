@@ -38,7 +38,7 @@ import { Button } from "./ui/button";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
-import { MobileRecordList, SegmentedControl, useIsMobile } from "./mobile";
+import { MobileRecordList, SegmentedControl, useHaptics, useIsMobile } from "./mobile";
 
 type SortMode = "changeValue" | "changePercentage" | "absChange";
 type PageSize = "20" | "50" | "100";
@@ -83,6 +83,7 @@ const App = ({
   const loadGenRef = useRef(0);
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const haptic = useHaptics();
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const [walletAssetsChange, setWalletAssetsChange] =
     useState<WalletAssetsChangeData>([]);
@@ -238,7 +239,7 @@ const App = ({
             placeholder={t("walletValueChanges.searchPlaceholder")}
             className="md:w-[320px]"
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="wallet-change-controls flex flex-wrap gap-2">
             {isMobile ? <>
               <SegmentedControl value={sortMode} onChange={setSortMode} label={t("walletValueChanges.title")}
                 options={[
@@ -246,8 +247,12 @@ const App = ({
                   { value: "changePercentage", label: t("walletValueChanges.sortByPercent") },
                   { value: "absChange", label: t("walletValueChanges.sortByVolatility") },
                 ]} />
-              <SegmentedControl value={pageSize} onChange={setPageSize} label={t("history.rowsLabel")}
-                options={(["20", "50", "100"] as const).map((value) => ({ value, label: value }))} />
+              <label className="wallet-change-page-size">
+                <span>{t("history.rowsLabel")}</span>
+                <select value={pageSize} onChange={(event) => { haptic("selection"); setPageSize(event.target.value as PageSize); }}>
+                  {(["20", "50", "100"] as const).map((value) => <option value={value} key={value}>{value}</option>)}
+                </select>
+              </label>
             </> : <>
             <ButtonGroup
               value={sortMode}

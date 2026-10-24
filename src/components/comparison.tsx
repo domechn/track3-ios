@@ -160,6 +160,8 @@ const App = ({
       const options = rawOptions.map((option) => {
         dateIndexes[option.label] = (dateIndexes[option.label] || 0) + 1;
         const hasMultipleSnapshots = dateCounts[option.label] > 1;
+        const displayDate = isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { year: "numeric", month: "short", day: "numeric" }).format(new Date(parseDateToTS(option.label))) : option.label;
         const snapshotLabel = formatSnapshotLabel(
           option.createdAt,
           dateIndexes[option.label],
@@ -169,10 +171,8 @@ const App = ({
           ...option,
           snapshotLabel,
           displayLabel: hasMultipleSnapshots
-            ? `${isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
-              { year: "numeric", month: "short", day: "numeric" }).format(new Date(parseDateToTS(option.label))) : option.label} ${snapshotLabel}`
-            : isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
-              { year: "numeric", month: "short", day: "numeric" }).format(new Date(parseDateToTS(option.label))) : option.label,
+            ? `${displayDate} ${snapshotLabel}`
+            : displayDate,
         };
       });
 
@@ -447,7 +447,7 @@ const App = ({
     }
 
     if (convertCurrency) {
-      return `${currency.symbol}${res}`;
+      return `${currency.symbol}${isMobile ? "" : " "}${res}`;
     }
     return res;
   }
@@ -470,13 +470,12 @@ const App = ({
     type: "price" | "amount" | "value",
   ): string {
     if (diff === 0) return "—";
-    const prefix = diff > 0 ? "+" : diff < 0 ? "-" : "";
+    const prefix = diff > 0 ? "+" : "-";
     const abs = Math.abs(diff);
     const raw = formatVal(abs, type);
     if (raw === "-") {
       return "-";
     }
-    if (prefix === "") return "—";
     return `${prefix}${raw}`;
   }
 
@@ -551,7 +550,7 @@ const App = ({
                     />
                   </div>
                 </div>
-                <div className="flex items-center touch:min-w-0 touch:flex-wrap gap-2">
+                <div className="comparison-quick-control flex items-center touch:min-w-0 touch:flex-wrap gap-2">
                   <span className="text-muted-foreground text-sm">
                     {t("comparison.quick")}
                   </span>

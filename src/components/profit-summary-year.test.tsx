@@ -30,6 +30,8 @@ it("uses a dash for a month with no snapshot", async () => {
     quoteColor="green-up-red-down"
   />);
   expect(screen.getByText("Apr").closest("button")).toHaveTextContent("—");
+  expect(screen.getByText("Flat 0")).toBeInTheDocument();
+  expect(screen.getByText("Periods 0")).toBeInTheDocument();
 });
 
 it("lets the phone narrow a month's P&L chart to seven days", () => {

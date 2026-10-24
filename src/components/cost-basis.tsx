@@ -266,11 +266,11 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
           {detailsOpen && <div className="space-y-4 p-3">
             <section><h2 className="mb-2 font-semibold">{t("cost.byAsset")}</h2>
               <MobileRecordList empty={t("common.noData")} records={report.assets.slice(pages.assets * pageSize, (pages.assets + 1) * pageSize).map((asset) => ({
-                id: `${asset.assetType}:${asset.symbol}`, title: asset.symbol, subtitle: money(asset.gainLoss),
+                id: `${asset.assetType}:${asset.symbol}`, title: asset.symbol, subtitle: gain(asset.gainLoss),
                 fields: [
                   { label: t("cost.proceeds"), value: money(asset.proceeds) },
                   { label: t("cost.costBasis"), value: money(asset.costBasis) },
-                  { label: t("cost.gainLoss"), value: money(asset.gainLoss) },
+                  { label: t("cost.gainLoss"), value: gain(asset.gainLoss) },
                 ],
               }))} />
               <PageControls label={t("cost.byAsset")} page={pages.assets} count={report.assets.length}

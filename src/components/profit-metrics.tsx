@@ -26,6 +26,7 @@ import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { useIsMobile } from "./mobile";
 
 const App = ({
   dateRange,
@@ -65,7 +66,8 @@ const App = ({
     dateAndValues: [] as { date: Date; value: number }[],
   });
   const [isATHTimesModalOpen, setIsATHTimesModalOpen] = useState(false);
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
   const wsize = useWindowSize();
   const { reportLoaded } = useContext(OverviewLoadingContext);
 
@@ -278,6 +280,35 @@ const App = ({
   }
 
   const MaxTotalValueView = React.memo(() => {
+    if (isMobile) {
+      const shortDate = (date: Date | number) => new Intl.DateTimeFormat(
+        locale === "zh" ? "zh-CN" : "en-US",
+        { year: "numeric", month: "short", day: "numeric" },
+      ).format(new Date(date));
+      const amount = (value: number) => `${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(value)))}`;
+      const tiles = [
+        { label: t("profitMetrics.maxContProfit"), value: String(daysBetweenDates(maxProfileDateRange.start, maxProfileDateRange.end)), date: `${shortDate(maxProfileDateRange.start)} – ${shortDate(maxProfileDateRange.end)}` },
+        { label: t("profitMetrics.maxContLoss"), value: String(daysBetweenDates(maxLostDateRange.start, maxLostDateRange.end)), date: `${shortDate(maxLostDateRange.start)} – ${shortDate(maxLostDateRange.end)}` },
+        { label: t("profitMetrics.maxProfit"), value: maxSingleDayProfitData.value < 0 ? "—" : amount(maxSingleDayProfitData.value), date: shortDate(maxSingleDayProfitData.timestamp), tone: "gain" },
+        { label: t("profitMetrics.maxLoss"), value: maxSingleDayLostData.value > 0 ? "—" : `−${amount(maxSingleDayLostData.value)}`, date: shortDate(maxSingleDayLostData.timestamp), tone: "loss" },
+        { label: t("profitMetrics.maxDrawdown"), value: `${maxDrawdownData.value.toFixed(2)}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
+      ];
+      return <div>
+        {athReachedDetailsDialog}
+        <div className="profit-metrics-mobile">
+          {tiles.map((tile) => <div className="profit-metric-tile" key={tile.label}>
+            <span className="profit-metric-label">{tile.label}</span>
+            <strong className="profit-metric-value ios-money" data-tone={tile.tone}>{tile.value}</strong>
+            <span className="profit-metric-date">{tile.date}</span>
+          </div>)}
+          <button type="button" className="profit-metric-tile" onClick={onATHTimesClick}>
+            <span className="profit-metric-label">{t("profitMetrics.athReached")}</span>
+            <strong className="profit-metric-value ios-money">{athTimes.times}</strong>
+            <span className="profit-metric-date"><InfoCircledIcon className="inline h-3.5 w-3.5" /> {t("profitMetrics.dialogTitle")}</span>
+          </button>
+        </div>
+      </div>;
+    }
     return (
       <div>
         {athReachedDetailsDialog}

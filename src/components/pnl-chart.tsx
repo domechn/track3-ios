@@ -30,6 +30,17 @@ export function indexForPnlPixel(scale: { getValueForPixel: (pixel: number) => n
   return Math.max(0, Math.min(count - 1, Math.round(value ?? 0)));
 }
 
+export function pnlAxisBounds(values: number[]): { min: number; max: number; stepSize: number } | object {
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  if (min === max) return {};
+  const rough = (max - min) / (min < 0 && max > 0 ? 4 : 3);
+  const base = 10 ** Math.floor(Math.log10(rough));
+  const stepSize = [1, 2, 2.5, 4, 5, 10].map((factor) => factor * base)
+    .find((step) => step >= rough) ?? base * 10;
+  return { min: Math.floor(min / stepSize) * stepSize, max: Math.ceil(max / stepSize) * stepSize, stepSize };
+}
+
 const App = ({
   currency,
   dateRange,
@@ -76,12 +87,7 @@ const App = ({
     }));
   }, [pnlChanges, pnlChartData, chartWidth, currency]);
   const mobileAxis = useMemo(() => {
-    const values = plottedPNL.map((point) => point.change);
-    const min = Math.min(0, ...values);
-    const max = Math.max(0, ...values);
-    if (min === max) return {};
-    const step = 10 ** Math.floor(Math.log10((max - min) / 3));
-    return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step };
+    return pnlAxisBounds(plottedPNL.map((point) => point.change));
   }, [plottedPNL]);
 
   const rangeKey = useMemo(
@@ -193,8 +199,9 @@ const App = ({
         offset: true,
         ticks: {
           ...glassScaleOptions.ticks,
+          ...(isMobile && "stepSize" in mobileAxis ? { stepSize: mobileAxis.stepSize } : {}),
           precision: 2,
-          maxTicksLimit: isMobile ? 5 : 4,
+          maxTicksLimit: isMobile ? 6 : 4,
           callback: (value: any) => {
             return value === 0 ? "0" : simplifyNumber(value);
           },
@@ -272,7 +279,9 @@ const App = ({
 
   return (
     <div className={className}>
-      <div className="overview-pnl-plot" onPointerMove={(event) => showScrub(event.clientX, event.currentTarget)}
+      <div className="overview-pnl-plot" onPointerDown={(event) => showScrub(event.clientX, event.currentTarget)}
+        onPointerMove={(event) => showScrub(event.clientX, event.currentTarget)}
+        onClick={(event) => showScrub(event.clientX, event.currentTarget)}
         onPointerLeave={clearScrub} onTouchMove={(event) => showScrub(event.touches[0].clientX, event.currentTarget)}
         onTouchEnd={clearScrub} onTouchCancel={clearScrub}>
         <Bar ref={chartRef} role="img" aria-label={t("pnl.chartSummary")

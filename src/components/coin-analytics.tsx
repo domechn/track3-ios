@@ -2,6 +2,7 @@ import {
   calculateTotalProfit,
   listAllowedSymbols,
   queryAssetMaxAmountBySymbol,
+  queryAllDataDates,
   queryLastAssetsBySymbol,
   queryTransactionsBySymbolAndDateRange,
   updateTransactionPrice,
@@ -529,7 +530,7 @@ const App = ({
     const gen = loadGenRef.current;
 
     // fetch all data before setting any state to avoid multiple re-renders
-    const [txns, tp, la, ama, lp, previous] = await Promise.all([
+    const [txns, tp, la, ama, lp, snapshotDates] = await Promise.all([
       queryTransactionsBySymbolAndDateRange(
         s,
         selectedRange,
@@ -539,11 +540,26 @@ const App = ({
       queryLastAssetsBySymbol(s, selectedRange, selectedAssetType),
       queryAssetMaxAmountBySymbol(s, selectedRange, selectedAssetType),
       getLogoPath(s, selectedAssetType),
-      queryLastAssetsBySymbol(s, {
-        start: new Date(0),
-        end: new Date(selectedRange.end.getTime() - 24 * 60 * 60 * 1000),
-      }, selectedAssetType),
+      queryAllDataDates(),
     ]);
+    const latestSnapshotTime = snapshotDates.reduce((latest, item) => {
+      const time = new Date(item.createdAt).getTime();
+      return time >= selectedRange.start.getTime() && time <= selectedRange.end.getTime() && time > latest
+        ? time : latest;
+    }, 0);
+    const previousDay = latestSnapshotTime - 24 * 60 * 60 * 1000;
+    const previousSnapshotTime = latestSnapshotTime ? snapshotDates.reduce<number | undefined>((closest, item) => {
+      const time = new Date(item.createdAt).getTime();
+      const distance = Math.abs(time - previousDay);
+      return time < latestSnapshotTime && distance <= 6 * 60 * 60 * 1000 &&
+        (closest === undefined || distance < Math.abs(closest - previousDay)) ? time : closest;
+    }, undefined) : undefined;
+    const previous = previousSnapshotTime !== undefined
+      ? await queryLastAssetsBySymbol(s, {
+        start: new Date(0),
+        end: new Date(previousSnapshotTime),
+      }, selectedAssetType)
+      : undefined;
 
     // ignore stale results if symbol/dateRange changed while loading
     if (gen !== loadGenRef.current) return;
@@ -898,8 +914,26 @@ const App = ({
         {isMobile && <div className="coin-detail-hero">
           <div className="coin-detail-identity">
             <img src={resolveAssetLogoSrc({ symbol, assetType }, logo)} alt="" />
-            <span>{symbol}</span>
+            <button type="button" role="combobox" aria-label={`${t("coin.symbol")} ${formatAssetLabel({ symbol, assetType })}`}
+              aria-expanded={coinSelectOpen} onClick={() => setCoinSelectOpen(true)}>
+              {symbol}<CaretSortIcon aria-hidden="true" />
+            </button>
           </div>
+          <BottomSheet open={coinSelectOpen} onOpenChange={setCoinSelectOpen} title={t("coin.symbol")}>
+            <Input value={coinKeyword} onChange={(event) => { setCoinKeyword(event.target.value); setCoinListLimit(200); }}
+              placeholder={t("coin.searchPlaceholder")} className="mb-3 min-h-11" />
+            <div className="mobile-coin-options">
+              {visibleAllowSymbols.map((item) => <button type="button" key={getAssetLogoKey(item)}
+                className="mobile-coin-option" onClick={() => {
+                  setCoinSelectOpen(false);
+                  navigate(buildAssetDetailsPath(item));
+                }}>{formatAssetLabel(item)}</button>)}
+              {filteredAllowSymbols.length > coinListLimit && <button type="button"
+                className="mobile-coin-option" onClick={() => setCoinListLimit((prev) => prev + 200)}>
+                {t("coin.showMoreN").replace("{n}", String(filteredAllowSymbols.length - coinListLimit))}
+              </button>}
+            </div>
+          </BottomSheet>
           <p className="coin-detail-price ios-money">{lastPriceStr}</p>
           <div className="coin-detail-change">
             <DeltaPill value={change24h ?? 0}>{change24h === undefined ? "—" : `${change24h > 0 ? "+" : ""}${change24h.toFixed(2)}%`}</DeltaPill>
@@ -932,7 +966,7 @@ const App = ({
             )}
           />
           <div className="coin-metric-grid grid gap-4 grid-cols-6">
-            <FadeUp className="coin-symbol-metric col-span-6 md:col-span-2 sm:col-span-3">
+            {!isMobile && <FadeUp className="coin-symbol-metric col-span-6 md:col-span-2 sm:col-span-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -965,30 +999,6 @@ const App = ({
                       alt={formatAssetLabel({ symbol, assetType })}
                     />
                     <div className="w-[100%] min-w-0 h-[32px] mobile-coin-selector">
-                      {isMobile ? <>
-                        <Button variant="outline" role="combobox"
-                          aria-label={`${t("coin.symbol")} ${formatAssetLabel({ symbol, assetType })}`}
-                          aria-expanded={coinSelectOpen} className="h-11 w-full justify-between"
-                          onClick={() => setCoinSelectOpen(true)}>
-                          <span className="truncate">{formatAssetLabel({ symbol, assetType })}</span>
-                          <CaretSortIcon aria-hidden="true" className="ml-2 h-4 w-4 shrink-0" />
-                        </Button>
-                        <BottomSheet open={coinSelectOpen} onOpenChange={setCoinSelectOpen} title={t("coin.symbol")}>
-                          <Input value={coinKeyword} onChange={(event) => { setCoinKeyword(event.target.value); setCoinListLimit(200); }}
-                            placeholder={t("coin.searchPlaceholder")} className="mb-3 min-h-11" />
-                          <div className="mobile-coin-options">
-                            {visibleAllowSymbols.map((item) => <button type="button" key={getAssetLogoKey(item)}
-                              className="mobile-coin-option" onClick={() => {
-                                setCoinSelectOpen(false);
-                                navigate(buildAssetDetailsPath(item));
-                              }}>{formatAssetLabel(item)}</button>)}
-                            {filteredAllowSymbols.length > coinListLimit && <button type="button"
-                              className="mobile-coin-option" onClick={() => setCoinListLimit((prev) => prev + 200)}>
-                              {t("coin.showMoreN").replace("{n}", String(filteredAllowSymbols.length - coinListLimit))}
-                            </button>}
-                          </div>
-                        </BottomSheet>
-                      </> : <>
                       <Popover
                         open={coinSelectOpen}
                         onOpenChange={setCoinSelectOpen}
@@ -1065,7 +1075,6 @@ const App = ({
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      </>}
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
@@ -1074,7 +1083,7 @@ const App = ({
                   </div>
                 </CardContent>
               </Card>
-            </FadeUp>
+            </FadeUp>}
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

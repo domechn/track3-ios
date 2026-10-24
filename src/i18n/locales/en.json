@@ -658,6 +658,8 @@
   "profitSummary.up": "Up {n}",
   "profitSummary.down": "Down {n}",
   "profitSummary.flat": "Flat {n}",
+  "profitSummary.empty": "No data {n}",
+  "profit.attribution.otherChanges": "Quantity changes",
   "profitSummary.dailyPnlIn": "Daily PnL in {month} {year}",
   "common.others": "Others",
   "system.saveDiscount": "Save {n}%",

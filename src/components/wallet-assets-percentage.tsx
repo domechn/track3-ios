@@ -670,7 +670,7 @@ const App = ({
                               <span className="mono text-[11px] tabular-nums">
                                 {item.wallet.percentage.toFixed(2)}%
                               </span>
-                              <span className="wallet-tile-category text-[11px] uppercase">
+                              <span className="wallet-tile-category text-[9px] touch:text-[11px] uppercase">
                                 {t(
                                   WALLET_CATEGORY_BASE_COLORS[item.category]
                                     .labelKey,

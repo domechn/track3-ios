@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   queryTransactionsBySymbolAndDateRange: vi.fn(),
   calculateTotalProfit: vi.fn(),
   queryLastAssetsBySymbol: vi.fn(),
+  queryAllDataDates: vi.fn(),
   queryAssetMaxAmountBySymbol: vi.fn(),
   updateTransactionPrice: vi.fn(),
   updateTransactionTxnType: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock("@/middlelayers/charts", () => ({
     mocks.queryTransactionsBySymbolAndDateRange,
   calculateTotalProfit: mocks.calculateTotalProfit,
   queryLastAssetsBySymbol: mocks.queryLastAssetsBySymbol,
+  queryAllDataDates: mocks.queryAllDataDates,
   queryAssetMaxAmountBySymbol: mocks.queryAssetMaxAmountBySymbol,
   updateTransactionPrice: mocks.updateTransactionPrice,
   updateTransactionTxnType: mocks.updateTransactionTxnType,
@@ -262,6 +264,7 @@ beforeEach(() => {
   mocks.queryTransactionsBySymbolAndDateRange.mockReset();
   mocks.calculateTotalProfit.mockReset();
   mocks.queryLastAssetsBySymbol.mockReset();
+  mocks.queryAllDataDates.mockReset();
   mocks.queryAssetMaxAmountBySymbol.mockReset();
   mocks.updateTransactionPrice.mockReset();
   mocks.updateTransactionTxnType.mockReset();
@@ -285,6 +288,7 @@ beforeEach(() => {
     coins: [],
   });
   mocks.queryLastAssetsBySymbol.mockResolvedValue(undefined);
+  mocks.queryAllDataDates.mockResolvedValue([{ id: "latest", date: "2024-04-30", createdAt: "2024-04-30T00:00:00.000Z" }]);
   mocks.queryAssetMaxAmountBySymbol.mockResolvedValue(0);
   mocks.updateTransactionPrice.mockResolvedValue(undefined);
   mocks.updateTransactionTxnType.mockResolvedValue(undefined);
@@ -362,6 +366,10 @@ it("shows a compact phone identity, 24h price change, and an unbroken transactio
     matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }) as unknown as MediaQueryList);
   mocks.queryTransactionsBySymbolAndDateRange.mockResolvedValue([transaction]);
+  mocks.queryAllDataDates.mockResolvedValue([
+    { id: "latest", date: "2024-04-30", createdAt: "2024-04-30T00:00:00.000Z" },
+    { id: "prior", date: "2024-04-29", createdAt: "2024-04-29T00:00:00.000Z" },
+  ]);
   mocks.queryLastAssetsBySymbol.mockResolvedValueOnce({
     symbol: "BTC", assetType: "crypto", amount: 1, value: 100, price: 100,
   }).mockResolvedValueOnce({
@@ -373,6 +381,52 @@ it("shows a compact phone identity, 24h price change, and an unbroken transactio
   expect(hero).toHaveTextContent("BTC");
   expect(hero).toHaveTextContent("24h");
   expect(document.querySelector(".coin-mobile-transactions")).toHaveTextContent("BTC · Apr 15, 2024");
+});
+
+it("anchors the prior-day coin price to the latest snapshot instead of the range end", async () => {
+  mocks.queryAllDataDates.mockResolvedValue([
+    { id: "old", date: "2024-04-18", createdAt: "2024-04-18T12:00:00.000Z" },
+    { id: "prior", date: "2024-04-17", createdAt: "2024-04-17T12:00:00.000Z" },
+  ]);
+  mocks.queryLastAssetsBySymbol.mockResolvedValue({
+    symbol: "BTC", assetType: "crypto", amount: 1, value: 100, price: 100,
+  });
+  renderCoinAnalysis();
+  await waitFor(() => expect(mocks.queryLastAssetsBySymbol).toHaveBeenCalledTimes(2));
+  const previousRange = mocks.queryLastAssetsBySymbol.mock.calls[1][1] as TDateRange;
+  expect(previousRange.end.toISOString()).toBe("2024-04-17T12:00:00.000Z");
+});
+
+it("uses the closest stored snapshot from roughly a day before for 24h change", async () => {
+  mocks.queryAllDataDates.mockResolvedValue([
+    { id: "latest", date: "2024-04-18", createdAt: "2024-04-18T12:00:00.000Z" },
+    { id: "prior", date: "2024-04-17", createdAt: "2024-04-17T13:00:00.000Z" },
+    { id: "older", date: "2024-04-16", createdAt: "2024-04-16T12:00:00.000Z" },
+  ]);
+  mocks.queryLastAssetsBySymbol.mockResolvedValue({
+    symbol: "BTC", assetType: "crypto", amount: 1, value: 100, price: 100,
+  });
+  renderCoinAnalysis();
+  await waitFor(() => expect(mocks.queryLastAssetsBySymbol).toHaveBeenCalledTimes(2));
+  const previousRange = mocks.queryLastAssetsBySymbol.mock.calls[1][1] as TDateRange;
+  expect(previousRange.end.toISOString()).toBe("2024-04-17T13:00:00.000Z");
+});
+
+it("does not label a multi-day coin price gap as 24h", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  mocks.queryAllDataDates.mockResolvedValue([
+    { id: "latest", date: "2024-04-18", createdAt: "2024-04-18T12:00:00.000Z" },
+    { id: "older", date: "2024-04-15", createdAt: "2024-04-15T12:00:00.000Z" },
+  ]);
+  mocks.queryLastAssetsBySymbol.mockResolvedValue({
+    symbol: "BTC", assetType: "crypto", amount: 1, value: 100, price: 100,
+  });
+  renderCoinAnalysis();
+  await waitFor(() => expect(document.querySelector(".coin-detail-hero")).toHaveTextContent("$100.00"));
+  expect(mocks.queryLastAssetsBySymbol).toHaveBeenCalledTimes(1);
+  expect(document.querySelector(".coin-detail-change")).toHaveTextContent("—");
 });
 
 const hkdCurrency = {

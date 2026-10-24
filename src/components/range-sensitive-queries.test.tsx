@@ -93,6 +93,7 @@ vi.mock("@/middlelayers/charts", () => ({
   queryTransactionsBySymbolAndDateRange: vi.fn(),
   calculateTotalProfit: vi.fn(),
   queryLastAssetsBySymbol: vi.fn(),
+  queryAllDataDates: vi.fn().mockResolvedValue([]),
   queryAssetMaxAmountBySymbol: vi.fn(),
   listAllowedSymbols: vi.fn(),
   updateTransactionPrice: vi.fn(),

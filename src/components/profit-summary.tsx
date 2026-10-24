@@ -71,6 +71,7 @@ const App = ({
     {
       total: number;
       year: number;
+      hasData: boolean;
     }[]
   >([]);
   const [selectedYear, setSelectedYear] = useState(dateRange.end.getFullYear());
@@ -97,6 +98,7 @@ const App = ({
       {
         total: number;
         year: number;
+        hasData: boolean;
       }[]
     >
   >(new Map());
@@ -229,12 +231,12 @@ const App = ({
       const profits = await bluebird.map(
         years,
         async (year) => {
-          const { total } = await calculateTotalProfit({
+          const { total, lastRecordDate } = await calculateTotalProfit({
             start: new Date(year, 0, 1),
             end: new Date(year, 11, 31, 23, 59, 59),
           });
 
-          return { total, year };
+          return { total, year, hasData: Boolean(lastRecordDate) };
         },
         { concurrency: 3 }
       );
@@ -329,6 +331,7 @@ const App = ({
     return availableYears.map((year) => ({
         year,
         total: yearlyProfitsMap[year]?.total ?? 0,
+        hasData: Boolean(yearlyProfitsMap[year]?.hasData),
       }));
   }, [availableYears, yearlyProfitsMap]);
 
@@ -337,8 +340,13 @@ const App = ({
     let up = 0;
     let down = 0;
     let flat = 0;
+    let empty = 0;
 
     data.forEach((item) => {
+      if (!item.hasData) {
+        empty += 1;
+        return;
+      }
       if (item.total > 0) {
         up += 1;
       } else if (item.total < 0) {
@@ -348,7 +356,7 @@ const App = ({
       }
     });
 
-    return { total: data.length, up, down, flat };
+    return { total: data.length - empty, up, down, flat, empty };
   }, [monthCards, yearCards, summaryType]);
 
   function renderAmount(value: number) {
@@ -363,7 +371,7 @@ const App = ({
     if (clickedMonthDateRange !== null) {
       return (
         <div id="month-detail" className="space-y-2">
-          <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+          <div className="profit-month-back flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
             <div className="text-xs text-muted-foreground">
               {t("profitSummary.dailyPnlIn")
                 .replace("{month}", getMonthAbbreviation(clickedMonthDateRange.start.getMonth() + 1))
@@ -488,6 +496,7 @@ const App = ({
           <span>{t("profitSummary.up").replace("{n}", String(visibleSummaryStats.up))}</span>
           <span>{t("profitSummary.down").replace("{n}", String(visibleSummaryStats.down))}</span>
           <span>{t("profitSummary.flat").replace("{n}", String(visibleSummaryStats.flat))}</span>
+          {visibleSummaryStats.empty > 0 && <span>{t("profitSummary.empty").replace("{n}", String(visibleSummaryStats.empty))}</span>}
         </div>
         {summaryType === "month" ? renderMonthSummary() : renderYearSummary()}
       </CardContent>

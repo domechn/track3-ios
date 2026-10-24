@@ -658,6 +658,8 @@
   "profitSummary.up": "上涨 {n}",
   "profitSummary.down": "下跌 {n}",
   "profitSummary.flat": "持平 {n}",
+  "profitSummary.empty": "无数据 {n}",
+  "profit.attribution.otherChanges": "数量变动",
   "profitSummary.dailyPnlIn": "{year} 年 {month} 日盈亏",
   "common.others": "其他",
   "system.saveDiscount": "省 {n}%",

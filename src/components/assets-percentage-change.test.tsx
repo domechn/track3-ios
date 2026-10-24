@@ -103,10 +103,21 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
 describe("AssetsPercentageChange (stacked bar)", () => {
+  it("finishes the phone chart immediately when reduced motion is requested", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+      matches: query.includes("pointer: coarse") || query.includes("prefers-reduced-motion"),
+      media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(),
+    }));
+    renderComponent();
+    await waitFor(() => expect(barPropsStore.current.at(-1)?.data.datasets[0].data).toContain(42));
+    expect(barPropsStore.current.at(-1).options.animation).toBe(false);
+  });
   it("bounds stacked chart points while preserving the latest legend values", async () => {
     const many: AssetsPercentageChangeData = Array.from({ length: 2000 }, (_, i) => ({
       timestamp: dateRange.start.getTime() + i * 3_600_000,
