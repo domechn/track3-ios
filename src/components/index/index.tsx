@@ -64,7 +64,7 @@ import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
-import { BottomSheet, Button as MobileButton, InsetGroup, ListRow, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
+import { BottomSheet, Button as MobileButton, InsetGroup, ListRow, MOBILE_MEDIA_QUERY, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
 import TopCoinsRank from "../top-coins-rank";
 import ProfitSummary from "../profit-summary";
 import LatestAssetsPercentage from "../latest-assets-percentage";
@@ -397,7 +397,7 @@ function Layout({
             <MobilePage title={routeTitle(location.pathname, t)} />
           </div>}
           <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
-            {mobile && loadFailed ? <div className="mobile-empty-state mobile-data-error" role="alert">
+            {mobile && loadFailed && /^\/(overview|history|summary|wallets|comparison|cost-basis|coins)(\/|$)/.test(location.pathname) ? <div className="mobile-empty-state mobile-data-error" role="alert">
               <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
                 <circle cx="56" cy="56" r="48" fill="currentColor" opacity=".08" />
                 <circle cx="56" cy="56" r="33" stroke="currentColor" strokeWidth="2.5" />
@@ -822,7 +822,7 @@ const App = () => {
           if (!active) return;
           setLoadFailed(true);
           console.warn("startup data loading failed");
-          if (!window.matchMedia("(max-width: 950px) and (pointer: coarse)").matches) toast({
+          if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) toast({
             title: t("app.dataLoadFailed"),
             duration: 86_400_000,
             action: <ToastAction altText={t("app.retryDataLoad")} onClick={start} className="touch:min-h-11">

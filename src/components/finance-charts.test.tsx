@@ -122,6 +122,13 @@ it("maps deviations from the calculator and includes the configured tolerance", 
 });
 
 it("maps portfolio values and a total value goal to separate line datasets", () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: query.includes("max-width: 950px"), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  });
+  try {
   const rule = { id: 1, kind: "total_value_target", comparator: "gte", threshold: 150 } as AlertRule;
   render(<GoalChart rules={[rule]} snapshots={[]} portfolioValues={[
     { date: "2025-01-01", value: 100 }, { date: "2025-01-02", value: 120 },
@@ -129,5 +136,15 @@ it("maps portfolio values and a total value goal to separate line datasets", () 
   const chart = vi.mocked(Line).mock.calls[0][0];
   expect(chart.data.labels).toEqual(["Jan 1", "Jan 2"]);
   expect(chart.options?.scales?.y?.ticks).toEqual(expect.objectContaining({ callback: expect.any(Function) }));
+  expect(chart.options?.scales?.x?.ticks).toEqual(expect.objectContaining({
+    font: expect.objectContaining({ family: expect.stringContaining("-apple-system") }),
+  }));
+  expect(chart.options?.scales?.y?.ticks).toEqual(expect.objectContaining({
+    font: expect.objectContaining({ family: expect.stringContaining("-apple-system") }),
+  }));
+  expect(chart.options?.scales?.x?.grid?.display).toBe(false);
   expect(chart.data.datasets.map((series) => series.data)).toEqual([[100, 120], [150, 150]]);
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
 });

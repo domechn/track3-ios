@@ -1,5 +1,7 @@
 import { ChartArea } from "chart.js";
 
+export const phoneChartFontFamily = '-apple-system, "SF Pro Text", "SF Pro Display", system-ui, sans-serif';
+
 export const chartColors = [
   { main: "rgba(99,102,241,1)", bg: "rgba(99,102,241,0.15)" },
   { main: "rgba(56,189,248,1)", bg: "rgba(56,189,248,0.15)" },

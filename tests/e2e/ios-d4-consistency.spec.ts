@@ -1,6 +1,89 @@
 import { expect, test } from "@playwright/test";
 import { installTauriBridge } from "./tauri-bridge";
 
+test("320px Wallets labels and change controls fit without wrapping words", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await installTauriBridge(page, undefined, false, false, false, false, true);
+  await page.goto("/#/wallets");
+  await expect(page.locator("[data-testid='wallet-treemap-tile']").first()).toBeVisible();
+  const tileLabels = await page.locator("[data-testid='wallet-treemap-tile'] .line-clamp-2").evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      text: node.textContent?.trim(),
+      overflow: node.scrollWidth > node.clientWidth,
+      wrap: getComputedStyle(node).overflowWrap,
+    })));
+  expect(tileLabels.length).toBeGreaterThan(0);
+  expect(tileLabels.every(({ overflow, wrap }) => !overflow && wrap === "normal"), JSON.stringify(tileLabels)).toBe(true);
+  await expect(page.getByPlaceholder("Search wallets")).toBeVisible();
+  const segments = page.locator(".wallet-change-controls .mobile-segment");
+  await expect(segments).toHaveText(["Value", "%", "Volatility"]);
+  expect(await segments.evaluateAll((nodes) => nodes.every((node) => {
+    const box = node.getBoundingClientRect();
+    return getComputedStyle(node).whiteSpace === "nowrap" && box.height <= 44;
+  }))).toBe(true);
+  const stats = await page.locator(".d2-wallets [data-testid^='stat-']").evaluateAll((nodes) =>
+    nodes.filter((node) => node.getAttribute("data-testid") !== "stat-total-value")
+      .map((node) => {
+        const label = document.createRange();
+        label.selectNodeContents(node.firstChild!);
+        return { y: node.getBoundingClientRect().y, valueY: node.querySelector("span")!.getBoundingClientRect().y,
+          labelLines: label.getClientRects().length };
+      }));
+  expect(stats).toHaveLength(3);
+  expect(stats.every(({ y, valueY, labelLines }) =>
+    Math.abs(y - stats[0].y) <= 1 && Math.abs(valueY - stats[0].valueY) <= 1 && labelLines === 1),
+  JSON.stringify(stats)).toBe(true);
+});
+
+test("Overview uses the shared phone switches", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page, undefined, false, false, false, false, true);
+  await page.goto("/#/overview");
+  for (const label of ["Percent", "BTC base"]) {
+    const control = page.getByRole("switch", { name: label });
+    await expect(control).toHaveClass(/ios-switch/);
+    await expect(control).toHaveAttribute("data-state", "unchecked");
+    await control.click();
+    await expect(control).toHaveAttribute("data-state", "checked");
+  }
+});
+
+test("startup failure leaves recovery routes and pushed titles reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installTauriBridge(page, undefined, false, false, false, false, true, false, false, false, false, true);
+  await page.goto("/#/overview");
+  await expect(page.locator(".mobile-data-error")).toContainText("Could not load portfolio data");
+  await page.goto("/#/rebalance");
+  await expect(page.getByRole("heading", { name: "Rebalance", level: 1 })).toBeVisible();
+  await page.goto("/#/settings");
+  await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+  await page.goto("/#/settings/data?section=backup");
+  await expect(page.locator("#app-main-content")).toContainText("Use Documents folder");
+});
+
+test("pushed titles and goal editor actions use the same balanced insets", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await installTauriBridge(page, undefined, false, false, false, false, true);
+  await page.goto("/#/wallets");
+  await expect(page.locator(".wallet-change-mobile-list")).toBeVisible();
+  await page.locator(".wallet-change-mobile-list").scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, 500));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(64);
+  const compact = page.locator("#app-top-bar .mobile-compact-title");
+  await expect(compact).toBeVisible();
+  expect(await compact.evaluate((node) => {
+    const bounds = node.getBoundingClientRect();
+    return Math.abs(bounds.x + bounds.width / 2 - innerWidth / 2);
+  })).toBeLessThanOrEqual(1);
+  await page.goto("/#/goals");
+  await page.getByRole("button", { name: "Add alert" }).click();
+  const editor = page.getByRole("dialog", { name: "Add alert" });
+  const cancel = (await editor.getByRole("button", { name: "Cancel" }).boundingBox())!;
+  const save = (await editor.getByRole("button", { name: "Save rule" }).boundingBox())!;
+  expect(cancel.x).toBe(16);
+  expect(Math.abs(375 - save.x - save.width - 16)).toBeLessThanOrEqual(1);
+});
+
 test.use({
   isMobile: true, hasTouch: true, reducedMotion: "reduce",
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",

@@ -532,8 +532,8 @@ const App = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
-          <div>
+        <div className="wallet-allocation-stats grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
+          <div data-testid="stat-wallets">
             {t("walletAllocation.wallets")}{isMobile ? " " : ": "}
             <span className="text-foreground mono">{sortedWallets.length}</span>
           </div>

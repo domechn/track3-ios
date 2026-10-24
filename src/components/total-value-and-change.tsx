@@ -29,12 +29,13 @@ import {
   createGradientFill,
   glassScaleOptions,
   glassTooltip,
+  phoneChartFontFamily,
 } from "@/utils/chart-theme";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
-import { AnimatedAmount, DeltaPill, SegmentedControl, useHaptics, useIsMobile } from "@/components/mobile";
+import { AnimatedAmount, DeltaPill, SegmentedControl, Switch, useHaptics, useIsMobile } from "@/components/mobile";
 import { visibleHistoryIndices } from "@/components/mobile/chart-range";
 import { useTheme } from "@/components/common/theme";
 
@@ -445,6 +446,7 @@ const App = ({
           },
           ticks: {
             ...glassScaleOptions.ticks,
+            font: { ...glassScaleOptions.ticks.font, family: isMobile ? phoneChartFontFamily : undefined },
             display: !isMobile,
             maxRotation: 0,
             minRotation: 0,
@@ -484,6 +486,7 @@ const App = ({
           offset: true,
           ticks: {
             ...glassScaleOptions.ticks,
+            font: { ...glassScaleOptions.ticks.font, family: isMobile ? phoneChartFontFamily : undefined },
             precision: 2,
             maxTicksLimit: 3,
             callback: (value: any) => {
@@ -548,7 +551,11 @@ const App = ({
             {isMobile ? t("overview.portfolioValue") : t("totalValue.title").replace("{currency}", totalValueShower.currencyName())}
           </CardTitle>
           <div className="flex space-x-2 mobile-hero-tools">
-            <Button
+            {isMobile ? <label className="mobile-hero-switch-label">
+              <span>{t("overview.percentChart")}</span>
+              <Switch aria-label={t("overview.percentChart")} checked={showPercentageInChart}
+                onCheckedChange={setShowPercentageInChart} />
+            </label> : <Button
               type="button"
               variant="ghost"
               size="icon"
@@ -573,10 +580,13 @@ const App = ({
                   fill="currentColor"
                 ></path>
               </svg>
-              <span className="mobile-hero-tool-label">{t("overview.percentChart")}</span>
-              <span className="mobile-hero-tool-toggle" aria-hidden="true"><span /></span>
             </Button>
-            <Button
+            }
+            {isMobile ? <label className="mobile-hero-switch-label">
+              <span>{t("overview.btcBase")}</span>
+              <Switch aria-label={t("overview.btcBase")} checked={btcAsBase}
+                onCheckedChange={setBtcAsBase} />
+            </label> : <Button
               type="button"
               variant="ghost"
               size="icon"
@@ -602,9 +612,8 @@ const App = ({
                   clipRule="evenodd"
                 ></path>
               </svg>
-              <span className="mobile-hero-tool-label">{t("overview.btcBase")}</span>
-              <span className="mobile-hero-tool-toggle" aria-hidden="true"><span /></span>
             </Button>
+            }
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">

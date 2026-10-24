@@ -12,6 +12,7 @@ import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
 import { useEffect, useRef } from "react";
 import { useIsMobile } from "./mobile";
+import { phoneChartFontFamily } from "@/utils/chart-theme";
 
 const chartPalette = () => document.documentElement.classList.contains("dark")
   ? ["#6d97fa", "#85ade0", "#79b6ac", "#b9a3cb", "#bda887", "#929bb1"]
@@ -25,16 +26,18 @@ const tone = (positive: boolean, quoteColor: QuoteColor, mobile: boolean) => {
 };
 function useChartOptions() {
   const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
   const dark = resolvedTheme === "dark";
   const text = dark ? "#aeaeb2" : "#636366";
+  const tickFont = { size: 12, family: isMobile ? phoneChartFontFamily : undefined };
   return {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: "index" as const, intersect: false },
     animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
-      x: { ticks: { color: text, font: { size: 12 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
-      y: { ticks: { color: text, font: { size: 12 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      x: { ticks: { color: text, font: tickFont, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012", display: true } },
+      y: { ticks: { color: text, font: tickFont, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
     },
   };
 }
@@ -193,7 +196,8 @@ export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
           borderColor: palette[2], borderDash: [5, 4], pointRadius: 0,
         })),
       ] }} options={{ ...chartOptions, scales: {
-        ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: {
+        ...chartOptions.scales, x: { ...chartOptions.scales.x, grid: { ...chartOptions.scales.x.grid, display: false } },
+        y: { ...chartOptions.scales.y, ticks: {
           ...chartOptions.scales.y.ticks, callback: (value: string | number) => {
             const label = valueFormatter.format(Number(value));
             return isMobile ? label.toLowerCase() : label;

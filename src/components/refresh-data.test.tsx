@@ -169,8 +169,9 @@ describe("RefreshData — currency rates refresh ordering", () => {
     render(<RefreshData loading={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Source status" });
-    await waitFor(() => expect(dialog).toHaveTextContent("Failed sources (1 of 1)"));
+    await waitFor(() => expect(dialog).toHaveTextContent("1 of 1 sources failed."));
     expect(dialog.querySelector("p.sr-only")).toBeNull();
+    expect(dialog.querySelector("p")).not.toHaveTextContent("BTC wallet 1");
   });
 
   it("hides results from the previous run while an iPhone refresh is pending", async () => {

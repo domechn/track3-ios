@@ -231,16 +231,16 @@ const App = ({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("walletValueChanges.searchPlaceholder")}
+            placeholder={t(isMobile ? "walletValueChanges.searchMobile" : "walletValueChanges.searchPlaceholder")}
             className="md:w-[320px]"
           />
           <div className="wallet-change-controls flex flex-wrap gap-2">
             {isMobile ? <>
               <SegmentedControl value={sortMode} onChange={setSortMode} label={t("walletValueChanges.title")}
                 options={[
-                  { value: "changeValue", label: t("walletValueChanges.sortByValue") },
-                  { value: "changePercentage", label: t("walletValueChanges.sortByPercent") },
-                  { value: "absChange", label: t("walletValueChanges.sortByVolatility") },
+                  { value: "changeValue", label: t("walletValueChanges.sortMobileValue") },
+                  { value: "changePercentage", label: t("walletValueChanges.sortMobilePercent") },
+                  { value: "absChange", label: t("walletValueChanges.sortMobileVolatility") },
                 ]} />
             </> : <>
             <ButtonGroup

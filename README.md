@@ -33,7 +33,7 @@ iPhone control.
 
 ## Screenshots
 
-These 390 pt browser captures render at 2× resolution and use the seven-holding demo portfolio.
+These 390 pt browser captures render at 2× resolution and use the seven-holding demo portfolio. The Assistant capture shows a completed portfolio review with mixed gains and losses.
 The [full review set](docs/ios/DESIGN.md#review-captures) covers phone routes
 and sheets in light and dark at 320, 375, 390, and 430 px, plus loading,
 empty, and error states for data routes. CI uploads it as

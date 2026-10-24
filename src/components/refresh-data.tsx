@@ -307,13 +307,17 @@ const App = ({
                   .replace("{partial}", String(partialStatuses.length))
                   .replace("{stale}", String(sortedStatuses.filter((source) => source.status === "stale").length))
                 : failedStatuses.length
-                ? t("refresh.failedSummary")
+                ? t(isIOS() ? "refresh.failedSummaryMobile" : "refresh.failedSummary")
                   .replace("{count}", String(failedStatuses.length))
                   .replace("{total}", String(sourceStatuses.length))
                   .replace("{sources}", failedNames)
                 : sourceStatuses.some((source) => source.status === "stale")
-                  ? t("refresh.staleWarning").replace("{sources}",
-                    sortedStatuses.filter((source) => source.status === "stale").map(displayIdentity).join(", "))
+                  ? isIOS()
+                    ? t("refresh.staleSummaryMobile")
+                      .replace("{count}", String(sortedStatuses.filter((source) => source.status === "stale").length))
+                      .replace("{total}", String(sourceStatuses.length))
+                    : t("refresh.staleWarning").replace("{sources}",
+                      sortedStatuses.filter((source) => source.status === "stale").map(displayIdentity).join(", "))
                   : t("refresh.allCurrent")}
             </AlertDialogDescription>
             {refreshing && <div role="progressbar" aria-label={t("refresh.inProgress")} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-muted">

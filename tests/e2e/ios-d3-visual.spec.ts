@@ -188,12 +188,14 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     }
     expect(chatHeader!.height).toBeLessThanOrEqual(56);
     expect(firstSuggestion!.y + firstSuggestion!.height).toBeLessThanOrEqual(composer!.y);
-    await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
+    await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("How is my portfolio doing?");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.locator('.ios-d3-chat-bubble[data-streaming="true"] .markdown-content')).toBeVisible({ timeout: 1500 });
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-assistant-streaming.png` });
-    await expect(page.getByText("Hello from SSE")).toBeVisible();
-    const reply = await page.getByText("Hello from SSE").boundingBox();
+    await expect(page.getByText("Portfolio check")).toBeVisible();
+    await expect(page.locator(".ios-d3-chat-bubble").last()).toContainText("AAPL is above its cost basis");
+    await expect(page.getByText("Thinking", { exact: true })).toHaveCount(0);
+    const reply = await page.getByText("Portfolio check").boundingBox();
     const composerAfterReply = await page.locator(".ios-d3-chat-composer").boundingBox();
     const tabBar = await page.locator(".mobile-tab-bar").boundingBox();
     expect(reply).not.toBeNull();

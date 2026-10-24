@@ -378,7 +378,7 @@ const App = ({
                 .replace("{year}", String(clickedMonthDateRange.start.getFullYear()))}
             </div>
             <Button type="button" variant={isMobile ? "ghost" : "outline"} size="sm" onClick={onMonthDetailClick}>
-              {t("common.back")}
+              {t(isMobile ? "profitSummary.allMonths" : "common.back")}
             </Button>
           </div>
           {isMobile && <SegmentedControl value={monthChartRange} onChange={setMonthChartRange}

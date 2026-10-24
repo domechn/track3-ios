@@ -406,10 +406,11 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
         const input = JSON.parse(new TextDecoder().decode(Uint8Array.from(request.data ?? [])));
         if (input.stream === true) {
           const setupQuestion = JSON.stringify(input.messages).includes("Set BTC 40%, ETH 30%, USDT 30%");
+          const portfolioQuestion = richPortfolio && JSON.stringify(input.messages).includes("How is my portfolio doing?");
           const afterProposal = input.messages.some((message: { role: string }) => message.role === "tool");
           if (request.url !== "https://assistant.test/v1/chat/completions"
             || input.model !== "test-model"
-            || (!JSON.stringify(input.messages).includes("Say hello") && !setupQuestion)) {
+            || (!JSON.stringify(input.messages).includes("Say hello") && !setupQuestion && !portfolioQuestion)) {
             throw new Error("unexpected assistant request");
           }
           sseCalls++;
@@ -432,8 +433,10 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
             "data: [DONE]",
             "",
           ].join("\n\n") : [
-            'data: {"choices":[{"delta":{"reasoning_content":"Let me think"}}]}',
-            'data: {"choices":[{"delta":{"content":"Hello from SSE"}}]}',
+            ...portfolioQuestion ? [] : ['data: {"choices":[{"delta":{"reasoning_content":"Let me think"}}]}'],
+            `data: ${JSON.stringify({ choices: [{ delta: { content: portfolioQuestion
+              ? "**Portfolio check**\n\nYour seven holdings have climbed over the past two months, with a few pullbacks along the way.\n\n- **Largest position:** Bitcoin remains the anchor.\n- **Positive contributor:** AAPL is above its cost basis.\n- **Watch closely:** ETH is below its cost basis.\n\nOpen Analytics for the full return breakdown."
+              : "Hello from SSE" } }] })}`,
             'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}',
             "data: [DONE]",
             "",
@@ -462,9 +465,8 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       }
       const rid = nextRid++;
       const response = { bytes: Array.from(new TextEncoder().encode(body)), read: false, chunks: undefined as number[][] | undefined, chunkIndex: 0 };
-      if (slowAssistant && contentType === "text/event-stream" && body.includes("Hello from SSE")) {
-        const split = body.indexOf('data: {"choices":[{"delta":{"content":"Hello from SSE"}}]}')
-          + 'data: {"choices":[{"delta":{"content":"Hello from SSE"}}]}'.length + 2;
+      if (slowAssistant && contentType === "text/event-stream" && (body.includes("Hello from SSE") || body.includes("Portfolio check"))) {
+        const split = body.indexOf('data: {"choices":[{"delta":{},"finish_reason":"stop"}]}');
         response.chunks = [
           Array.from(new TextEncoder().encode(body.slice(0, split))),
           Array.from(new TextEncoder().encode(body.slice(split))),

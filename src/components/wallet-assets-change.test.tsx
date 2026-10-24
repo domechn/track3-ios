@@ -28,6 +28,10 @@ it("uses the allocation wallet name and omits the desktop page-size select on a 
     expect(screen.queryByText("BTC-Cold storage")).toBeNull();
     expect(screen.queryByText("0 down")).toBeNull();
     expect(screen.queryByRole("combobox", { name: /rows/i })).toBeNull();
+    expect(screen.getByPlaceholderText("Search wallets")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Value" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "%" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Volatility" })).toBeInTheDocument();
   } finally {
     window.matchMedia = previousMatchMedia;
   }

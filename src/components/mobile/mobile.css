@@ -42,8 +42,6 @@
 .mobile-tab-icon svg { height: 1.35rem; width: 1.35rem; }
 .mobile-tab-badge { position: absolute; top: -.4rem; left: .9rem; border-radius: 1rem; padding: .1rem .28rem; background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); font-size: .65rem; }
 .mobile-card { min-width: 0; border-radius: 1rem; background: hsl(var(--card)); padding: 1.25rem; }
-.mobile-hero-tool-label { display: none; }
-.mobile-hero-tool-toggle { display: none; }
 .mobile-section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 .25rem .5rem; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.3; }
 .mobile-section-header h2 { font: inherit; }
 .mobile-icon-button { display: inline-grid; width: 44px; height: 44px; flex: none; place-items: center; border-radius: 50%; color: hsl(var(--primary)); transition: transform 180ms var(--ios-motion), opacity 180ms var(--ios-motion); }
@@ -159,7 +157,7 @@
   #app-top-bar.mobile-topbar-root .mobile-compact-title:not(.mobile-overview-compact-title) { position: absolute; left: 50%; max-width: calc(100% - 140px); transform: translateX(-50%); margin: 0; font-size: 17px; }
   .mobile-nav-brand { margin-right: auto; color: hsl(var(--foreground)); font-size: 17px; font-weight: 700; letter-spacing: -.04em; }
   .mobile-header-back { flex: none; margin-right: .5rem; }
-  .mobile-header-back + .mobile-compact-title { flex: 1; max-width: none; }
+  .mobile-header-back + .mobile-compact-title { position: absolute; left: 50%; max-width: calc(100% - 160px); margin: 0; transform: translateX(-50%); font-size: 17px; text-align: center; }
   .mobile-analytics-hub { display: block; }
   .mobile-more-hub .mobile-list-label { display: flex; align-items: center; gap: 12px; }
   .mobile-more-hub .mobile-list-label svg { width: 22px; height: 22px; flex: none; color: hsl(var(--primary)); }
@@ -201,14 +199,8 @@
   .overview-total .mobile-hero-header > h3 { order: 0; }
   .overview-total .mobile-hero-card > :last-child { order: 1; }
   .overview-total .mobile-hero-tools { order: 2; justify-content: flex-start; gap: 8px; width: 100%; margin-top: 8px; }
-  .overview-total .mobile-hero-tools button { display: inline-flex; width: auto; min-width: 0; gap: 6px; padding: 0 3px; border-radius: 10px; background: transparent; color: hsl(var(--muted-foreground)); font-size: 13px; }
-  .overview-total .mobile-hero-tools button[aria-pressed="true"] { color: hsl(var(--foreground)); }
-  .overview-total .mobile-hero-tools button > svg { display: none; }
-  .overview-total .mobile-hero-tool-label { display: inline; }
-  .overview-total .mobile-hero-tool-toggle { display: flex; align-items: center; width: 30px; height: 18px; margin-left: 2px; padding: 2px; border-radius: 999px; background: hsl(var(--muted-foreground) / .35); transition: background 180ms var(--ios-motion); }
-  .overview-total .mobile-hero-tool-toggle > span { width: 14px; height: 14px; border-radius: 50%; background: white; box-shadow: 0 1px 2px #0003; transition: transform 180ms var(--ios-motion); }
-  .overview-total .mobile-hero-tools button[aria-pressed="true"] .mobile-hero-tool-toggle { background: hsl(var(--primary)); }
-  .overview-total .mobile-hero-tools button[aria-pressed="true"] .mobile-hero-tool-toggle > span { transform: translateX(12px); }
+  .overview-total .mobile-hero-switch-label { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+  .overview-total .mobile-hero-switch-label:has([data-state="checked"]) { color: hsl(var(--foreground)); }
   .mobile-hero-header h3 { font-size: 13px; font-weight: 500; }
   .mobile-hero-header > div { gap: 0; }
   .mobile-hero-header button { color: hsl(var(--primary)); }
@@ -294,7 +286,10 @@
   .overview-sections .mobile-list-row { font-size: 15px; }
   .overview-sections .mobile-record-list { border: 0; border-radius: 14px; }
   [data-testid="wallet-treemap-tile"] { padding-left: 4px !important; padding-right: 4px !important; }
-  [data-testid="wallet-treemap-tile"] .line-clamp-2 { overflow-wrap: anywhere; }
+  [data-testid="wallet-treemap-tile"] .line-clamp-2 { overflow-wrap: normal; word-break: keep-all; text-overflow: ellipsis; }
+  @container (max-width: 76px) {
+    [data-testid="wallet-treemap-tile"] .line-clamp-2 { font-size: 10px; }
+  }
 }
 @media (max-width: 359px) and (pointer: coarse) {
   .mobile-overview-compact-title { display: none; }
@@ -544,9 +539,10 @@
   #goal-rule-editor :is(input, select) { min-height: 44px; font-size: 16px; }
   .ios-d3-goal-editor { max-width: 560px; margin: 0 auto; padding-bottom: 120px; }
   .ios-d3-goal-editor > button:first-child { padding-left: 0; color: hsl(var(--primary)); font-size: 17px; }
-  .ios-d3-goal-editor-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-height: 52px; }
+  .ios-d3-goal-editor-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-height: 52px; margin-inline: -20px; padding-inline: 16px; }
   .ios-d3-goal-editor-nav h2 { font-size: 17px; font-weight: 600; white-space: nowrap; pointer-events: none; }
   .ios-d3-goal-editor .ios-d3-goal-editor-nav > button, .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:hover { padding-inline: 0; color: hsl(var(--primary)); background: transparent; font-size: 17px; font-weight: 400; }
+  .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:first-child { justify-self: start; }
   .ios-d3-goal-editor .ios-d3-goal-editor-nav > .ios-d3-goal-nav-save { justify-self: end; font-weight: 600; }
   .ios-d3-goal-editor #goal-rule-editor .ios-d3-goal-editor-heading { display: none; }
   .ios-d3-goal-editor #goal-rule-editor { background: transparent; }
@@ -880,7 +876,7 @@
   .d2-summary .profit-metric-date { margin-top: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.25; white-space: nowrap; }
   .d2-summary .profit-metric-tile:active { transform: scale(.97); opacity: .7; }
   .d2-summary .profit-month-back { gap: 12px; border: 0; border-radius: 0; background: transparent; padding: 0 0 8px; }
-  .d2-summary .profit-month-back > :first-child { color: hsl(var(--foreground)); font-size: 17px; font-weight: 600; }
+  .d2-summary .profit-month-back > :first-child { color: hsl(var(--foreground)); font-size: 17px; line-height: 1.3; font-weight: 600; }
   .d2-summary .ath-card .ath-current-value { overflow: visible; font-size: clamp(36px, 10vw, 44px); line-height: 1.12; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
   .d2-summary .ath-card .ath-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .d2-summary .ath-card .ath-metrics > * { min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -903,6 +899,8 @@
   .d2-wallets [data-card-boundary="true"] > :first-child, .d2-wallets .wallet-change-card > :first-child { padding-inline: 16px; }
   .d2-coin [data-card-boundary="true"] > :first-child, .d2-coin [data-card-boundary="true"] > :last-child { padding-inline: 16px; }
   .d2-wallets [data-testid="stat-total-value"] { grid-column: 1 / -1; order: -1; }
+  .d2-wallets .wallet-allocation-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .d2-wallets .wallet-allocation-stats > div:not([data-testid="stat-total-value"]) { display: flex; flex-direction: column; gap: 2px; }
   .d2-wallets [data-testid="stat-total-value"] span { display: block; margin-top: 3px; font-size: clamp(30px, 9vw, 42px); line-height: 1.1; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
   .d2-wallets .wallet-allocation-mobile-list, .d2-wallets .wallet-change-mobile-list { border: 0; border-radius: 14px; }
   .d2-wallets .mobile-list-row { min-height: 62px; font-size: 15px; }
@@ -910,6 +908,7 @@
   .d2-coin .wallet-allocation-mobile-list { margin-inline: -16px; }
   .d2-wallets [data-card-boundary="true"] > :last-child, .d2-wallets .wallet-change-card > :last-child { padding-inline: 16px; }
   .d2-wallets .mobile-list-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .d2-wallets .wallet-allocation-mobile-list .mobile-list-value { color: hsl(var(--foreground)); }
   .d2-wallets .wallet-change-summary { display: flex; flex-wrap: wrap; gap: 8px; color: hsl(var(--muted-foreground)); font-size: 13px; }
   .d2-wallets .wallet-change-summary [data-tone="gain"] { color: var(--ios-gain); }
   .d2-wallets .wallet-change-summary [data-tone="loss"] { color: var(--ios-loss); }
@@ -917,6 +916,7 @@
   .d2-wallets .wallet-change-controls { display: flex; flex-direction: column; align-items: stretch; }
   .d2-wallets .wallet-change-controls .mobile-segments { width: 100%; }
   .d2-wallets .wallet-change-controls .mobile-segment { min-width: 0; padding-inline: 4px; }
+  .d2-wallets .wallet-change-controls .mobile-segment { white-space: nowrap; }
   .d2-wallets [data-tile-category], .d2-coin [data-tile-category] { container-type: inline-size; --d2-tile-ink: #121317; }
   .d2-wallets [data-tile-category="cex"], .d2-coin [data-tile-category="cex"] { --d2-tile-ink: #fff; }
   .dark .d2-wallets [data-tile-category="cex"], .dark .d2-coin [data-tile-category="cex"] { --d2-tile-ink: #121317; }

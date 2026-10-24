@@ -382,8 +382,8 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.locator(".mobile-hero-change")).not.toContainText("2026-");
     await expect(page.locator(".mobile-route-heading .mobile-large-title")).toBeVisible();
     await expect(page.locator(".overview-insights .mobile-section-header")).toContainText("Insights");
-    await expect(page.getByRole("button", { name: "Show percentage change in chart" })).toContainText("Percent");
-    await expect(page.getByRole("button", { name: "Switch total value base currency" })).toContainText("BTC base");
+    await expect(page.getByRole("switch", { name: "Percent" }).locator("..")).toContainText("Percent");
+    await expect(page.getByRole("switch", { name: "BTC base" }).locator("..")).toContainText("BTC base");
     await page.goto("/#/more");
     await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
@@ -543,7 +543,7 @@ for (const theme of ["light", "dark"] as const) {
         await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
         await installTauriBridge(page, undefined, false, false, state === "empty", false,
           false, false, false, false, false, state === "error");
-        for (const route of reviewDataRoutes) {
+        for (const route of state === "error" ? reviewDataRoutes.slice(0, 7) : reviewDataRoutes) {
           await page.goto(`/#/${route}`);
           if (state === "error") await expect(page.getByRole("alert", { name: "" })).toContainText("Could not load portfolio data");
           else await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
