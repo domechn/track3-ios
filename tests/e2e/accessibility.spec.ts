@@ -319,7 +319,7 @@ test("remaining configuration editors have named controls", async ({ page }) => 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriBridge(page);
   await page.goto("/#/settings/configuration");
-  for (const name of ["Add Stock Broker", "Add Wallet Configuration", "Add Symbol"]) {
+  for (const name of ["Add Stock Broker", "Add Wallet Configuration", "Add symbol"]) {
     const trigger = page.getByRole("button", { name, exact: true });
     await trigger.click();
     const dialog = page.getByRole("dialog");

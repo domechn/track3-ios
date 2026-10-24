@@ -185,11 +185,18 @@ beforeEach(() => {
 
 describe("portfolio data source fallback", () => {
   it("reports failed data sources before applying last-known data", async () => {
+    const completed: string[] = [];
     const result = await fetchPortfolios(
       config,
       mockProgress,
       userInfo,
+      { onSourceResult: (source) => completed.push(source.sourceId) },
     );
+    expect(completed.sort()).toEqual(result.sourceResults?.map((source) => source.sourceId).sort());
+    for (const source of result.sourceResults ?? []) {
+      expect(Date.parse(source.startedAt!)).toBeLessThanOrEqual(Date.parse(source.finishedAt!));
+      expect(Date.parse(source.finishedAt!)).not.toBeNaN();
+    }
 
     expect(result.failedSources).toMatchObject([
       {

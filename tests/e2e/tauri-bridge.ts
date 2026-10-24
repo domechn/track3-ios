@@ -10,7 +10,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false, lockedStartup = false, freshReviewData = false, slowAssistant = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -71,9 +71,12 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       { symbol: "AVAX", type: "crypto", wallet: md5(coinbaseIdentity), amount: 81, base: 3_000 },
       { symbol: "LINK", type: "crypto", wallet: md5(coinbaseIdentity), amount: 90, base: 1_600 },
     ];
+    const firstReviewDay = freshReviewData
+      ? new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - 59))
+      : new Date(Date.UTC(2026, 7, 24));
     for (let day = 0; day < 60; day++) {
       const uuid = `demo-${String(day).padStart(2, "0")}`;
-      const createdAt = new Date(Date.UTC(2026, 7, 24 + day)).toISOString();
+      const createdAt = new Date(firstReviewDay.getTime() + day * 86400000).toISOString();
       const dailyMove = [0.004, -0.012, 0.008, 0.015, -0.006, 0.003, -0.009, 0.011, -0.004];
       const market = 0.86 + day * 0.004
         + (day >= 13 ? -0.055 : 0) + (day >= 27 ? 0.045 : 0)
@@ -95,7 +98,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       db.run(`INSERT INTO transactions (uuid, assetID, asset_type, wallet, symbol, amount, price, txnType, txnCreatedAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'buy', ?)`,
       ["demo-00", first[0], holding.type, holding.wallet, holding.symbol,
-        holding.amount, Number(last[0]) * costFactor, new Date(Date.UTC(2026, 7, 24)).toISOString()]);
+        holding.amount, Number(last[0]) * costFactor, firstReviewDay.toISOString()]);
     }
     for (const [symbol, amount, saleFactor, day] of [
       ["SOL", 5, 1.08, 20],
@@ -159,7 +162,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   const files = new Map<string, string>();
   let exportedPath: string | null = null;
   const requests = new Map<number, { url: string; method?: string; headers?: Record<string, string> | [string, string][]; data?: number[] }>();
-  const responses = new Map<number, { bytes: number[]; read: boolean }>();
+  const responses = new Map<number, { bytes: number[]; read: boolean; chunks?: number[][]; chunkIndex?: number }>();
   let nextRid = 1;
   let refreshes = 0;
   let sseCalls = 0;
@@ -179,7 +182,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
 
   await page.exposeBinding("__e2eInvoke", async (_source, cmd: string, args: any, options?: any) => {
     if (cmd === "get_database_url") return "sqlite:e2e.db";
-    if (cmd === "ios_startup_failure") return null;
+    if (cmd === "ios_startup_failure") return lockedStartup ? "Protected key unavailable" : null;
     if (cmd === "ios_retry_startup") return false;
     if (cmd === "ios_haptic") { haptics++; return null; }
     if (cmd === "ios_lock_enabled") return false;
@@ -435,11 +438,38 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
             "",
           ].join("\n\n");
         } else {
-          body = '{"choices":[{"message":{"content":"Greeting"}}]}';
+          const isToolActivityPlan = slowAssistant
+            && input.messages.some((message: { content?: string }) => message.content?.includes("portfolio-analysis planner"))
+            && input.messages.some((message: { content?: string }) => message.content?.includes("Show my tool activity"));
+          if (slowAssistant && !isToolActivityPlan
+            && input.messages.some((message: { content?: string }) => message.content?.includes("Show my tool activity"))) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+          body = JSON.stringify({
+            choices: [{ message: { content: isToolActivityPlan ? JSON.stringify({
+              complexity: "multi",
+              reasoning: "Read holdings and portfolio value",
+              tasks: [
+                { id: "t1", skillName: "asset_snapshot", args: {}, description: "Read holdings", dependsOn: [] },
+                { id: "t2", skillName: "portfolio_value", args: {}, description: "Check total value", dependsOn: [] },
+              ],
+              requiresRefinement: false,
+              maxOptimizerRounds: 0,
+            }) : "Your portfolio is ready to explore." } }],
+          });
         }
       }
       const rid = nextRid++;
-      responses.set(rid, { bytes: Array.from(new TextEncoder().encode(body)), read: false });
+      const response = { bytes: Array.from(new TextEncoder().encode(body)), read: false, chunks: undefined as number[][] | undefined, chunkIndex: 0 };
+      if (slowAssistant && contentType === "text/event-stream" && body.includes("Hello from SSE")) {
+        const split = body.indexOf('data: {"choices":[{"delta":{"content":"Hello from SSE"}}]}')
+          + 'data: {"choices":[{"delta":{"content":"Hello from SSE"}}]}'.length + 2;
+        response.chunks = [
+          Array.from(new TextEncoder().encode(body.slice(0, split))),
+          Array.from(new TextEncoder().encode(body.slice(split))),
+        ];
+      }
+      responses.set(rid, response);
       return {
         status: 200, statusText: "OK", url: request.url,
         headers: { "content-type": contentType }, rid,
@@ -448,6 +478,16 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     if (cmd === "plugin:http|fetch_read_body") {
       const response = responses.get(args.rid);
       if (!response || response.read) return [1];
+      if (response.chunks) {
+        const chunkIndex = response.chunkIndex ?? 0;
+        if (chunkIndex >= response.chunks.length) {
+          response.read = true;
+          return [1];
+        }
+        if (chunkIndex === 1) await new Promise((resolve) => setTimeout(resolve, 1000));
+        response.chunkIndex = chunkIndex + 1;
+        return [...response.chunks[chunkIndex], 0];
+      }
       response.read = true;
       return [...response.bytes, 0];
     }

@@ -27,6 +27,7 @@ import PageLoadingOverlay from "../page-loading-overlay";
 import AutoBackupIndicator from "../auto-backup-indicator";
 import SyncStatusIndicator from "../sync-status-indicator";
 import "./index.css";
+import "@/components/ios-d3.css";
 import { Route, Routes, HashRouter, Outlet, Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
@@ -65,7 +66,7 @@ import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
-import { BottomSheet, InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import { BottomSheet, InsetGroup, ListRow, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
 import TopCoinsRank from "../top-coins-rank";
 import ProfitSummary from "../profit-summary";
 import LatestAssetsPercentage from "../latest-assets-percentage";
@@ -420,6 +421,7 @@ function Layout({
 
 function MoreHub() {
   const { t } = useTranslation();
+  const haptic = useHaptics();
   const unread = useOutletContext<number>();
   const items: { href: string; label: string; value?: string; icon: MobileIconName }[] = [
     { href: "#/rebalance", label: t("nav.rebalance"), icon: "rebalance" },
@@ -427,11 +429,18 @@ function MoreHub() {
     { href: "#/assistant", label: t("nav.assistant"), icon: "assistant" },
     { href: "#/settings", label: t("nav.settings"), icon: "settings" },
   ];
-  return <div className="mobile-more-hub"><InsetGroup>
-    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
-      <MobileIcon name={item.icon} />{item.label}
-    </ListRow>)}
-  </InsetGroup></div>;
+  return <div className="mobile-more-hub ios-d3-more" onClickCapture={() => haptic("selection")}>
+    <InsetGroup title={t("more.group.plan")}>
+      {items.slice(0, 2).map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
+        <MobileIcon name={item.icon} />{item.label}
+      </ListRow>)}
+    </InsetGroup>
+    <InsetGroup title={t("more.group.manage")}>
+      {items.slice(2).map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
+        <MobileIcon name={item.icon} />{item.label}
+      </ListRow>)}
+    </InsetGroup>
+  </div>;
 }
 
 function AnalyticsHub({ currency, dateRange, quoteColor }: {

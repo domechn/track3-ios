@@ -56,11 +56,50 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   render(<GoalsAlerts />);
   await screen.findByText("No rules yet");
   expect(screen.queryByRole("button", { name: "Save rule" })).not.toBeInTheDocument();
-  await userEvent.click(screen.getByText("Add alert"));
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
   expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Save rule" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+});
+
+it("keeps empty alert history actions out of the iPhone page", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<GoalsAlerts />);
+  await screen.findByText("No rules yet");
+  expect(screen.getByRole("button", { name: "Add alert" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Acknowledge all" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Clear history" })).not.toBeInTheDocument();
+});
+
+it("lets an iPhone owner choose an alert kind in one form row", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<GoalsAlerts />);
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
+  const kind = screen.getByRole("combobox", { name: "Alert kind" });
+  await userEvent.selectOptions(kind, "asset_value_target");
+  expect(screen.getByRole("textbox", { name: "Symbol" })).toBeInTheDocument();
+});
+
+it("uses a switch to toggle a saved alert on iPhone", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  vi.mocked(listAlertRules).mockResolvedValue([savedRule]);
+  render(<GoalsAlerts />);
+  const toggle = await screen.findByRole("switch", { name: "Enable Portfolio value goal" });
+  await userEvent.click(toggle);
+  expect(setAlertRuleEnabled).toHaveBeenCalledWith(7, false);
+});
+
+it("shows the goal progress ring beside the bar on iPhone", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  vi.mocked(listAlertRules).mockResolvedValue([savedRule]);
+  vi.mocked(loadAlertEvaluationData).mockResolvedValue({
+    snapshots: [{ at: "2025-01-02T00:00:00.000Z", assets: [{ assetType: "crypto", symbol: "BTC", value: 50, price: 50, wallet: "wallet-a" }] }],
+    prices: {}, excludedSymbols: [],
+  });
+  render(<GoalsAlerts />);
+  expect(await screen.findByRole("img", { name: /Portfolio value goal.*50%/ })).toBeInTheDocument();
+  expect(screen.getByRole("progressbar", { name: "Progress toward Portfolio value goal" })).toBeInTheDocument();
 });
 
 it("keeps the iPhone rule editor open when the initial rule query finishes", async () => {
@@ -81,7 +120,7 @@ it("traps focus and locks background scroll while the iPhone rule editor is open
   vi.mocked(isIOS).mockReturnValue(true);
   render(<><button>Outside</button><GoalsAlerts /></>);
   await screen.findByText("No rules yet");
-  await userEvent.click(screen.getByText("Add alert"));
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
   const dialog = screen.getByRole("dialog", { name: "Add alert" });
   expect(document.body.style.overflow).toBe("hidden");
   within(dialog).getByRole("button", { name: "Cancel" }).focus();

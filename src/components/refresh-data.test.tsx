@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import RefreshData from "@/components/refresh-data";
 import { refreshAllData } from "@/middlelayers/charts";
-import { updateAllCurrencyRates } from "@/middlelayers/configuration";
+import { getConfiguration, updateAllCurrencyRates } from "@/middlelayers/configuration";
+import { listPortfolioSources } from "@/middlelayers/data";
 import { getMemoryCacheInstance } from "@/middlelayers/datafetch/utils/cache";
 import { I18nProvider, localeLocalStorageKey } from "@/i18n";
 import { FullRefreshRequiredError } from "@/middlelayers/refresh-error";
@@ -41,8 +42,11 @@ vi.mock("@/middlelayers/charts", () => ({
 }));
 
 vi.mock("@/middlelayers/configuration", () => ({
+  getConfiguration: vi.fn(),
   updateAllCurrencyRates: vi.fn(),
 }));
+vi.mock("@/middlelayers/data", () => ({ listPortfolioSources: vi.fn() }));
+vi.mock("@/middlelayers/license", () => ({ isProVersion: vi.fn().mockResolvedValue({ isPro: false }) }));
 
 vi.mock("@/middlelayers/datafetch/utils/cache", () => ({
   getMemoryCacheInstance: vi.fn(),
@@ -71,6 +75,8 @@ beforeEach(() => {
   mockRefreshAction.current = null;
   localStorage.clear();
   vi.mocked(updateAllCurrencyRates).mockResolvedValue(undefined as never);
+  vi.mocked(getConfiguration).mockResolvedValue(undefined);
+  vi.mocked(listPortfolioSources).mockReturnValue([]);
   vi.mocked(refreshAllData).mockResolvedValue({
     failedSources: [],
     requiresDataSourceAction: false,
@@ -105,6 +111,66 @@ describe("RefreshData — currency rates refresh ordering", () => {
     render(<RefreshData loading={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+  });
+
+  it("shows a completed source while the rest of the refresh is pending", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockImplementationOnce((_progress, options) => new Promise(() => {
+      options?.onSourceResult?.({
+        sourceId: "cex:0", label: "Main exchange", walletIdentities: [],
+        status: "ok", coins: [], startedAt: "2026-01-01T00:00:00.000Z", finishedAt: "2026-01-01T00:00:02.000Z",
+      });
+    }));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("group", { name: "Main exchange" })).toHaveTextContent("2.0s");
+  });
+
+  it("matches live rows by source ID when aliases are the same", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getConfiguration).mockResolvedValue({} as never);
+    vi.mocked(listPortfolioSources).mockReturnValue([
+      { sourceId: "btc:0", label: "Vault" }, { sourceId: "btc:1", label: "Vault" },
+    ]);
+    vi.mocked(refreshAllData).mockImplementationOnce((_progress, options) => new Promise(() => {
+      options?.onSourceResult?.({
+        sourceId: "btc:0", label: "Vault", walletIdentities: [], status: "ok", coins: [],
+        startedAt: "2026-01-01T00:00:00.000Z", finishedAt: "2026-01-01T00:00:02.000Z",
+      });
+    }));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(screen.getAllByRole("group", { name: "Vault" })).toHaveLength(2));
+    const rows = screen.getAllByRole("group", { name: "Vault" });
+    expect(rows[0]).toHaveTextContent("2.0s");
+    expect(rows[1]).toHaveTextContent("Refreshing portfolio");
+    expect(rows[1]).not.toHaveTextContent("Waiting…");
+  });
+
+  it("gives each in-progress source one clear state", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getConfiguration).mockResolvedValue({} as never);
+    vi.mocked(listPortfolioSources).mockReturnValue([{ sourceId: "cex:0", label: "Main exchange" }]);
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    const row = await screen.findByRole("group", { name: "Main exchange" });
+    expect(row).toHaveTextContent("Refreshing portfolio");
+    expect(row).not.toHaveTextContent("Waiting…");
+  });
+
+  it("keeps the result summary visible on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockResolvedValueOnce({
+      failedSources: [], requiresDataSourceAction: false, usedLastKnownData: true,
+      persisted: true, sourceResults: [],
+      sourceStatuses: [{ sourceId: "btc:0", label: "BTC wallet 1", status: "failed" }],
+    } as never);
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Source status" });
+    await waitFor(() => expect(dialog).toHaveTextContent("Failed sources (1 of 1)"));
+    expect(dialog.querySelector("p.sr-only")).toBeNull();
   });
 
   it("hides results from the previous run while an iPhone refresh is pending", async () => {
@@ -269,13 +335,13 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect(screen.getByText("OK")).toBeTruthy();
     expect(refreshAllData).toHaveBeenLastCalledWith(
       expect.any(Function),
-      {
+      expect.objectContaining({
         retrySourceId: "btc:0",
         previousSourceResults: [failedSource],
         previousSourceStatuses: partialResult.sourceStatuses,
         previousSnapshotId: "previous",
         previousSnapshotKey: "snapshot-key",
-      },
+      }),
       expect.any(Object), expect.any(Function),
     );
   });
@@ -425,9 +491,9 @@ describe("RefreshData — currency rates refresh ordering", () => {
     expect((await axe.run(dialog, { rules: { "color-contrast": { enabled: false } } })).violations).toEqual([]);
     await user.click(screen.getByRole("button", { name: "Retry all failed" }));
     await waitFor(() => expect(refreshAllData).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(refreshAllData).mock.calls[1][1]).toEqual({
+    expect(vi.mocked(refreshAllData).mock.calls[1][1]).toEqual(expect.objectContaining({
       previousSourceStatuses: sourceStatuses,
-    });
+    }));
   });
 
   it("shows partial endpoints and a retry beside failed and current sources", async () => {
@@ -515,12 +581,12 @@ describe("RefreshData — currency rates refresh ordering", () => {
     const user = userEvent.setup();
     render(<RefreshData loading={false} />);
     await user.click(screen.getByRole("button", { name: "Refresh" }));
-    expect(vi.mocked(refreshAllData).mock.calls[0][1]).toEqual({
+    expect(vi.mocked(refreshAllData).mock.calls[0][1]).toEqual(expect.objectContaining({
       previousSourceStatuses: [{
         sourceId: "cex:0", label: "Main", kind: "exchange", provider: "Binance", hint: "#1",
         status: "ok", lastSuccessAt: "2026-10-17T12:30:00Z",
       }],
-    });
+    }));
   });
 
   it("ignores malformed saved source statuses", () => {
@@ -548,7 +614,7 @@ describe("RefreshData — currency rates refresh ordering", () => {
     await user.click(screen.getByRole("button", { name: "Source status" }));
     await user.click(screen.getByRole("button", { name: "Retry all failed" }));
     await waitFor(() => expect(refreshAllData).toHaveBeenCalledWith(
-      expect.any(Function), { previousSourceStatuses: statuses }, expect.any(Object), expect.any(Function),
+      expect.any(Function), expect.objectContaining({ previousSourceStatuses: statuses }), expect.any(Object), expect.any(Function),
     ));
   });
 
@@ -613,7 +679,7 @@ describe("RefreshData — currency rates refresh ordering", () => {
       expect(persistenceAttempts).toBe(2);
       expect(refreshAllData).toHaveBeenCalledWith(
         expect.any(Function),
-        {},
+        expect.objectContaining({ onSourceResult: expect.any(Function) }),
         {
           operationUuid: expect.stringMatching(
             /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,

@@ -169,11 +169,12 @@ for (const phone of phones) {
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-first-launch.png` });
     await page.getByRole("button", { name: "Add your first source" }).click();
     await expect(page).toHaveURL(/#\/settings\/configuration$/);
-    await page.getByRole("button", { name: "Add Symbol" }).click();
-    const form = page.getByRole("dialog", { name: "Edit custom asset" });
+    await page.getByRole("button", { name: "Add source" }).click();
+    await page.getByRole("button", { name: "Add custom asset" }).click();
+    const form = page.getByRole("dialog", { name: "Add custom asset" });
     await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");
     await form.getByRole("textbox", { name: "Amount" }).fill("2");
-    await form.getByRole("button", { name: "Save changes" }).click();
+    await form.getByRole("button", { name: "Add custom asset" }).click();
     await expect(page.getByRole("button", { name: "Edit ETH" })).toBeVisible();
     await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
@@ -189,22 +190,23 @@ for (const phone of phones) {
     await page.getByRole("navigation", { name: "Settings sections" })
       .getByRole("link", { name: "Data sources" }).click();
 
+    await page.getByRole("button", { name: "Add source" }).click();
     await page.getByRole("button", { name: "Add wallet" }).click();
     const wallet = page.getByRole("dialog", { name: "Edit data source" });
-    await wallet.getByRole("button", { name: "Continue" }).click();
+    await wallet.getByRole("button", { name: "BTC" }).click();
     await wallet.getByRole("textbox", { name: "Alias" }).fill("Long-term BTC");
     await wallet.getByRole("textbox", { name: "Address" }).fill("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
-    await wallet.getByRole("button", { name: "Save changes" }).click();
+    await wallet.getByRole("button", { name: "Add" }).click();
     await expect(wallet).not.toBeVisible();
     await expect(page.getByRole("region", { name: "Wallet" }).getByRole("button", { name: /^Long-term BTC / })).toBeVisible();
 
     await page.getByRole("button", { name: "Add exchange" }).click();
     const exchange = page.getByRole("dialog", { name: "Edit data source" });
-    await exchange.getByRole("button", { name: "Continue" }).click();
+    await exchange.getByRole("button", { name: "Binance" }).click();
     await exchange.getByRole("textbox", { name: "Alias" }).fill("Portfolio Binance");
     await exchange.getByRole("textbox", { name: "Api Key" }).fill("e2e-api-key");
     await exchange.getByRole("textbox", { name: "Api Secret" }).fill("e2e-api-secret");
-    await exchange.getByRole("button", { name: "Save changes" }).click();
+    await exchange.getByRole("button", { name: "Add" }).click();
     await expect(exchange).not.toBeVisible();
     await expect(page.getByRole("region", { name: "Exchanges" }).getByRole("button", { name: /^Portfolio Binance / })).toBeVisible();
     await page.reload();
@@ -271,7 +273,7 @@ for (const phone of phones) {
     await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
     const titleRow = (await page.getByTestId("sidebar-toggle").locator("..").boundingBox())!;
     const settings = (await page.getByTestId("chat-open-settings").boundingBox())!;
-    expect(settings.y).toBeGreaterThanOrEqual(titleRow.y + titleRow.height);
+    expect(settings.x >= titleRow.x + titleRow.width || settings.y >= titleRow.y + titleRow.height).toBe(true);
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-assistant.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
   });
@@ -280,11 +282,10 @@ for (const phone of phones) {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     await installTauriBridge(page);
     await page.goto("/#/settings/appearance?section=language");
-    await page.getByRole("radio", { name: "中文" }).click();
+    await page.getByRole("button", { name: "中文" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh");
     await page.goto("/#/settings/appearance?section=theme");
-    await page.getByText("深色", { exact: true }).click();
-    await page.getByRole("button", { name: "应用修改" }).click();
+    await page.getByRole("button", { name: "深色" }).click();
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: "外观" })).toBeVisible();
@@ -292,31 +293,54 @@ for (const phone of phones) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
   });
 
-  test(`settings checkboxes and radios have labeled tap areas on iPhone ${phone.name}`, async ({ page }) => {
+  test(`settings choices have labeled tap areas on iPhone ${phone.name}`, async ({ page }) => {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     await installTauriBridge(page);
-    for (const [route, ids] of [
-      ["/settings/configuration?section=currency", ["groupUSD", "hideInactive"]],
-      ["/settings/appearance?section=theme", ["system", "light", "dark", "green-up-red-down", "red-up-green-down"]],
-      ["/settings/appearance?section=language", ["language-en", "language-zh"]],
-      ["/settings/data?section=backup", ["exportConfigurationCheckbox", "exportDataCheckbox"]],
-    ] as const) {
-      await page.goto(`/#${route}`);
-      for (const id of ids) {
-        const label = page.locator(`label[for="${id}"]`);
-        await expect(label).toBeVisible();
-        const box = (await label.boundingBox())!;
-        expect(box.width, `${route} ${id} width`).toBeGreaterThanOrEqual(44);
-        expect(box.height, `${route} ${id} height`).toBeGreaterThanOrEqual(44);
-      }
-      const idToTap = route.includes("currency") ? "groupUSD"
-        : route.includes("theme") ? "dark"
-          : route.includes("language") ? "language-zh" : "exportConfigurationCheckbox";
-      const control = page.locator(`[id="${idToTap}"]`);
-      const before = await control.getAttribute("data-state");
-      await page.locator(`label[for="${idToTap}"]`).click();
-      await expect(control).not.toHaveAttribute("data-state", before ?? "");
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
+    await page.goto("/#/settings/configuration?section=currency");
+    const switches = page.getByRole("switch");
+    await expect(switches).toHaveCount(2);
+    for (const control of await switches.all()) {
+      const box = (await control.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
     }
+    const group = page.getByRole("switch", { name: /Group stable coins/ });
+    const previous = await group.getAttribute("data-state");
+    await group.click();
+    await expect(group).not.toHaveAttribute("data-state", previous ?? "");
+
+    await page.goto("/#/settings/appearance?section=theme");
+    for (const name of ["Follow system", "Light", "Dark", "Green Up / Red Down", "Red Up / Green Down"]) {
+      const row = page.getByRole("button", { name });
+      await expect(row).toBeVisible();
+      const box = (await row.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole("button", { name: "Dark" }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+
+    await page.goto("/#/settings/appearance?section=language");
+    for (const name of ["English", "中文"]) {
+      const row = page.getByRole("button", { name });
+      const box = (await row.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole("button", { name: "中文" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh");
+
+    await page.goto("/#/settings/data?section=backup");
+    for (const id of ["exportConfigurationCheckbox", "exportDataCheckbox"]) {
+      const label = page.locator(`label[for="${id}"]`);
+      const box = (await label.boundingBox())!;
+      expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    const backup = page.locator("#exportConfigurationCheckbox");
+    const before = await backup.getAttribute("data-state");
+    await page.locator('label[for="exportConfigurationCheckbox"]').click();
+    await expect(backup).not.toHaveAttribute("data-state", before ?? "");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
   });
 }

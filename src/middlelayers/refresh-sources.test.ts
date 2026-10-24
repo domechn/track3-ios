@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchPortfolios } from "./data";
+import { fetchPortfolios, listPortfolioSources } from "./data";
 import type { GlobalConfig, WalletCoin } from "./datafetch/types";
 import { recordOptionalSourceFailure, recordSourceFailure } from "./datafetch/utils/source-failure";
 import { getMemoryCacheInstance } from "./datafetch/utils/cache";
@@ -61,6 +61,20 @@ beforeEach(() => {
 });
 
 describe("per-source refresh", () => {
+  it("uses the same source IDs for pending rows and fetches, including Pro-only chains", () => {
+    const mixed = {
+      ...config,
+      btc: { addresses: [{ address: "wallet-a", alias: "Same" }, { address: "wallet-b", alias: "Same" }] },
+      trc20: { addresses: ["tron-a"] },
+      others: [{ symbol: "CUSTOM", amount: 1 }],
+    };
+    expect(listPortfolioSources(mixed, userInfo).map(({ sourceId, label }) => [sourceId, label])).toEqual([
+      ["others", "Others"], ["btc:0", "Same"], ["btc:1", "Same"],
+    ]);
+    expect(listPortfolioSources(mixed, { isPro: true }).map((source) => source.sourceId)).toEqual([
+      "others", "btc:0", "btc:1", "trc20:0",
+    ]);
+  });
   it("keeps the successful wallet when another wallet fails", async () => {
     scenario.load = async (id) => {
       if (id === "wallet-a") throw new Error("connection refused");

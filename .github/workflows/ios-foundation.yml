@@ -58,7 +58,7 @@ jobs:
       - name: Check browser tests
         run: corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit
       - name: Test iPhone flows
-        run: corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts --workers=2
+        run: corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts tests/e2e/ios-d3-visual.spec.ts --workers=2
       - name: Upload iPhone browser screenshots
         if: always()
         continue-on-error: true

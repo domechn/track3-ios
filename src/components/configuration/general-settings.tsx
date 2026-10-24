@@ -1,6 +1,7 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,6 +18,9 @@ import { UpdateIcon } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { prettyPriceNumberToLocaleString } from "@/utils/currency";
 import type { GeneralSettingsProps } from "./types";
+import { isIOS } from "@/utils/platform";
+import { InsetGroup, ListRow } from "@/components/mobile";
+import { ModalPage } from "@/components/mobile/overlays";
 
 const defaultBaseCurrency = "USD";
 
@@ -42,6 +46,35 @@ const GeneralSettings = memo(function GeneralSettings({
   onUpdateCurrencyRatesClick,
 }: GeneralSettingsProps) {
   const { t } = useTranslation();
+  const mobile = isIOS();
+  const [picker, setPicker] = useState<"size" | "currency">();
+
+  if (mobile) return <div className="ios-d3-mobile-general">
+    <InsetGroup>
+      <ListRow trailing={<Switch id="groupUSD" checked={groupUSD} onCheckedChange={onGroupUSDChange} aria-label={t("config.groupStablecoins")} />}>{t("config.groupStablecoins")}</ListRow>
+      <ListRow trailing={<Switch id="hideInactive" checked={hideInactive} onCheckedChange={onHideInactiveChange} aria-label={t("config.hideInactiveSources")} />}>{t("config.hideInactiveSources")}</ListRow>
+      <ListRow onClick={() => setPicker("size")} value={String(querySize)}>{t("config.mobile.countOfResults")}</ListRow>
+      <ListRow onClick={() => setPicker("currency")} value={preferCurrencyLoading ? <Skeleton className="h-4 w-12" /> : preferCurrency}>{t("config.mobile.baseCurrency")}</ListRow>
+    </InsetGroup>
+    <Button size="sm" variant="ghost" className="mt-2 min-h-11 text-primary" onClick={onUpdateCurrencyRatesClick} disabled={preferCurrencyLoading || refreshCurrencyLoading}>
+      <UpdateIcon className={`mr-2 h-4 w-4 ${refreshCurrencyLoading ? "animate-spin" : ""}`} />{t("config.updateCurrencyRates")}
+    </Button>
+    {preferredCurrencyDetail && preferCurrency !== defaultBaseCurrency && <p className="px-3 text-xs text-muted-foreground">
+      {`1 ${defaultBaseCurrency} = ${prettyPriceNumberToLocaleString(preferredCurrencyDetail.rate)} ${preferredCurrencyDetail.currency}`}
+    </p>}
+    {picker && <ModalPage title={t(picker === "size" ? "config.mobile.countOfResults" : "config.mobile.baseCurrency")} onDismiss={() => setPicker(undefined)}>
+      <div className="ios-d3-picker-page">
+        <button className="ios-d3-picker-back" onClick={() => setPicker(undefined)}>{t("common.back")}</button>
+        <h2>{t(picker === "size" ? "config.mobile.countOfResults" : "config.mobile.baseCurrency")}</h2>
+        <div className="ios-d3-picker-group">{(picker === "size" ? querySizeOptions : preferCurrencyOptions).map((option) =>
+          <button key={option.value} onClick={() => {
+            if (picker === "size") onQuerySizeChange(option.value);
+            else onPreferCurrencyChange(option.value);
+            setPicker(undefined);
+          }}>{option.label}<span aria-hidden="true">{(picker === "size" ? String(querySize) : preferCurrency) === option.value ? "✓" : ""}</span></button>)}</div>
+      </div>
+    </ModalPage>}
+  </div>;
 
   return (
     <Card>
@@ -51,24 +84,24 @@ const GeneralSettings = memo(function GeneralSettings({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex items-center space-x-2">
-          <Checkbox
+        <div className={mobile ? "ios-d3-currency-toggle flex items-center" : "flex items-center space-x-2"}>
+          {mobile ? <Switch id="groupUSD" checked={groupUSD} onCheckedChange={onGroupUSDChange} /> : <Checkbox
             id="groupUSD"
             checked={groupUSD}
             onCheckedChange={(v) => onGroupUSDChange(!!v)}
-          />
+          />}
           <Label htmlFor="groupUSD" className="text-sm touch:flex touch:min-h-11 touch:items-center">
-            Group stable coins into USDT (USDC, TUSD, DAI...)
+            {t("config.groupStablecoins")}
           </Label>
         </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
+        <div className={mobile ? "ios-d3-currency-toggle flex items-center" : "flex items-center space-x-2"}>
+          {mobile ? <Switch id="hideInactive" checked={hideInactive} onCheckedChange={onHideInactiveChange} /> : <Checkbox
             id="hideInactive"
             checked={hideInactive}
             onCheckedChange={(v) => onHideInactiveChange(!!v)}
-          />
+          />}
           <Label htmlFor="hideInactive" className="text-sm touch:flex touch:min-h-11 touch:items-center">
-            Hide inactive exchanges, brokers, and wallets
+            {t("config.hideInactiveSources")}
           </Label>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

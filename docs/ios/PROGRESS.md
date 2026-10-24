@@ -24,8 +24,23 @@
 - The browser-only demo fixture still provides seven assets, two months of history, mixed gains and losses, and sale/repurchase pairs. The mobile route sweep now waits for the dark Coin and Analytics overlays to clear and for History logos to load. Captures for the six primary D2 routes exist in light and dark at 320×568 and 390×844. Fourteen D2 detail captures, including Allocation, Position changes, and Profit Metrics, exist in both themes at 375 and 390 px. I inspected the dark Coin and Analytics roots, History detail, Profit Metrics, Wallet changes, Comparison, P&L, Allocation, and Position changes captures.
 - Local verification: `corepack yarn tsc --noEmit` passed; `corepack yarn vitest run` passed 1,844 tests in 226 files; the three mobile Playwright suites passed 95 checks, with affected captures rechecked after the final chart and coin fixes. No new CI, Rust, simulator, or physical-device run is available for this follow-up. Physical-device haptics remain unverified.
 
-The earlier S1–S5 sections record their handoff results. The current state
-for the preceding worktree was D1 below.
+The earlier S1–S5 and D1 sections record their handoff results. This worktree
+combines the D2 data screens and D3 feature-screen pass.
+
+## D3 More and feature screens
+
+- More and the pushed Settings sections use inset groups. Currency and result count open full-page pickers; Appearance applies theme and quote color on tap. The sync credential form uses full-width fields with labels above. Pushed pages show their own centered compact title after scrolling.
+- Data sources use provider logos or monograms, the shared switch, a searchable provider picker, one grouped credentials form with filled inputs and field-level validation. Selecting a provider advances to credentials. The empty source screen has three setup cards and one primary Add source action; its picker includes custom assets so a first-launch owner can still add a holding.
+- Goals show a progress ring and bar on iPhone, with Add alert in the top bar and matching editor actions visible on SE. Rebalance presets wrap, target fields remain visibly editable, and buy and sell values have distinct signs and colors. The assistant header aligns with Back; the completed reply is above the composer on SE and iPhone 14. Refresh shows pending and completed source rows with aligned durations, a visible result summary, and Retry actions.
+- The D3 browser suite captures 34 screen states in each light/dark and SE/iPhone 14 combination, producing 136 PNGs in `test-results/mobile/`. Its current-dated 60-day review fixture shows seven assets, positive and negative trades, and a current goal value. It also captures the assistant's streaming caret and tool activity while those states are visible, plus completed refresh rows. Browser capture cannot validate native biometric prompts, the app-switcher privacy cover, hardware haptics, the real iOS keyboard, or background suspension.
+- Each source result now records its own fetch start and finish time; the status normalizer accepts only valid timestamp pairs. Rows without source timing omit the duration. Pending rows use the same source IDs and labels as the fetcher, including the Pro gate. The first-launch Overview illustration remains D1-owned; the three-card onboarding appears after its primary action opens Data sources.
+- Earlier D3 baseline verification passed 1,830 Vitest tests and the combined iPhone suite. Current review checks are recorded below after rerunning them.
+
+### D3 reviewer fixes verification
+
+- The reviewer fixes passed `corepack yarn tsc --noEmit` and `corepack yarn vitest run`: 1,852 tests across 224 files. The first full Vitest run found two assertions tied to the revised phone copy and onboarding flow; both were updated to preserve their original checks, then the full suite passed.
+- The four mobile browser suites passed 102/102 checks. The D3 suite wrote 136 light and dark PNGs at SE and iPhone 14 sizes in `test-results/mobile/`. The first browser pass exposed the first-launch custom-asset path hidden with the stray link; the Add source picker now includes that action, and the full browser run passed.
+- Inspected SE light and dark screenshots of onboarding, sync, backup, goals, rebalance, assistant, and refresh, plus the source provider and credential editors. The native-only behaviors above remain unverified.
 
 ## D1 third reviewer pass
 

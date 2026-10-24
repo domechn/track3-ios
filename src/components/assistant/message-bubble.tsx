@@ -146,6 +146,8 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
   if (block.kind === "agent_activity") {
     const activities = block.activities;
     if (activities.length === 0) return null;
+    const state = activities.some((activity) => activity.status === "failed") ? "failed"
+      : activities.some((activity) => activity.status !== "completed") ? "running" : "done";
     const content = (
       <div className="space-y-1 px-1 py-2">
         {activities.map((a) => (
@@ -164,8 +166,14 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
       </div>
     );
     return isIOS()
-      ? <details key={idx} className="rounded-lg border px-3">
-          <summary className="flex min-h-11 cursor-pointer items-center text-sm">{t?.("assistant.chat.toolActivity")}</summary>
+      ? <details key={idx} className="ios-d3-tool-activity rounded-lg border px-3">
+          <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+            <span className={`ios-d3-tool-status ios-d3-tool-status-${state}`} aria-hidden="true" />
+            <span>{t?.("assistant.chat.toolActivity")}</span>
+            <span className="text-muted-foreground">{t?.(activities.length === 1 ? "assistant.chat.toolSummary.one" : "assistant.chat.toolSummary.many")
+              ?.replace("{count}", String(activities.length)).replace("{status}", t?.(`assistant.chat.toolStatus.${state}`) ?? state)}</span>
+            <ChevronDownIcon className="ios-d3-tool-chevron ml-auto h-4 w-4" aria-hidden="true" />
+          </summary>
           {content}
         </details>
       : <div key={idx}>{content}</div>;
@@ -199,10 +207,11 @@ export default function MessageBubble({
   return (
     <div
       className={cn(
-        "flex w-full gap-2",
+        "ios-d3-chat-bubble flex w-full flex-wrap gap-2",
         isUser ? "justify-end" : "justify-start",
       )}
       data-testid={isUser ? "user-bubble" : "assistant-bubble"}
+      data-streaming={!isUser && Boolean(isStreaming)}
     >
       {!isUser && (
         <span
@@ -214,6 +223,7 @@ export default function MessageBubble({
       )}
       <div
         className={cn(
+          "ios-d3-chat-body",
           isUser ? "max-w-full" : "flex-1 min-w-0",
           "rounded-2xl px-4 py-3 shadow-sm",
           isUser
@@ -257,10 +267,13 @@ export default function MessageBubble({
               (block.kind === "text" && stripThinkTags(block.text))) && (
               <p className="text-sm italic text-muted-foreground">{t("assistant.chat.noResponse")}</p>
             )}
-            {message.usage && <UsageLabel usage={message.usage} pricePerMillionTokens={pricePerMillionTokens} inputPricePerMillionTokens={inputPricePerMillionTokens} outputPricePerMillionTokens={outputPricePerMillionTokens} />}
           </div>
         )}
       </div>
+      {!isUser && message.usage && <div className="ios-d3-chat-bubble-usage basis-full pl-9">
+        <UsageLabel usage={message.usage} pricePerMillionTokens={pricePerMillionTokens}
+          inputPricePerMillionTokens={inputPricePerMillionTokens} outputPricePerMillionTokens={outputPricePerMillionTokens} />
+      </div>}
       {isUser && (
         <span
           aria-hidden

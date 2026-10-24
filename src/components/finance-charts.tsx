@@ -36,7 +36,7 @@ function useChartOptions() {
   };
 }
 
-function ChartPanel({ title, children, empty }: { title: string; children?: React.ReactNode; empty?: boolean }) {
+function ChartPanel({ title, children, empty, height }: { title: string; children?: React.ReactNode; empty?: boolean; height?: number }) {
   const { t } = useTranslation();
   const press = useRef<number>();
   const inspecting = useRef(false);
@@ -45,7 +45,7 @@ function ChartPanel({ title, children, empty }: { title: string; children?: Reac
     <CardHeader className="px-4 pb-1 pt-3"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-4">
       {empty ? <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t("finance.noChartData")}</p>
-        : <div className="relative h-44 mobile-chart-touch"
+        : <div className="relative h-44 mobile-chart-touch" style={height ? { height } : undefined}
           onTouchStartCapture={() => {
             window.clearTimeout(press.current);
             inspecting.current = false;
@@ -170,20 +170,29 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
 export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
   rules: AlertRule[]; snapshots: AlertSnapshot[]; portfolioValues?: Array<{ date: string; value: number }>;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = goalVisuals(rules, snapshots);
   const values = portfolioValues.length ? portfolioValues : visual.values;
+  const dateFormatter = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const valueFormatter = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", { notation: "compact", maximumFractionDigits: 0 });
   return <ChartPanel title={t("finance.portfolioAndGoals")} empty={!values.length}>
     <Line role="img" aria-label={values.map((row) => `${row.date}: ${row.value.toFixed(2)}`).join("; ")}
-      data={{ labels: values.map((row) => row.date), datasets: [
+      data={{ labels: values.map((row) => {
+        const date = new Date(`${row.date}T00:00:00Z`);
+        return Number.isNaN(date.getTime()) ? row.date : dateFormatter.format(date);
+      }), datasets: [
         { label: t("finance.portfolioValue"), data: values.map((row) => row.value), borderColor: palette[0], backgroundColor: `${palette[0]}18`, fill: true, tension: 0.2, pointRadius: 1 },
         ...visual.goals.filter((goal) => goal.kind === "total_value_target").map((goal) => ({
           label: t("finance.goalThreshold"), data: values.map(() => goal.target),
           borderColor: palette[2], borderDash: [5, 4], pointRadius: 0,
         })),
-      ] }} options={chartOptions} />
+      ] }} options={{ ...chartOptions, scales: {
+        ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: {
+          ...chartOptions.scales.y.ticks, callback: (value: string | number) => valueFormatter.format(Number(value)),
+        } },
+      } }} />
   </ChartPanel>;
 }
 
@@ -194,20 +203,24 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
   const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = rebalanceVisuals(result);
+  const rowHeight = Math.max(176, visual.labels.length * 32 + 48);
+  const labeledOptions = { ...chartOptions, indexAxis: "y" as const, scales: {
+    ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: { ...chartOptions.scales.y.ticks, autoSkip: false } },
+  } };
   return <div className="grid gap-3 lg:grid-cols-2">
-    <ChartPanel title={t("finance.currentVsTarget")} empty={!visual.labels.length}>
+    <ChartPanel title={t("finance.currentVsTarget")} empty={!visual.labels.length} height={rowHeight}>
       <Bar role="img" aria-label={visual.labels.map((label, index) => `${label}: ${visual.current[index].toFixed(1)}% ${t("rebalance.current")}, ${visual.target[index].toFixed(1)}% ${t("rebalance.target")}`).join("; ")}
         data={{ labels: visual.labels, datasets: [
           { label: t("rebalance.current"), data: visual.current, backgroundColor: palette[0] },
-          { label: t("rebalance.target"), data: visual.target, backgroundColor: palette[1] },
-        ] }} options={{ ...chartOptions, indexAxis: "y" as const, plugins: { ...chartOptions.plugins, legend: { display: true } } }} />
+          { label: t("rebalance.target"), data: visual.target, backgroundColor: palette[2] },
+        ] }} options={{ ...labeledOptions, plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: chartOptions.scales.y.ticks.color } } } }} />
     </ChartPanel>
-    <ChartPanel title={t("rebalance.deviations")} empty={!visual.labels.length}>
+    <ChartPanel title={t("rebalance.deviations")} empty={!visual.labels.length} height={rowHeight}>
       <Bar role="img" aria-label={`${visual.labels.map((label, index) => `${label}: ${visual.deviations[index].toFixed(1)} ${t("rebalance.percentagePoints")}`).join("; ")}; ${t("finance.toleranceBand")} ±${tolerancePercent}%`}
         data={{ labels: visual.labels, datasets: [{
           data: visual.deviations,
-          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor)),
-        }] }} options={{ ...chartOptions, indexAxis: "y" as const }}
+          backgroundColor: visual.deviations.map((value) => `${tone(value >= 0, quoteColor)}88`),
+        }] }} options={labeledOptions}
         plugins={[{
           id: "tolerance-band",
           beforeDatasetsDraw(chart: ChartJS<"bar">) {

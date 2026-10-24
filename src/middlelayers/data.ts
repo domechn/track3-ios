@@ -142,7 +142,7 @@ type SourceSpec = {
   unsupported?: boolean;
 };
 
-function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): SourceSpec[] {
+function listPortfolioSourceSpecs(config: GlobalConfig, userInfo: UserLicenseInfo): SourceSpec[] {
   const sources: SourceSpec[] = [];
   const secrets = configuredSecretValues(config);
   const nextNumber = (provider: string) => `#${sources.filter((source) => source.provider === provider).length + 1}`;
@@ -234,14 +234,18 @@ function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): 
   return sources;
 }
 
+export function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): Array<{ sourceId: string; label: string }> {
+  return listPortfolioSourceSpecs(config, userInfo).map(({ sourceId, label }) => ({ sourceId, label }));
+}
+
 // progress percent is 70
 export async function fetchPortfolios(
   config: GlobalConfig,
   addProgress: AddProgressFunc,
   userInfo: UserLicenseInfo,
-  options: { sourceId?: string } = {},
+  options: { sourceId?: string; onSourceResult?: (source: PortfolioSourceResult) => void } = {},
 ): Promise<LoadPortfoliosResult> {
-  const allSources = listPortfolioSources(config, userInfo);
+  const allSources = listPortfolioSourceSpecs(config, userInfo);
   const sources = options.sourceId
     ? allSources.filter((source) => source.sourceId === options.sourceId)
     : allSources;
@@ -263,6 +267,7 @@ export async function fetchPortfolios(
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
+      const startedAt = new Date().toISOString();
       let walletIdentities = source.walletIdentities;
       try {
         const { coins: portfolio, partial } = await withinSourceTimeout(async () => {
@@ -298,7 +303,7 @@ export async function fetchPortfolios(
         }, kind === "cex" || kind === "sol" || kind === "erc20" || kind === "stock" ? 120_000 : sourceTimeoutMs);
         return { sourceId: source.sourceId, label: source.label, kind: source.kind, provider: source.provider,
           hint: source.hint, walletIdentities, status: partial ? "partial" as const : "ok" as const,
-          coins: portfolio, ...(partial ? { partial } : {}) };
+          coins: portfolio, startedAt, finishedAt: new Date().toISOString(), ...(partial ? { partial } : {}) };
       } catch (error) {
         // Upstream messages can contain credentials and request URLs. Keep only a category.
         if (error instanceof Error && error.message === "Source timed out") {
@@ -308,17 +313,18 @@ export async function fetchPortfolios(
         const detail = error instanceof Error && ["Source timed out", "Unsupported exchange", "Invalid source holdings"].includes(error.message)
           ? error.message : undefined;
         return { sourceId: source.sourceId, label: source.label, kind: source.kind, provider: source.provider,
-          hint: source.hint, walletIdentities, status: "stale" as const, coins: [], category, detail };
+          hint: source.hint, walletIdentities, status: "stale" as const, coins: [], category, detail,
+          startedAt, finishedAt: new Date().toISOString() };
       } finally {
         addProgress(perProgressPer);
       }
     };
-    if (!["erc20", "sol", "btc", "doge", "trc20", "ton", "sui"].includes(kind)) {
-      return run();
-    }
     const task = run();
-    chainTasks.set(kind, task);
-    return task;
+    if (["erc20", "sol", "btc", "doge", "trc20", "ton", "sui"].includes(kind)) chainTasks.set(kind, task);
+    return task.then((result) => {
+      try { options.onSourceResult?.(result); } catch { /* UI progress cannot fail the refresh. */ }
+      return result;
+    });
   }));
   const failedSources: FailedPortfolioSource[] = sourceResults
     .filter((source) => source.status === "stale")

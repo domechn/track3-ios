@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "@/i18n";
 import {
   ALERTS_CHANGED_EVENT, acknowledgeAlert, acknowledgeAllAlerts, clearAlertHistory,
@@ -22,6 +23,7 @@ import ConfirmDeleteDialog from "./common/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Progress } from "./ui/progress";
+import { Switch } from "./ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -167,14 +169,15 @@ export default function GoalsAlerts() {
   }
 
   const editor = <Card id="goal-rule-editor" className="border-0 shadow-none">
-    <CardHeader className="pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2" aria-label={t("goals.templates")}>
+    <CardHeader className="ios-d3-goal-editor-heading pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
+    <CardContent className="ios-d3-goal-editor-content space-y-4">
+      {!isIOS() && <div className="flex flex-wrap gap-2" aria-label={t("goals.templates")}>
         {templates.map((kind) => (
           <Button key={kind} size="sm" variant={draft.kind === kind ? "default" : "outline"}
             onClick={() => setDraft({ ...emptyDraft, kind })}>{t(`goals.kind.${kind}`)}</Button>
         ))}
-      </div>
+      </div>}
+      <p className="text-xs text-muted-foreground">{t("goals.units")}</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-1 text-sm">
           <span>{t("goals.kind")}</span>
@@ -208,6 +211,7 @@ export default function GoalsAlerts() {
         <label className="space-y-1 text-sm">
           <span>{t("goals.threshold")}</span>
           <Input type="number" min={needsWindow(draft.kind) ? undefined : "0"} step="any" value={draft.threshold}
+            placeholder={t("goals.threshold")}
             aria-invalid={validationField === "threshold"}
             aria-describedby={validationField === "threshold" ? "goal-rule-status" : undefined}
             onChange={(e) => { setValidationField(null); setDraft({ ...draft, threshold: e.target.value }); }} />
@@ -227,21 +231,25 @@ export default function GoalsAlerts() {
             onChange={(e) => { setValidationField(null); setDraft({ ...draft, cooldownMinutes: e.target.value }); }} />
         </label>
       </div>
-      <p className="text-xs text-muted-foreground">{t("goals.units")}</p>
-      <div className="flex gap-2">
+      {!isIOS() && <div className="ios-d3-goal-editor-actions flex gap-2">
         <Button onClick={() => void save()}>{t("goals.saveRule")}</Button>
         {draft.id > 0 && <Button variant="outline" onClick={() => setDraft(emptyDraft)}>{t("common.cancel")}</Button>}
-      </div>
+      </div>}
       {validationField && status && <p id="goal-rule-status" role="alert" className="text-sm">{status}</p>}
       {!validationField && status && <p role="status" className="text-sm">{status}</p>}
     </CardContent>
   </Card>;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-8">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
+    <div className="ios-d3-goals mx-auto flex max-w-5xl flex-col gap-4 pb-8">
+      {isIOS() && document.getElementById("app-top-bar") && createPortal(
+        <span className="ios-d3-pushed-title">{t("goals.title")}</span>, document.getElementById("app-top-bar")!)}
+      <div className="ios-d3-goals-heading flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
+        </div>
+        {isIOS() && <Button type="button" variant="ghost" className="ios-d3-goals-add" aria-label={t("goals.mobile.add")} onClick={() => setManualOpen(true)}><span aria-hidden="true">+</span></Button>}
       </div>
       <AISetupCard page="goals"
         summary={rules.length ? rules.map((rule) => `${rule.id}: ${rule.kind} ${rule.symbol ?? ""} ${rule.comparator} ${rule.threshold} ${rule.window ?? ""} ${rule.enabled ? "enabled" : "disabled"}`).join("; ") : "No alert rules"}
@@ -259,10 +267,11 @@ export default function GoalsAlerts() {
         </CardContent>
       </Card>
       {isIOS() ? <>
-        <Button type="button" variant="outline" className="order-last min-h-11" onClick={() => setManualOpen(true)}>{t("goals.mobile.add")}</Button>
         {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
-          <Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button>
+          <div className="ios-d3-goal-editor">
+          <div className="ios-d3-goal-editor-nav"><Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button><h2>{t(draft.id ? "goals.editRule" : "goals.newRule")}</h2><Button type="button" variant="ghost" className="ios-d3-goal-nav-save min-h-11" onClick={() => void save()}>{t("goals.saveRule")}</Button></div>
           {editor}
+          </div>
         </ModalPage>}
       </> : <details
         open={manualOpen}
@@ -287,7 +296,7 @@ export default function GoalsAlerts() {
                     : measurement.value <= rule.threshold ? 100 : rule.threshold / measurement.value * 100)) : 0;
                 const eta = rule.kind === "total_value_target" && rule.comparator === "gte"
                   ? goalEtaDays(portfolioValues, rule.threshold) : null;
-                return <div key={rule.id} className="rounded-md border p-3 space-y-2">
+                return <div key={rule.id} className="ios-d3-goal-rule rounded-md p-3 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex min-w-0 items-start gap-2">
                       <RuleIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -296,22 +305,24 @@ export default function GoalsAlerts() {
                       <div className="text-xs text-muted-foreground">
                         {measurement.status === "data-stale" ? t("goals.dataStale") :
                           measurement.status === "unavailable" ? t("goals.unavailable") :
-                            `${t("goals.current")}: ${measurement.value?.toFixed(2)}`}
+                            `${t("goals.current")}: ${measurement.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${rule.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {!isIOS() && <span className={`rounded-full px-2 py-0.5 text-[11px] ${rule.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                         {t(rule.enabled ? "goals.enabled" : "finance.paused")}
-                      </span>
+                      </span>}
                       <label className="flex items-center gap-1 text-xs">
-                        <input type="checkbox" checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
-                          onChange={(e) => void mutate(() => setAlertRuleEnabled(rule.id, e.target.checked))} />
-                        {t("goals.enabled")}
+                        {isIOS() ? <Switch checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
+                          onCheckedChange={(checked) => void mutate(() => setAlertRuleEnabled(rule.id, checked))} />
+                          : <input type="checkbox" checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
+                            onChange={(e) => void mutate(() => setAlertRuleEnabled(rule.id, e.target.checked))} />}
+                        {t(isIOS() && !rule.enabled ? "finance.paused" : "goals.enabled")}
                       </label>
-                      <Button size="sm" variant="outline" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
                       <ConfirmDeleteDialog
-                        trigger={<Button size="sm" variant="ghost">{t("common.delete")}</Button>}
+                        trigger={<Button size="sm" variant="ghost" className="text-destructive">{t("common.delete")}</Button>}
                         title={t("common.delete")}
                         description={t("goals.deleteConfirm")}
                         cancelLabel={t("common.cancel")}
@@ -340,7 +351,7 @@ export default function GoalsAlerts() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">{t("goals.history")}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          {(!isIOS() || history.length > 0) && <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={!history.some((alert) => !alert.acknowledgedAt)}
               onClick={() => void mutate(acknowledgeAllAlerts)}>{t("goals.ackAll")}</Button>
             <AlertDialog>
@@ -356,7 +367,7 @@ export default function GoalsAlerts() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </div>}
           {!loading && !history.length && <p className="text-sm text-muted-foreground">{t("goals.noHistory")}</p>}
           <ol className="space-y-2">
             {history.map((alert) => {
