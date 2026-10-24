@@ -67,6 +67,7 @@ import PageLoadingOverlay from "./page-loading-overlay";
 import { useTranslation } from "@/i18n";
 import { ScrollArea } from "./ui/scroll-area";
 import { SwipeableRow, useIsMobile } from "./mobile";
+import { groupHistoryMonths } from "./history-months";
 
 type RankData = {
   id: number;
@@ -553,7 +554,7 @@ const App = ({
   const totalPages = maxDataPage + 1;
 
   return (
-    <div aria-busy={pageLoading} data-testid="history-content">
+    <div className="d2-history" aria-busy={pageLoading} data-testid="history-content">
       {!isMobile && <h1 className="sr-only">{t("history.h1")}</h1>}
       <StaggerContainer className="space-y-4">
         {isMobile && <ConfirmDeleteDialog
@@ -649,7 +650,11 @@ const App = ({
             {isMobile && <div className="history-mobile-detail-list">
               {visibleRankData.map((item) => <div key={item.assetId} className="history-mobile-asset">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <span className="min-w-0 font-medium break-words">#{item.rank} {item.symbol}</span>
+                  <span className="flex min-w-0 items-center gap-2 font-medium">
+                    <span className="history-mobile-rank">{item.rank}</span>
+                    <img className="h-7 w-7 shrink-0 rounded-full" src={resolveAssetLogoSrc(item, logoMap[item.symbol])} alt="" />
+                    <span className="min-w-0 break-words">{item.symbol}</span>
+                  </span>
                   <span className="font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
@@ -813,7 +818,7 @@ const App = ({
           </DialogContent>
         </Dialog>
 
-        <FadeUp>
+        {!isMobile && <FadeUp>
           <div className="grid gap-3 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
@@ -870,10 +875,10 @@ const App = ({
               </CardContent>
             </Card>
           </div>
-        </FadeUp>
+        </FadeUp>}
 
         <FadeUp>
-          <Card>
+          <Card className={isMobile ? "history-records-card" : undefined}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {t("history.recordsCardTitle")}
@@ -982,32 +987,43 @@ const App = ({
 
               <div className="relative">
                 {isMobile && <div className="history-mobile-list">
-                  {data.map((row, idx) => {
-                    const isLatest = dataPage === 0 && idx === 0;
+                  {groupHistoryMonths(data).map((group) => <section key={group.key} className="history-month-section">
+                    <h2 className="history-month-heading">{new Intl.DateTimeFormat(
+                      document.documentElement.lang === "zh" ? "zh-CN" : "en-US",
+                      { month: "long", year: "numeric" },
+                    ).format(new Date(`${group.key}-01T12:00:00`))}</h2>
+                    <div className="history-month-rows">
+                  {group.rows.map((row) => {
+                    const isLatest = dataPage === 0 && data[0]?.id === row.id;
                     return <SwipeableRow key={row.id} className="history-mobile-snapshot"
                       actions={isLatest ? [{ label: t("common.delete"), destructive: true, disabled: deleting,
                         onClick: () => setDeleteCandidate(row.id) }] : []}>
                       <button type="button" data-testid="history-mobile-row"
                         className="history-mobile-snapshot-button" onClick={() => onRowClick(row.id)}>
                         <span className="sr-only">{t("history.viewSnapshot").replace("{date}", timeToDateStr(new Date(row.createdAt).getTime(), true))}</span>
-                        <span className="flex min-w-0 justify-between gap-3">
-                          <span className="min-w-0 break-words text-left font-medium">{timeToDateStr(new Date(row.createdAt).getTime(), true)}</span>
-                          <span className="shrink-0 font-mono font-semibold">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
+                        <span className="history-mobile-snapshot-primary">
+                          <span className="history-mobile-snapshot-date">{new Intl.DateTimeFormat(
+                            document.documentElement.lang === "zh" ? "zh-CN" : "en-US",
+                            { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+                          ).format(new Date(row.createdAt))}</span>
+                          <span className="history-mobile-snapshot-total ios-money">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
                         </span>
-                        <span className="flex justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="history-mobile-snapshot-secondary">
                           <span className="flex items-center gap-2">
-                            <ImageStack imageSrcs={row.topAssets.map((asset) =>
+                            <ImageStack imageSrcs={row.topAssets.slice(0, 3).map((asset) =>
                               resolveAssetLogoSrc(asset, logoMap[asset.symbol]))}
                               imageWidth={18} imageHeight={18} />
                             {t("history.assetCount").replace("{n}", String(row.assetCount))}
                           </span>
-                          <span style={{ color: positiveNegativeColor(row.change ?? 0, quoteColor) }}>
+                          <span className="history-mobile-snapshot-delta ios-money" data-tone={row.change === null ? "neutral" : positiveNegativeColor(row.change, quoteColor) === "green" ? "gain" : "loss"}>
                             {row.change === null ? "—" : `${row.change > 0 ? "+" : row.change < 0 ? "-" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.change)))}`}
                           </span>
                         </span>
                       </button>
                     </SwipeableRow>;
                   })}
+                    </div>
+                  </section>)}
                 </div>}
                 {!isMobile && <ScrollArea className="history-desktop-table w-full touch:min-w-0 touch:max-w-full rounded-lg border border-border/40 bg-background/20">
                   <Table className="touch:min-w-[600px]">

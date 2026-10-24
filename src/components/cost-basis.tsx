@@ -159,16 +159,17 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
   const money = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 2 });
   const qty = (value: number) => value !== 0 && Math.abs(value) < 1e-8
     ? String(value) : value.toLocaleString(undefined, { maximumFractionDigits: 8 });
+  const aiSetup = <AISetupCard page="cost-basis"
+    summary={`${t("cost.method")}: ${method}; ${t("cost.from")}: ${from}; ${t("cost.to")}: ${to}; ${t("cost.holdingDays")}: ${holdingDaysInput}`}
+    suggestions={["cost.ai.fifo", "cost.ai.average", "cost.ai.export"].map((key) => t(key))} />;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="d2-cost flex flex-col gap-5">
       <div>
         {!isMobile && <h1 className="text-2xl font-semibold">{t("cost.title")}</h1>}
         <p className="text-sm text-muted-foreground">{t("cost.subtitle")}</p>
       </div>
-      <AISetupCard page="cost-basis"
-        summary={`${t("cost.method")}: ${method}; ${t("cost.from")}: ${from}; ${t("cost.to")}: ${to}; ${t("cost.holdingDays")}: ${holdingDaysInput}`}
-        suggestions={["cost.ai.fifo", "cost.ai.average", "cost.ai.export"].map((key) => t(key))} />
+      {!isMobile && aiSetup}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {report && <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
           <span>{t("cost.proceeds")}: <strong className="font-medium text-foreground">{money(report.totals.proceeds)} USD</strong></span>
@@ -312,6 +313,7 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
         </CardContent></Card>
         </details>}
       </>}
+      {isMobile && aiSetup}
     </div>
   );
 }

@@ -100,7 +100,7 @@ for (const phone of phones) {
       await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
       if (route === "summary") {
         await expect(page.getByText("Profit Metrics", { exact: true })).toBeAttached();
-        await expect(page.getByText("Profit Summary", { exact: true })).toBeAttached();
+        await expect(page.getByRole("heading", { name: "Profit Summary" })).toBeAttached();
       }
       await page.evaluate(() => document.fonts.ready);
       await page.waitForLoadState("networkidle");
@@ -142,7 +142,7 @@ for (const phone of phones) {
       });
       expect(inset).toBe(31);
       if (route === "summary") {
-        await page.getByText("Profit Summary", { exact: true }).scrollIntoViewIfNeeded();
+        await page.getByRole("heading", { name: "Profit Summary" }).scrollIntoViewIfNeeded();
         await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-profit.png` });
       }
     }

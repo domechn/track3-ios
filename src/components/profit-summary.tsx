@@ -26,6 +26,7 @@ import PNLChart from "@/components/pnl-chart";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { Button } from "./ui/button";
+import { useIsMobile } from "./mobile";
 
 type SummaryType = "month" | "year";
 
@@ -76,6 +77,7 @@ const App = ({
   const [summaryType, setSummaryType] = useState<SummaryType>("month");
   const [clickedMonth, setClickedMonth] = useState<number | null>(null);
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const loadGenRef = useRef(0);
   const monthlyCacheRef = useRef<
@@ -347,7 +349,7 @@ const App = ({
 
   function renderAmount(value: number) {
     return (
-      (value < 0 ? "-" : "+") +
+      (value < 0 ? "-" : value > 0 ? "+" : "") +
       currency.symbol +
       simplifyNumber(currencyWrapper(currency)(Math.abs(value)))
     );
@@ -378,7 +380,7 @@ const App = ({
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
-        {monthCards.map((item) => (
+        {(isMobile ? [...monthCards].reverse() : monthCards).map((item) => (
           <button
             key={item.key}
             type="button"
@@ -430,7 +432,7 @@ const App = ({
   }
 
   return (
-    <Card className="min-h-[280px]">
+    <Card className="profit-summary-card min-h-[280px]">
       <CardHeader className="space-y-2 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">

@@ -95,7 +95,7 @@ const App = ({
   );
 
   return (
-    <Card>
+    <Card className="ath-card">
       <CardHeader className="space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {t("ath.title")}
@@ -109,7 +109,7 @@ const App = ({
                 {t("ath.currentValue")}
               </div>
               <div
-                className="text-sm md:text-base font-semibold tabular-nums whitespace-nowrap overflow-x-auto leading-snug"
+                className="ath-current-value text-sm md:text-base font-semibold tabular-nums whitespace-nowrap overflow-x-auto leading-snug"
                 title={currentTotalValueText}
               >
                 {currentTotalValueText}

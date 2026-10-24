@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { MobileNavigation } from "./navigation";
+import { MobileNavigation, routeTitle } from "./navigation";
 
 function Path() {
   const location = useLocation();
@@ -10,6 +10,9 @@ function Path() {
 }
 
 describe("mobile navigation", () => {
+  it("names an asset detail page for its asset", () => {
+    expect(routeTitle("/coins/BTC", (key) => key)).toBe("BTC");
+  });
   it("shows four tabs and restores the last route in a tab", () => {
     render(<MemoryRouter initialEntries={["/cost-basis"]}>
       <MobileNavigation unread={2} />

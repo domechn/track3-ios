@@ -1,7 +1,15 @@
 # iOS port progress
 
+## D2 data screen redesign (this worktree)
+
+- Applied the D1 grouped surfaces and system type scale to History, Summary, Comparison, Wallets, Coin detail, and Cost basis without changing routes or the underlying queries. History now groups each bounded page by month and keeps its swipe delete, confirmation, and Undo. Comparison keeps both values on one line at phone widths.
+- Rebuilt the Analytics hub as six destinations. Rank and return history open full-height sheets; allocation, sources, comparison, and cost basis keep their existing routes. Summary emphasizes the current value, Wallets emphasizes the source total, and Coin detail now leads with its logo and stored price. Monthly returns show the newest phone month first and display zero without a gain sign. The P&L chart exposes a signed value chip while scrubbing.
+- Added two realistic sale and repurchase pairs to the browser-only demo fixture so cost basis and profit views contain both realized gains and losses. The new detail browser test saves light and dark PNGs at 375 and 390 px for History detail, Profit Summary, attribution, rank, wallet changes, comparison rows, opened cost lots, and coin transactions. The route sweep saves the root screens.
+- Final local checks passed: frontend build and browser-test TypeScript, 1,826 Vitest tests in 225 files, and all 94 tests across the three phone Playwright suites. The browser run wrote 180 PNGs to `test-results/mobile/`; all 64 expected D2 root and detail captures exist in light and dark at 375 and 390 px. I inspected the root screen montages and detail captures in both themes.
+- The coin header shows return for the selected date range. A true 24-hour quote is not available from the existing coin detail query; presenting the range return as 24-hour change would misstate the data. Native device appearance and haptics remain unverified by these browser captures.
+
 The earlier S1–S5 sections record their handoff results. The current state
-for this worktree is D1 below.
+for the preceding worktree was D1 below.
 
 ## D1 third reviewer pass
 

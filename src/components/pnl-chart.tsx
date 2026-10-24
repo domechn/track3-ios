@@ -14,12 +14,12 @@ import { positiveNegativeColor } from "@/utils/color";
 import { currencyWrapper, simplifyNumber } from "@/utils/currency";
 import { glassScaleOptions, glassTooltip } from "@/utils/chart-theme";
 import { timeToDateStr } from "@/utils/date";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
 import { useTranslation } from "@/i18n";
-import { useIsMobile } from "@/components/mobile";
+import { useHaptics, useIsMobile } from "@/components/mobile";
 import { useTheme } from "@/components/common/theme";
 
 const chartName = "PNL of Asset";
@@ -37,6 +37,9 @@ const App = ({
 }) => {
   const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
+  const haptic = useHaptics();
+  const lastScrubIndex = useRef<number | null>(null);
+  const [scrub, setScrub] = useState<{ index: number; left: number } | null>(null);
   const { resolvedTheme } = useTheme();
   const { needResize } = useContext(ChartResizeContext);
   const [pnlChartData, setPnlChartData] = useState<PNLChartData>([]);
@@ -232,13 +235,37 @@ const App = ({
     };
   }
 
+  function showScrub(clientX: number, element: HTMLDivElement) {
+    if (!isMobile || !plottedPNL.length) return;
+    const bounds = element.getBoundingClientRect();
+    const x = Math.max(0, Math.min(bounds.width, clientX - bounds.left));
+    const index = Math.min(plottedPNL.length - 1, Math.floor(x / bounds.width * plottedPNL.length));
+    if (index !== lastScrubIndex.current) haptic("selection");
+    lastScrubIndex.current = index;
+    setScrub({ index, left: Math.max(62, Math.min(bounds.width - 62, x)) });
+  }
+
+  function clearScrub() {
+    lastScrubIndex.current = null;
+    setScrub(null);
+  }
+
   return (
     <div className={className}>
-      <div className="overview-pnl-plot">
+      <div className="overview-pnl-plot" onPointerMove={(event) => showScrub(event.clientX, event.currentTarget)}
+        onPointerLeave={clearScrub} onTouchMove={(event) => showScrub(event.touches[0].clientX, event.currentTarget)}
+        onTouchEnd={clearScrub} onTouchCancel={clearScrub}>
         <Bar role="img" aria-label={t("pnl.chartSummary")
           .replace("{count}", String(pnlChanges.length))
           .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
           options={options as any} data={lineData()} />
+        {isMobile && scrub && plottedPNL[scrub.index] && <div className="pnl-scrub-chip" style={{ left: scrub.left }}>
+          <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+            { month: "short", day: "numeric" }).format(new Date(plottedPNL[scrub.index].timestamp))}</span>
+          <strong data-tone={positiveNegativeColor(plottedPNL[scrub.index].change, quoteColor) === "green" ? "gain" : "loss"}>
+            {plottedPNL[scrub.index].change < 0 ? "−" : "+"}{currency.symbol}{Math.abs(plottedPNL[scrub.index].change).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </strong>
+        </div>}
       </div>
       {isMobile && plottedPNL.length > 0 && <div className="overview-pnl-dates" aria-hidden="true">
         <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",

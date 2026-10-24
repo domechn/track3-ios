@@ -322,7 +322,7 @@
   "history.latestSnapshot": "最新快照",
   "history.noDataLabel": "无数据",
   "history.recordsCardTitle": "历史记录",
-  "history.recordsCardSubtitle": "点击行查看持仓详情",
+  "history.recordsCardSubtitle": "选择日期查看持仓",
   "history.totalRecordsLabel": "共 {n} 条记录",
   "history.total": "总额",
   "history.change": "变化",
@@ -1156,5 +1156,14 @@
   "mobile.others.edit": "编辑自定义资产",
   "mobile.others.empty": "尚无自定义资产",
   "mobile.others.invalid": "请输入代号和有效数量",
-  "config.quickLookTitle": "快速查看 — {source}"
+  "config.quickLookTitle": "快速查看 — {source}",
+  "analytics.allocationDetail": "投资组合分布",
+  "analytics.rank": "热门币种",
+  "analytics.rankDetail": "主要持仓",
+  "analytics.walletsDetail": "按来源查看",
+  "analytics.comparisonDetail": "按日期",
+  "analytics.profit": "收益",
+  "analytics.profitDetail": "按月和年",
+  "analytics.costDetail": "批次和收益",
+  "coin.periodReturn": "所选期间"
 }

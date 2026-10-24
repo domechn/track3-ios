@@ -12,6 +12,154 @@ const sizes = [
   { width: 430, height: 932 },
 ];
 
+test("data screens expose grouped history and analytics destinations", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/history");
+    await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Rows 20" }).click();
+    await page.getByRole("option", { name: "50" }).click();
+    await expect(page.locator(".history-month-heading")).toHaveCount(2);
+    await expect(page.locator(".history-mobile-list .history-mobile-snapshot")).toHaveCount(50);
+
+    await page.goto("/#/summary");
+    await expect(page.locator(".mobile-analytics-hub")).toBeVisible();
+    await expect(page.locator(".analytics-tile")).toHaveCount(6);
+    await expect(page.locator(".analytics-tile[href='#/wallets']")).toBeVisible();
+    await expect(page.locator(".analytics-tile[href='#/comparison']")).toBeVisible();
+    await expect(page.locator(".analytics-tile[href='#/cost-basis']")).toBeVisible();
+    await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
+    const monthCards = page.getByRole("dialog", { name: "Profit Summary" }).locator(".profit-summary-card .grid > button");
+    await expect(monthCards.first()).toContainText("Oct");
+    await expect(monthCards.nth(1)).toContainText("$0.0");
+    await expect(monthCards.nth(1)).not.toContainText("+");
+    await page.getByRole("dialog", { name: "Profit Summary" }).getByRole("button", { name: "Close" }).click();
+    const hero = (await page.locator(".d2-summary .ath-current-value").boundingBox())!;
+    const tab = (await page.locator(".mobile-tab-bar").boundingBox())!;
+    expect(hero.y + hero.height).toBeLessThan(tab.y);
+    await page.goto("/#/cost-basis");
+    await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
+    await expect(page.getByText("Gain/loss", { exact: true }).locator("..")).not.toContainText("0 USD");
+    expect(await page.getByText("Gain/loss", { exact: true }).evaluate((node) =>
+      Boolean(node.compareDocumentPosition(document.querySelector(".d2-cost [data-ai-setup-suggestion]")!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    )).toBe(true);
+    const openPnL = page.getByText("Unrealized P&L", { exact: true }).locator("..").locator(".tabular-nums").first();
+    expect(await openPnL.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
+    expect(await openPnL.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(
+      await openPnL.evaluate((node) => node.clientWidth),
+    );
+    await page.goto("/#/coins/BTC");
+    await expect(page.locator("#app-main-content h1")).toHaveText("BTC");
+    await expect(page.locator(".coin-detail-hero img")).toBeVisible();
+    await expect(page.locator(".coin-detail-hero")).toContainText("$");
+  } finally {
+    await context.close();
+  }
+});
+
+test("phone P&L bars expose a value chip while scrubbing", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    const plot = page.locator(".overview-pnl-plot").first();
+    await expect(plot.locator("canvas")).toBeVisible();
+    await plot.scrollIntoViewIfNeeded();
+    const box = (await plot.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(plot.locator(".pnl-scrub-chip")).toBeVisible();
+    await expect(plot.locator(".pnl-scrub-chip")).toContainText("$");
+  } finally {
+    await context.close();
+  }
+});
+
+for (const width of [375, 390]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`D2 detail captures at ${width}px in ${theme}`, async ({ browser }) => {
+      const context = await browser.newContext({
+        viewport: { width, height: width === 375 ? 667 : 844 },
+        isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce",
+      });
+      const page = watchPage(await context.newPage());
+      mkdirSync("test-results/mobile", { recursive: true });
+      const capture = (name: string) => page.screenshot({ path: `test-results/mobile/d2-${width}-${theme}-${name}.png` });
+      try {
+        await page.emulateMedia({ colorScheme: theme });
+        await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+        await installTauriBridge(page, undefined, false, false, false, false, true);
+
+        await page.goto("/#/history");
+        await expect(page.locator(".history-mobile-snapshot")).toHaveCount(20);
+        await page.locator(".history-mobile-snapshot-button").first().click();
+        const detail = page.getByRole("dialog", { name: /historical data detail/i });
+        await expect(detail.locator(".history-mobile-asset")).toHaveCount(7);
+        const deleteButton = (await detail.getByRole("button", { name: "Delete snapshot" }).boundingBox())!;
+        const stats = (await detail.locator(".grid").first().boundingBox())!;
+        expect(stats.y - (deleteButton.y + deleteButton.height)).toBeLessThan(32);
+        await capture("history-detail");
+
+        await page.goto("/#/summary");
+        await expect(page.locator(".d2-summary [aria-busy='true']")).toHaveCount(0);
+        await page.locator(".d2-summary .profit-summary-card").evaluate((node) => {
+          node.scrollIntoView({ block: "start" });
+          window.scrollBy(0, -72);
+        });
+        await expect(page.locator(".mobile-header-total-value")).not.toHaveText("—");
+        await capture("profit-summary");
+        await page.locator(".d2-summary .profit-summary-card").getByRole("button", { name: /^Oct / }).click();
+        await expect(page.locator(".d2-summary .profit-summary-card .overview-pnl-plot canvas")).toBeVisible();
+        await capture("pnl");
+        await page.locator(".d2-summary").getByRole("radio", { name: "Attribution" }).click();
+        await expect(page.locator(".d2-summary .attribution-total")).toHaveCount(4);
+        await page.locator(".d2-summary figure[aria-label]").scrollIntoViewIfNeeded();
+        await capture("attribution");
+        await page.locator(".analytics-tile").getByText("Top coins").click();
+        const rank = page.getByRole("dialog", { name: "Top Coins Rank" });
+        await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toBeVisible();
+        await capture("top-coins");
+        await rank.getByRole("button", { name: "Close" }).click();
+        await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
+        const returns = page.getByRole("dialog", { name: "Profit Summary" });
+        await expect(returns.locator(".profit-summary-card")).toBeVisible();
+        await capture("returns-sheet");
+        await returns.getByRole("button", { name: "Close" }).click();
+
+        await page.goto("/#/wallets");
+        await expect(page.locator(".wallet-change-mobile-list")).toBeVisible();
+        await page.locator(".wallet-change-mobile-list").scrollIntoViewIfNeeded();
+        await capture("wallet-changes");
+
+        await page.goto("/#/comparison");
+        await expect(page.locator(".comparison-total-grid")).toBeVisible();
+        await page.locator(".comparison-metric-row").first().scrollIntoViewIfNeeded();
+        await capture("comparison-rows");
+
+        await page.goto("/#/cost-basis");
+        await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
+        await page.getByText("Details", { exact: true }).click();
+        await expect(page.locator(".d2-cost .mobile-record-list").first()).toBeVisible();
+        await page.locator(".d2-cost .mobile-record-list").nth(1).locator(".mobile-list-row").first().click();
+        await expect(page.getByRole("dialog", { name: "BTC" })).toContainText("Acquired");
+        await capture("cost-lots");
+
+        await page.goto("/#/coins/BTC");
+        await expect(page.locator(".coin-detail-hero")).toContainText("$");
+        await expect(page.getByTestId("coin-page-loading-overlay")).toHaveClass(/opacity-0/);
+        await expect(page.locator(".coin-mobile-transactions")).toBeVisible();
+        await page.locator(".coin-mobile-transactions").evaluate((node) => node.scrollIntoView());
+        await capture("coin-transactions");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      } finally {
+        await context.close();
+      }
+    });
+  }
+}
+
 let browserErrors: string[];
 test.beforeEach(() => { browserErrors = []; });
 test.afterEach(() => { expect(browserErrors).toEqual([]); });
@@ -258,6 +406,15 @@ for (const size of sizes) {
           await expect(page.locator("#app-main-content h1")).toHaveCount(1);
         }
         await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+        const routeHeading: Record<string, string> = {
+          overview: "Overview", history: "History", summary: "Summary", wallets: "Wallets",
+          comparison: "Comparison", "cost-basis": "Cost basis", "coins/BTC": "Bitcoin",
+        };
+        if (routeHeading[route] && !route.startsWith("coins/")) {
+          await expect(page.locator("#app-main-content h1")).toHaveText(routeHeading[route]);
+        }
+        if (route === "comparison") await expect(page.locator(".comparison-total-grid")).toBeVisible();
+        if (route === "cost-basis") await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
         if (route.startsWith("coins/")) {
           await expect(page.getByTestId("coin-page-loading-overlay")).toHaveClass(/opacity-0/);
           await expect.poll(() => page.getByTestId("coin-page-loading-overlay")
@@ -306,7 +463,7 @@ for (const size of sizes) {
           await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-history-list.png` });
         }
       }
-      if (size.width === 320 || size.width === 390) {
+      if (size.width === 320 || size.width === 375 || size.width === 390) {
         await page.goto("/#/overview");
         await page.reload();
         await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
@@ -338,6 +495,8 @@ for (const size of sizes) {
         for (const route of routes) {
           await page.goto(`/#/${route}`);
           await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+          if (route === "comparison") await expect(page.locator(".comparison-total-grid")).toBeVisible();
+          if (route === "cost-basis") await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
           await expect(page.locator("html")).toHaveClass(/dark/);
           await page.evaluate(() => document.fonts.ready);
           await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-${route.replace("/", "-")}-dark.png` });
@@ -948,7 +1107,7 @@ test("pulling the assistant thread does not refresh the portfolio", async ({ bro
 });
 
 for (const width of [320, 375]) {
-  test(`comparison totals stay on separate unbroken lines at ${width}px`, async ({ browser }) => {
+  test(`comparison totals stay side by side and unbroken at ${width}px`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width, height: 667 }, isMobile: true, hasTouch: true });
     const page = watchPage(await context.newPage());
     try {
@@ -959,7 +1118,8 @@ for (const width of [320, 375]) {
       const values = totals.locator("> div > p:nth-child(2)");
       await expect(values).toHaveCount(3);
       const [base, head] = await Promise.all([values.nth(0).boundingBox(), values.nth(2).boundingBox()]);
-      expect(head!.y).toBeGreaterThanOrEqual(base!.y + base!.height);
+      expect(Math.abs(head!.y - base!.y)).toBeLessThanOrEqual(1);
+      expect(head!.x).toBeGreaterThanOrEqual(base!.x + base!.width);
       for (const value of [values.nth(0), values.nth(2)]) {
         expect(await value.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
         expect(await value.evaluate((node) => getComputedStyle(node).overflowWrap)).toBe("normal");

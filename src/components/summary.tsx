@@ -60,7 +60,7 @@ const App = ({
 
   return (
     <OverviewLoadingContext.Provider value={overviewLoadingContext}>
-      <div className="relative min-h-[400px]" aria-busy={pageLoading}>
+      <div className="d2-summary relative min-h-[400px]" aria-busy={pageLoading}>
         {!isMobile && <h1 className="sr-only">{t("summary.h1")}</h1>}
         <StaggerContainer className="space-y-3">
           {hasValidRange && (

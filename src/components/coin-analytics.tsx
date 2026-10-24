@@ -87,7 +87,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useTranslation } from "@/i18n";
-import { BottomSheet, MobileRecordList, useIsMobile } from "./mobile";
+import { BottomSheet, DeltaPill, MobileRecordList, useIsMobile } from "./mobile";
 
 function formatEditablePrice(value: number): string {
   if (!Number.isFinite(value)) {
@@ -884,8 +884,18 @@ const App = ({
 
   return (
     <OverviewLoadingContext.Provider value={{ reportLoaded }}>
-      <div className="relative min-h-[400px]">
+      <div className="d2-coin relative min-h-[400px]">
         {!isMobile && <h1 className="sr-only">{formatAssetLabel({ symbol, assetType })}</h1>}
+        {isMobile && <div className="coin-detail-hero">
+          <div className="coin-detail-identity">
+            <img src={resolveAssetLogoSrc({ symbol, assetType }, logo)} alt="" />
+          </div>
+          <p className="coin-detail-price ios-money">{lastPriceStr}</p>
+          <div className="coin-detail-change">
+            <DeltaPill value={profit}>{profitPercentage === undefined ? "—" : `${profitPercentage > 0 ? "+" : ""}${profitRate}%`}</DeltaPill>
+            <span>{t("coin.periodReturn")}</span>
+          </div>
+        </div>}
         <StaggerContainer className="space-y-4">
           <UpdatePriceDialog
             open={updatePriceDialogOpen}

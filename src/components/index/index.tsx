@@ -65,7 +65,10 @@ import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
-import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import { BottomSheet, InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import TopCoinsRank from "../top-coins-rank";
+import ProfitSummary from "../profit-summary";
+import "./data-screens.css";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
 import { MobileIcon, type MobileIconName } from "@/components/mobile/icons";
 import { useAlertBadge } from "@/components/use-alert-badge";
@@ -429,16 +432,36 @@ function MoreHub() {
   </InsetGroup></div>;
 }
 
-function AnalyticsHub() {
+function AnalyticsHub({ currency, dateRange, quoteColor }: {
+  currency: CurrencyRateDetail; dateRange: { start: Date; end: Date }; quoteColor: QuoteColor;
+}) {
   const { t } = useTranslation();
-  const items = [
-    { href: "#/wallets", label: t("nav.wallets") },
-    { href: "#/comparison", label: t("nav.comparison") },
-    { href: "#/cost-basis", label: t("nav.costBasis") },
+  const [sheet, setSheet] = useState<"rank" | "profit" | null>(null);
+  const items: { label: string; detail: string; icon: MobileIconName; href?: string; sheet?: "rank" | "profit" }[] = [
+    { href: "#/overview", label: t("overview.allocation"), detail: t("analytics.allocationDetail"), icon: "overview" },
+    { sheet: "rank", label: t("analytics.rank"), detail: t("analytics.rankDetail"), icon: "analytics" },
+    { href: "#/wallets", label: t("nav.wallets"), detail: t("analytics.walletsDetail"), icon: "settings" },
+    { href: "#/comparison", label: t("nav.comparison"), detail: t("analytics.comparisonDetail"), icon: "history" },
+    { sheet: "profit", label: t("analytics.profit"), detail: t("analytics.profitDetail"), icon: "goals" },
+    { href: "#/cost-basis", label: t("nav.costBasis"), detail: t("analytics.costDetail"), icon: "rebalance" },
   ];
-  return <div className="mobile-analytics-hub"><InsetGroup title={t("nav.analytics", "Analytics")}>
-    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
-  </InsetGroup></div>;
+  return <div className="mobile-analytics-hub">
+    <div className="analytics-tile-grid">
+      {items.map((item) => {
+        const content = <><span className="analytics-tile-icon"><MobileIcon name={item.icon} /></span>
+          <strong>{item.label}</strong><small>{item.detail}</small></>;
+        return item.href
+          ? <a className="analytics-tile" key={item.label} href={item.href}>{content}</a>
+          : <button className="analytics-tile" type="button" key={item.label} onClick={() => setSheet(item.sheet!)}>{content}</button>;
+      })}
+    </div>
+    <BottomSheet open={sheet !== null} onOpenChange={(open) => { if (!open) setSheet(null); }}
+      title={sheet === "rank" ? t("topCoinsRank.title") : t("profitSummary.title")}
+      detents={["large"]} initialDetent="large">
+      {sheet === "rank" && <div className="d2-rank-sheet"><TopCoinsRank dateRange={dateRange} /></div>}
+      {sheet === "profit" && <div className="d2-profit-sheet"><ProfitSummary dateRange={dateRange} currency={currency} quoteColor={quoteColor} /></div>}
+    </BottomSheet>
+  </div>;
 }
 
 type AppRoutesProps = {
@@ -539,7 +562,7 @@ function AppRoutes({
           element={
             <AnimatedPage>
               <PageWrapper dateRange={maxDateRange} hasData={hasData}>
-                <AnalyticsHub />
+                <AnalyticsHub currency={currentCurrency} dateRange={maxDateRange} quoteColor={quoteColor} />
                 <Summary
                   currency={currentCurrency}
                   dateRange={maxDateRange}

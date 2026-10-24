@@ -53,6 +53,7 @@ export function MobileNavigation({ unread = 0, onTabSwitch }: { unread?: number;
 
 export function routeTitle(path: string, t: (key: string, fallback?: string) => string) {
   const base = path.split("/")[1];
+  if (base === "coins" && path.split("/")[2]) return path.split("/")[2];
   const titles: Record<string, string> = {
     overview: "nav.overview", history: "nav.history", summary: "nav.summary",
     wallets: "nav.wallets", comparison: "nav.comparison", "cost-basis": "nav.costBasis",

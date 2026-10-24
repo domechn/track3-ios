@@ -567,6 +567,7 @@ const App = ({
           role="group"
           aria-label={t("walletAllocation.title")}
           data-testid="wallet-treemap-container"
+          data-single-wallet={isMobile && !!symbol && sortedWallets.length === 1}
           className="relative w-full overflow-hidden"
           style={{ height: isMobile ? MOBILE_HEIGHT : DESKTOP_HEIGHT }}
         >

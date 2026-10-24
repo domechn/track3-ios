@@ -97,6 +97,24 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       ["demo-00", first[0], holding.type, holding.wallet, holding.symbol,
         holding.amount, Number(last[0]) * costFactor, new Date(Date.UTC(2026, 7, 24)).toISOString()]);
     }
+    for (const [symbol, amount, saleFactor, day] of [
+      ["BTC", 0.08, 1.05, 40],
+      ["ETH", 0.8, 0.82, 44],
+    ] as const) {
+      const holding = holdings.find((item) => item.symbol === symbol)!;
+      const snapshot = `demo-${day}`;
+      const row = db.exec("SELECT id, price FROM assets_v2 WHERE uuid = ? AND symbol = ?", [snapshot, symbol])[0]?.values[0];
+      const latest = db.exec("SELECT price FROM assets_v2 WHERE uuid = 'demo-59' AND symbol = ?", [symbol])[0]?.values[0];
+      if (!row || !latest) throw new Error("Demo sale snapshot is missing");
+      const soldAt = new Date(Date.UTC(2026, 7, 24 + day)).toISOString();
+      const repurchasedAt = new Date(Date.UTC(2026, 7, 24 + 55)).toISOString();
+      db.run(`INSERT INTO transactions (uuid, assetID, asset_type, wallet, symbol, amount, price, txnType, txnCreatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'sell', ?)`,
+      [snapshot, row[0], holding.type, holding.wallet, symbol, amount, Number(latest[0]) * saleFactor, soldAt]);
+      db.run(`INSERT INTO transactions (uuid, assetID, asset_type, wallet, symbol, amount, price, txnType, txnCreatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'buy', ?)`,
+      ["demo-55", row[0], holding.type, holding.wallet, symbol, amount, Number(latest[0]) * 0.96, repurchasedAt]);
+    }
     if (!seedReviewContent) db.run("INSERT INTO configuration (id, data) VALUES (992, ?)", [
       `!ent:e2e:${JSON.stringify({
         snapshotUuid: "demo-59", dismissedIds: [],
