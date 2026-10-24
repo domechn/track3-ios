@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { exportFile } from "@/utils/export-file";
 import { useDataChangedVersion } from "@/contexts/data-changed";
@@ -237,6 +238,8 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
 
   return (
     <div className="ios-d3-rebalance mx-auto flex max-w-6xl flex-col gap-4">
+      {mobile && document.getElementById("app-top-bar") && createPortal(
+        <span className="ios-d3-pushed-title">{t("rebalance.title")}</span>, document.getElementById("app-top-bar")!)}
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("rebalance.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("rebalance.description")}</p>
@@ -405,12 +408,13 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                 <CardContent className="space-y-2 px-4 pb-4">
                   {visual?.trades.length ? visual.trades.map((row) => (
                     <div key={`${row.assetType}:${row.symbol}`} className={`ios-d3-trade flex flex-nowrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${row.tradeValue > 0 ? "ios-d3-buy" : "ios-d3-sell"}`}>
-                      <p className="min-w-0 truncate font-medium">
-                        {t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
+                      <p className="ios-d3-trade-description min-w-0 font-medium">
+                        {mobile && <strong className="ios-d3-trade-symbol block">{row.symbol}</strong>}
+                        <span>{t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
                         {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: mobile ? 4 : 8 })} `}
-                        {row.symbol}
+                        {!mobile && row.symbol}</span>
                       </p>
-                      <span className="shrink-0 tabular-nums text-muted-foreground">~{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
+                      <span className="ios-d3-trade-value tabular-nums text-muted-foreground">~{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
                     </div>
                   )) : <p className="text-sm text-muted-foreground">{t("rebalance.noTrade")}</p>}
                   <div className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">

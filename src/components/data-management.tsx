@@ -327,10 +327,12 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
       </div>}
 
       {showBackup && isIOS() && <div className="ios-d3-backup-actions">
+        <div className="ios-d3-backup-import-section">
         <InsetGroup title={t("data.import")}>
           <button type="button" className="ios-d3-data-action-row" onClick={onImportDataClick}><span>{t("data.importButton")}</span><ChevronRightIcon aria-hidden="true" /></button>
         </InsetGroup>
-        <p className="ios-d3-settings-note">{t("data.importDesc")}</p>
+        <p className="ios-d3-settings-note ios-d3-import-note">{t("data.importDesc")}</p>
+        </div>
         <InsetGroup title={t("data.export")}>
           <div className="ios-d3-setting-switch-row">
             <Label htmlFor="exportConfigurationCheckbox">{t("data.includeConfig")}</Label>
@@ -395,12 +397,12 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
       </div>}
 
       {showBackup && <Card className="ios-d3-auto-backup-setting">
-        <CardHeader className="pb-2">
+        <CardHeader className="ios-d3-data-panel-header pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.autoBackup")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="ios-d3-data-panel-content space-y-4">
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             {!isIOS() && <TooltipProvider>
               <Tooltip>
@@ -445,7 +447,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             >
               {autoBackupDirectory}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ios-d3-backup-folder-actions flex items-center gap-2">
               <Button onClick={onChooseAutoBackupFolderButtonClick} size="sm">
                 {t(isIOS() ? "data.useDocumentsFolder" : "data.chooseFolder")}
               </Button>
@@ -465,12 +467,12 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
       </Card>}
 
       {showBlacklist && <Card className="ios-d3-blacklist-setting">
-        <CardHeader className="pb-2">
+        <CardHeader className="ios-d3-data-panel-header pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.blacklist")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="ios-d3-data-panel-content space-y-3">
           <p className="text-sm text-muted-foreground">
             {t("data.blacklistDesc")}
           </p>
@@ -518,12 +520,12 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
       </Card>}
 
       {showSecurity && <Card className="ios-d3-encryption-setting">
-        <CardHeader className="pb-2">
+        <CardHeader className="ios-d3-data-panel-header pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.encryption.key.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="ios-d3-data-panel-content space-y-3 text-sm">
           <p className="text-muted-foreground">
             {t("data.encryption.key.description")}
           </p>

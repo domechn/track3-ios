@@ -251,12 +251,6 @@ const App = ({
   const partialStatuses = sortedStatuses.filter((source) => source.status === "partial");
   const failedNames = failedStatuses.map(displayIdentity).join(", ");
   const kindIcon = { exchange: GlobeIcon, wallet: CubeIcon, broker: BackpackIcon, others: ArchiveIcon };
-  const statusStyle = {
-    ok: "border-green-600/30 bg-green-600/10 text-green-800 dark:text-green-300",
-    stale: "border-amber-600/30 bg-amber-600/10 text-amber-900 dark:text-amber-300",
-    partial: "border-amber-600/30 bg-amber-600/10 text-amber-900 dark:text-amber-300",
-    failed: "border-red-600/30 bg-red-600/10 text-red-800 dark:text-red-300",
-  };
   const statusIcon = { ok: CheckIcon, stale: ExclamationTriangleIcon,
     partial: ExclamationTriangleIcon, failed: CrossCircledIcon };
   const partialMessage = (source: PortfolioSourceStatus) => {
@@ -320,17 +314,26 @@ const App = ({
               <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
             </div>}
           </AlertDialogHeader>
-          <div className="ios-d3-refresh-status-list my-2 max-h-80 space-y-2 overflow-y-auto">
+          <div className="ios-d3-refresh-status-list my-2 max-h-80 overflow-y-auto">
             {refreshing && (progressSources.length ? progressSources : [{ sourceId: "loading", label: t("refresh.inProgress") }]).map((pending) => {
               const completed = liveSources.find((source) => source.sourceId === pending.sourceId);
-              const StatusIcon = completed?.status === "stale" ? ExclamationTriangleIcon : completed ? CheckIcon : UpdateIcon;
+              const previousFailed = sourceStatuses.some((source) => source.sourceId === pending.sourceId && source.status === "failed");
+              const StatusIcon = completed?.status === "stale" || completed?.status === "partial" ? ExclamationTriangleIcon
+                  : completed ? CheckIcon : UpdateIcon;
               const label = sourceLabel(pending);
               return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center gap-3 px-4 py-3">
-                <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" ? "text-destructive" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-                <span className="text-xs tabular-nums text-muted-foreground">{completed?.startedAt && completed.finishedAt
+                <div className="ios-d3-refresh-row-main">
+                  <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" || completed.status === "partial" ? "text-amber-600" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
+                  <div className="ios-d3-refresh-row-content">
+                    <div className="ios-d3-refresh-row-title">{label}</div>
+                    <div className="text-xs text-muted-foreground">{completed ? t(`refresh.status.${completed.status}`) : t("refresh.inProgress")}</div>
+                  </div>
+                </div>
+                <span className="ios-d3-refresh-row-duration text-muted-foreground">{completed?.startedAt && completed.finishedAt
                   ? `${((Date.parse(completed.finishedAt) - Date.parse(completed.startedAt)) / 1000).toFixed(1)}s`
                   : t("refresh.waiting")}</span>
+                {(previousFailed || completed?.status === "stale") && <Button size="sm" variant="secondary" disabled
+                  aria-label={t("refresh.retrySource").replace("{source}", label)}>{t("refresh.retryButton")}</Button>}
               </div>;
             })}
             {!refreshing && sortedStatuses.map((source) => {
@@ -338,21 +341,22 @@ const App = ({
               const StatusIcon = statusIcon[source.status];
               return (
               <div key={source.sourceId} role="group" aria-label={displayIdentity(source)}
-                data-source-status-row className="ios-d3-refresh-row flex items-center justify-between gap-3 rounded-md px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold break-all">{sourceLabel(source)}</div>
-                  {source.startedAt && source.finishedAt && <div className="text-xs tabular-nums text-muted-foreground">
-                    {((Date.parse(source.finishedAt) - Date.parse(source.startedAt)) / 1000).toFixed(1)}s
-                  </div>}
+                data-source-status-row className="ios-d3-refresh-row flex items-start justify-between gap-3 px-4 py-3">
+                <div className="ios-d3-refresh-row-main">
+                  <StatusIcon aria-hidden="true" className={`mt-1 h-5 w-5 shrink-0 ${source.status === "ok" ? "text-green-600 dark:text-green-400" : source.status === "failed" ? "text-destructive" : "text-amber-600"}`} />
+                  <div className="ios-d3-refresh-row-content">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="ios-d3-refresh-row-title break-all">{sourceLabel(source)}</div>
+                    {source.startedAt && source.finishedAt && <span className="ios-d3-refresh-row-duration text-muted-foreground">
+                      {((Date.parse(source.finishedAt) - Date.parse(source.startedAt)) / 1000).toFixed(1)}s
+                    </span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{t(`refresh.status.${source.status}`)}</div>
                   {source.provider && <div className="text-xs text-muted-foreground">
                     <Icon aria-hidden="true" className="mr-1 inline-block h-3.5 w-3.5" />
                     {source.provider}{source.hint && ` · ${displayHint(source)}`}
                   </div>}
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusStyle[source.status]}`}>
-                      <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                      {t(`refresh.status.${source.status}`)}
-                    </span>
                     {source.status !== "ok" && source.status !== "partial" && <span className="text-muted-foreground">
                       {t(`refresh.reason.${source.category ?? "other"}`)}
                     </span>}
@@ -369,6 +373,7 @@ const App = ({
                       year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
                     }).format(new Date(source.lastSuccessAt)))}
                   </div>}
+                  </div>
                 </div>
                 {source.status !== "ok" && lastResult?.sourceResults && (
                   <Button

@@ -35,7 +35,7 @@ export default function AISetupCard({
       setAvailability("missing");
     }
   }
-  return <Card className="border-primary/25 bg-primary/[0.035]">
+  return <Card data-ai-setup-card className="border-primary/25 bg-primary/[0.035]">
     <CardContent className="space-y-3 p-4">
       <div className="flex items-center gap-2">
         <MagicWandIcon aria-hidden className="h-4 w-4 text-primary" />
@@ -51,7 +51,7 @@ export default function AISetupCard({
           <PaperPlaneIcon aria-hidden className="h-3.5 w-3.5" />{t("aiSetup.send")}
         </Button>
       </form>}
-      {configured && <div className="flex flex-wrap gap-1.5" aria-label={t("aiSetup.suggestions")}>
+      {configured && <div className="ios-d3-ai-suggestions flex flex-wrap gap-1.5" aria-label={t("aiSetup.suggestions")}>
         {suggestions.map((suggestion) => <button key={suggestion} type="button" data-ai-setup-suggestion
           className="touch:min-h-11 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => send(suggestion)}>{suggestion}</button>)}

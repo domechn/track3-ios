@@ -137,7 +137,8 @@ describe("System Info subscription management", () => {
       render(<SystemInfo onProStatusChange={vi.fn()} />);
       expect(await screen.findByText("Pro")).toBeInTheDocument();
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Inactivate" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Deactivate" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Enter existing license key" })).not.toBeInTheDocument();
     } finally {
       vi.mocked(isIOS).mockReturnValue(false);
       window.location.hash = "";
@@ -229,7 +230,7 @@ describe("System Info subscription management", () => {
     render(<SystemInfo onProStatusChange={vi.fn()} />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /^inactivate$/i }),
+      await screen.findByRole("button", { name: /^deactivate$/i }),
     );
     fireEvent.click(await screen.findByRole("button", { name: /confirm/i }));
 

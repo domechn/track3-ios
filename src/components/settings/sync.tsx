@@ -182,6 +182,7 @@ export default function SyncSettingsPage() {
                 <Label htmlFor={`sync-${field}`}>{t(`sync.field.${field}`)}</Label>
                 <Input
                   id={`sync-${field}`}
+                  placeholder={t(`sync.placeholder.${field}`)}
                   type={field === "secretAccessKey" || field === "accessKeyId" ? "password" : "text"}
                   autoComplete="off"
                   aria-invalid={configurationInvalid.has(field)}

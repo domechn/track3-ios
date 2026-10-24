@@ -283,7 +283,7 @@ describe("Data Management", () => {
       { target: { value: confirmation } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -308,7 +308,7 @@ describe("Data Management", () => {
         { target: { value: key } },
       );
       fireEvent.click(
-        screen.getByRole("button", { name: "Update Encryption Key" }),
+        screen.getByRole("button", { name: "Update encryption key" }),
       );
 
       await waitFor(() => {
@@ -371,7 +371,7 @@ describe("Data Management", () => {
       target: { value: "new-key-123" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -412,7 +412,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     const lateWriter = vi.fn();
@@ -452,7 +452,7 @@ describe("Data Management", () => {
       target: { value: "new-key-123" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -481,7 +481,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -512,7 +512,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     const savingButton = await screen.findByRole("button", {
@@ -525,7 +525,7 @@ describe("Data Management", () => {
     resolveRotation?.();
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "Update Encryption Key" }),
+        screen.getByRole("button", { name: "Update encryption key" }),
       ).toBeEnabled();
     });
   });

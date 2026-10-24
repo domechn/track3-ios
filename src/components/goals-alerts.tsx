@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "@/i18n";
 import {
   ALERTS_CHANGED_EVENT, acknowledgeAlert, acknowledgeAllAlerts, clearAlertHistory,
@@ -17,7 +18,7 @@ import AISetupCard from "./common/ai-setup-card";
 import { FinanceChartSkeleton, GoalChart } from "./finance-charts";
 import { alertSentence, goalEtaDays } from "./finance-visuals";
 import { queryPNLChartValue } from "@/middlelayers/charts-timeseries";
-import { BarChartIcon, ClockIcon, DashboardIcon, MagicWandIcon, MixIcon, PieChartIcon, PlusIcon } from "@radix-ui/react-icons";
+import { BarChartIcon, ClockIcon, DashboardIcon, MagicWandIcon, MixIcon, PieChartIcon } from "@radix-ui/react-icons";
 import ConfirmDeleteDialog from "./common/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -210,6 +211,7 @@ export default function GoalsAlerts() {
         <label className="space-y-1 text-sm">
           <span>{t("goals.threshold")}</span>
           <Input type="number" min={needsWindow(draft.kind) ? undefined : "0"} step="any" value={draft.threshold}
+            placeholder={t("goals.threshold")}
             aria-invalid={validationField === "threshold"}
             aria-describedby={validationField === "threshold" ? "goal-rule-status" : undefined}
             onChange={(e) => { setValidationField(null); setDraft({ ...draft, threshold: e.target.value }); }} />
@@ -229,10 +231,10 @@ export default function GoalsAlerts() {
             onChange={(e) => { setValidationField(null); setDraft({ ...draft, cooldownMinutes: e.target.value }); }} />
         </label>
       </div>
-      <div className="ios-d3-goal-editor-actions flex gap-2">
+      {!isIOS() && <div className="ios-d3-goal-editor-actions flex gap-2">
         <Button onClick={() => void save()}>{t("goals.saveRule")}</Button>
         {draft.id > 0 && <Button variant="outline" onClick={() => setDraft(emptyDraft)}>{t("common.cancel")}</Button>}
-      </div>
+      </div>}
       {validationField && status && <p id="goal-rule-status" role="alert" className="text-sm">{status}</p>}
       {!validationField && status && <p role="status" className="text-sm">{status}</p>}
     </CardContent>
@@ -240,12 +242,14 @@ export default function GoalsAlerts() {
 
   return (
     <div className="ios-d3-goals mx-auto flex max-w-5xl flex-col gap-4 pb-8">
+      {isIOS() && document.getElementById("app-top-bar") && createPortal(
+        <span className="ios-d3-pushed-title">{t("goals.title")}</span>, document.getElementById("app-top-bar")!)}
       <div className="ios-d3-goals-heading flex items-start justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
         </div>
-        {isIOS() && <Button type="button" variant="ghost" className="ios-d3-goals-add" aria-label={t("goals.mobile.add")} onClick={() => setManualOpen(true)}><PlusIcon aria-hidden="true" /></Button>}
+        {isIOS() && <Button type="button" variant="ghost" className="ios-d3-goals-add" aria-label={t("goals.mobile.add")} onClick={() => setManualOpen(true)}><span aria-hidden="true">+</span></Button>}
       </div>
       <AISetupCard page="goals"
         summary={rules.length ? rules.map((rule) => `${rule.id}: ${rule.kind} ${rule.symbol ?? ""} ${rule.comparator} ${rule.threshold} ${rule.window ?? ""} ${rule.enabled ? "enabled" : "disabled"}`).join("; ") : "No alert rules"}
@@ -265,7 +269,7 @@ export default function GoalsAlerts() {
       {isIOS() ? <>
         {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
           <div className="ios-d3-goal-editor">
-          <div className="ios-d3-goal-editor-nav"><Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button><h2>{t(draft.id ? "goals.editRule" : "goals.newRule")}</h2></div>
+          <div className="ios-d3-goal-editor-nav"><Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button><h2>{t(draft.id ? "goals.editRule" : "goals.newRule")}</h2><Button type="button" variant="ghost" className="ios-d3-goal-nav-save min-h-11" onClick={() => void save()}>{t("goals.saveRule")}</Button></div>
           {editor}
           </div>
         </ModalPage>}

@@ -16,6 +16,9 @@ vi.mock("@/i18n", () => ({
         "assistant.chat.noResponse": "(No response)",
         "assistant.chat.think.label": "Thinking",
         "assistant.chat.toolActivity": "Tool activity",
+        "assistant.chat.toolSummary.one": "{count} tool · {status}",
+        "assistant.chat.toolSummary.many": "{count} tools · {status}",
+        "assistant.chat.toolStatus.done": "done",
         "assistant.usage.tokens": "Prompt {prompt} · Completion {completion} tokens",
         "assistant.usage.cost": "Est. {cost}",
         "assistant.usage.estimated": "Estimated",
@@ -31,9 +34,10 @@ describe("MessageBubble", () => {
     render(<MessageBubble message={{ role: "assistant", blocks: [{ kind: "agent_activity", activities: [
       { taskId: "fetch", skillName: "portfolio", description: "Read portfolio", status: "completed", resultPreview: "Done" },
     ] }] }} />);
-    const details = screen.getByText("Tool activity").closest("details");
+    const details = screen.getByText(/Tool activity/).closest("details");
     expect(details).not.toHaveAttribute("open");
     expect(details).toHaveTextContent("Read portfolio");
+    expect(details?.querySelector("summary")).toHaveTextContent("1 tool · done");
     vi.mocked(isIOS).mockReturnValue(false);
   });
 

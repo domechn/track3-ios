@@ -211,17 +211,18 @@ export function MobileSources(props: MobileSourcesProps) {
       {editor && <ModalPage title={t("mobile.sources.edit")} onDismiss={close}>
         <div className="ios-d3-source-editor mx-auto max-w-xl space-y-6">
           <div className="ios-d3-editor-nav flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {editor.step === 2 && !editor.original && <Button variant="ghost" className="min-h-11" onClick={() => setEditor({ ...editor, step: 1 })}>{t("common.back")}</Button>}
-              <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
-            </div>
+            {editor.step === 2 && !editor.original
+              ? <Button variant="ghost" className="min-h-11" onClick={() => setEditor({ ...editor, step: 1 })}>{t("common.back")}</Button>
+              : <span />}
             <span className="text-sm text-muted-foreground">{editor.step} / 2</span>
+            <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
           </div>
           <div className="ios-d3-editor-intro">
             <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
               {getWalletLogo(editor.draft.type) !== UnknownLogo && <img src={getWalletLogo(editor.draft.type)} alt="" />}{getWalletLogo(editor.draft.type) === UnknownLogo && editor.draft.type.slice(0, 2).toUpperCase()}
             </span>
-            <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
+            <div><h2 className="text-3xl font-bold">{editor.step === 2 ? providerOptions.find((option) => option.value === editor.draft.type)?.label ?? editor.draft.type : editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
+            {editor.step === 2 && <p className="text-sm text-muted-foreground">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</p>}</div>
           </div>
           {editor.step === 1 ? <>
             <Label htmlFor="mobile-provider-search">{t("config.formType")}</Label>
@@ -235,7 +236,6 @@ export function MobileSources(props: MobileSourcesProps) {
               } else setEditor({ ...editor, step: 2, draft: { ...editor.draft, type } });
             }}><SourceAvatar type={option.value} /><span>{option.label}</span>{editor.draft.type === option.value ? <CheckIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}</button>)}
             </div>
-            <Button className="ios-d3-editor-primary min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}<ChevronRightIcon aria-hidden="true" /></Button>
           </> : <>
             <div className="ios-d3-credential-group">
             <Field id="mobile-alias" label={t("config.formAlias")} value={editor.draft.alias ?? ""} onChange={(value) => update({ alias: value })} />
@@ -252,7 +252,7 @@ export function MobileSources(props: MobileSourcesProps) {
             </>}
             </div>
             {error && !errorField && <p id="mobile-source-error" role="alert" className="text-sm text-destructive">{error}</p>}
-            <Button className="ios-d3-editor-primary min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
+            <Button className="ios-d3-editor-primary min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t(editor.original ? "config.saveChanges" : "mobile.sources.add")}</Button>
           </>}
         </div>
       </ModalPage>}

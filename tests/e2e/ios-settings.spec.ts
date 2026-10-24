@@ -159,7 +159,7 @@ for (const width of [375, 390, 430]) {
     await page.getByRole("button", { name: "Add source" }).click();
     await expect(page.getByRole("button", { name: "Add exchange" })).toBeVisible();
     await page.getByRole("button", { name: "Add exchange" }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Binance" }).click();
     await expect(page.getByRole("textbox", { name: "Api Key" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole("button", { name: "Cancel" }).click();

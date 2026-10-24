@@ -146,6 +146,8 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
   if (block.kind === "agent_activity") {
     const activities = block.activities;
     if (activities.length === 0) return null;
+    const state = activities.some((activity) => activity.status === "failed") ? "failed"
+      : activities.some((activity) => activity.status !== "completed") ? "running" : "done";
     const content = (
       <div className="space-y-1 px-1 py-2">
         {activities.map((a) => (
@@ -164,8 +166,14 @@ function renderAssistantBlock(block: AssistantBlock, idx: number, isStreaming?: 
       </div>
     );
     return isIOS()
-      ? <details key={idx} className="rounded-lg border px-3">
-          <summary className="flex min-h-11 cursor-pointer items-center text-sm">{t?.("assistant.chat.toolActivity")}</summary>
+      ? <details key={idx} className="ios-d3-tool-activity rounded-lg border px-3">
+          <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+            <span className={`ios-d3-tool-status ios-d3-tool-status-${state}`} aria-hidden="true" />
+            <span>{t?.("assistant.chat.toolActivity")}</span>
+            <span className="text-muted-foreground">{t?.(activities.length === 1 ? "assistant.chat.toolSummary.one" : "assistant.chat.toolSummary.many")
+              ?.replace("{count}", String(activities.length)).replace("{status}", t?.(`assistant.chat.toolStatus.${state}`) ?? state)}</span>
+            <ChevronDownIcon className="ios-d3-tool-chevron ml-auto h-4 w-4" aria-hidden="true" />
+          </summary>
           {content}
         </details>
       : <div key={idx}>{content}</div>;

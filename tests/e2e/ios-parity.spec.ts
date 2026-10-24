@@ -192,20 +192,20 @@ for (const phone of phones) {
     await page.getByRole("button", { name: "Add source" }).click();
     await page.getByRole("button", { name: "Add wallet" }).click();
     const wallet = page.getByRole("dialog", { name: "Edit data source" });
-    await wallet.getByRole("button", { name: "Continue" }).click();
+    await wallet.getByRole("button", { name: "BTC" }).click();
     await wallet.getByRole("textbox", { name: "Alias" }).fill("Long-term BTC");
     await wallet.getByRole("textbox", { name: "Address" }).fill("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
-    await wallet.getByRole("button", { name: "Save changes" }).click();
+    await wallet.getByRole("button", { name: "Add" }).click();
     await expect(wallet).not.toBeVisible();
     await expect(page.getByRole("region", { name: "Wallet" }).getByRole("button", { name: /^Long-term BTC / })).toBeVisible();
 
     await page.getByRole("button", { name: "Add exchange" }).click();
     const exchange = page.getByRole("dialog", { name: "Edit data source" });
-    await exchange.getByRole("button", { name: "Continue" }).click();
+    await exchange.getByRole("button", { name: "Binance" }).click();
     await exchange.getByRole("textbox", { name: "Alias" }).fill("Portfolio Binance");
     await exchange.getByRole("textbox", { name: "Api Key" }).fill("e2e-api-key");
     await exchange.getByRole("textbox", { name: "Api Secret" }).fill("e2e-api-secret");
-    await exchange.getByRole("button", { name: "Save changes" }).click();
+    await exchange.getByRole("button", { name: "Add" }).click();
     await expect(exchange).not.toBeVisible();
     await expect(page.getByRole("region", { name: "Exchanges" }).getByRole("button", { name: /^Portfolio Binance / })).toBeVisible();
     await page.reload();

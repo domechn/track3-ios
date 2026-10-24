@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -492,6 +493,7 @@ function ChatContent({
     onStreamComplete,
     onStreamingChange,
   });
+  const mobileHeaderHost = isIOS() ? document.getElementById("app-top-bar") : null;
   useEffect(() => {
     try {
       if (!sessionId) {
@@ -522,7 +524,9 @@ function ChatContent({
       data-testid="chat-card"
       className="flex min-w-0 flex-1 flex-col overflow-hidden"
     >
-      <ChatHeader config={config} contextTokens={chat.contextTokens} sessionUsage={chat.sessionUsage} sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />
+      {mobileHeaderHost
+        ? createPortal(<ChatHeader config={config} contextTokens={chat.contextTokens} sessionUsage={chat.sessionUsage} sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />, mobileHeaderHost)
+        : <ChatHeader config={config} contextTokens={chat.contextTokens} sessionUsage={chat.sessionUsage} sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />}
       {saveError && (
         <p role="alert" className="px-4 py-2 text-sm text-destructive">
           {t("assistant.chat.saveFailed")}: {saveError}
@@ -573,7 +577,7 @@ function ChatHeader({
   const percent = Math.min(100, Math.round(contextTokens / config.contextSize * 100));
   return (
     <CardHeader className="ios-d3-chat-header flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:px-3">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="ios-d3-chat-header-primary flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -589,7 +593,7 @@ function ChatHeader({
         </button>
         <span
           aria-hidden
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+          className="ios-d3-chat-header-identity flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
         >
           <RocketIcon className="h-4 w-4" />
         </span>
@@ -597,14 +601,14 @@ function ChatHeader({
           <CardTitle className="text-sm font-semibold leading-tight">
             {t("assistant.chat.title")}
           </CardTitle>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="ios-d3-chat-header-model truncate text-xs text-muted-foreground">
             <span className="font-mono">{config.model}</span>
             <span className="mx-1.5 opacity-50">·</span>
             <span className="font-mono">{config.endpoint}</span>
           </p>
         </div>
       </div>
-      <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5 touch:ml-0 touch:items-start">
+      <div className="ios-d3-chat-header-usage ml-auto flex shrink-0 flex-col items-end gap-0.5 touch:ml-0 touch:items-start">
         {contextTokens > 0 && (
           <span role="progressbar" aria-label={t("assistant.usage.context").replace("{percent}", String(percent))}
             aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}
@@ -620,7 +624,7 @@ function ChatHeader({
         asChild
         variant="ghost"
         size="sm"
-        className="gap-1 text-muted-foreground hover:text-foreground"
+        className="ios-d3-chat-header-settings gap-1 text-muted-foreground hover:text-foreground"
         data-testid="chat-open-settings"
       >
         <Link to="/settings/assistant" aria-label={t("settings.tab.assistant")}>

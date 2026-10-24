@@ -334,10 +334,10 @@ const App = ({
   if (isIOS() && section === "pro") return <div className="ios-d3-system-settings space-y-6">
     <InsetGroup>
       <ListRow value={activeLicense ? t("system.pro") : t("system.free")}>{t("system.proStatus")}</ListRow>
-      {activeLicense && subscriptionInfo && <ListRow value={subscriptionStatusLabel(subscriptionInfo.status)}>{t("system.statusLabel")}</ListRow>}
+      {activeLicense && subscriptionInfo && subscriptionInfo.status !== "active" && <ListRow value={subscriptionStatusLabel(subscriptionInfo.status)}>{t("system.statusLabel")}</ListRow>}
       {activeLicense && subscriptionInfo?.planType && <ListRow value={t(subscriptionInfo.planType === "monthly" ? "system.monthly" : "system.yearly")}>{t("system.planLabel")}</ListRow>}
     </InsetGroup>
-    <section>
+    {!activeLicense && <section>
       <h2 className="ios-d3-section-heading">{t("system.legacyInputTitle")}</h2>
       <div className="ios-d3-license-group">
         <div className="ios-d3-license-field">
@@ -351,13 +351,13 @@ const App = ({
         </div>
       </div>
       {(!activeLicense || subscriptionInfo?.isLegacy) && <p className="ios-d3-settings-note">{t(activeLicense ? "system.legacyNote" : "system.legacyInputDesc")}</p>}
-      {activeLicense ? <ConfirmDeleteDialog
-        trigger={<Button variant="destructive" className="mt-4 w-full" disabled={inactiveLicenseLoading}>{t("system.inactivate")}</Button>}
-        title={t("system.inactivateTitle")} description={t("system.inactivateDescLegacy")}
-        cancelLabel={t("common.cancel")}
-        actions={[{ label: t("common.confirm"), onClick: onInactiveLicenseClick }]} />
-        : <Button className="mt-4 w-full" onClick={onSaveLicenseClick} disabled={saveLicenseLoading || !inputLicense}>{t("system.activate")}</Button>}
-    </section>
+      <Button className="mt-4 w-full" onClick={onSaveLicenseClick} disabled={saveLicenseLoading || !inputLicense}>{t("system.activate")}</Button>
+    </section>}
+    {activeLicense && <InsetGroup><ConfirmDeleteDialog
+      trigger={<button type="button" className="ios-d3-license-deactivate" disabled={inactiveLicenseLoading}>{t("system.inactivate")}</button>}
+      title={t("system.inactivateTitle")} description={t("system.inactivateDescLegacy")}
+      cancelLabel={t("common.cancel")}
+      actions={[{ label: t("common.confirm"), onClick: onInactiveLicenseClick }]} /></InsetGroup>}
   </div>;
 
   return (

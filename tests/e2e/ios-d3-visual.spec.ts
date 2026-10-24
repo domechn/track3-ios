@@ -53,6 +53,16 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
       await page.goto(`/#${route}`);
       await expect(page.locator("#app-main-content h1")).toHaveText(title);
       await capture(page, phone.name, theme, name);
+      if (name === "backup") {
+        const folderActions = page.locator(".ios-d3-backup-folder-actions");
+        await folderActions.evaluate((element) => element.scrollIntoView({ block: "center" }));
+        const card = await folderActions.locator("xpath=ancestor::*[contains(@class, 'ios-d3-auto-backup-setting')]").boundingBox();
+        for (const button of await folderActions.getByRole("button").all()) {
+          const bounds = await button.boundingBox();
+          expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(card!.x + card!.width);
+        }
+        await capture(page, phone.name, theme, "backup-folder");
+      }
     }
     await page.goto("/#/settings/configuration?section=sources");
     await expect(page.getByRole("button", { name: "More actions for Main exchange" })).toBeVisible();
@@ -62,8 +72,9 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Add exchange" }).click();
     await expect(page.getByRole("dialog", { name: "Edit data source" })).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-provider.png` });
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Binance" }).click();
     await expect(page.getByRole("textbox", { name: "API key" })).toHaveAttribute("placeholder", "Required");
+    await expect(page.locator(".ios-d3-editor-intro")).toContainText("Binance");
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-credentials.png` });
     await page.getByRole("dialog", { name: "Edit data source" }).getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("button", { name: "Add symbol" }).click();
@@ -75,14 +86,19 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.goto("/#/goals");
     await page.getByRole("button", { name: "Add alert" }).click();
     const saveRule = await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).boundingBox();
-    const goalEditor = await page.locator("#goal-rule-editor").boundingBox();
-    expect(saveRule!.width).toBeGreaterThan(goalEditor!.width * 0.8);
+    const goalNav = await page.locator(".ios-d3-goal-editor-nav").boundingBox();
+    expect(saveRule!.y + saveRule!.height).toBeLessThanOrEqual(goalNav!.y + goalNav!.height);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-goal-editor.png` });
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("spinbutton", { name: "Threshold" }).fill("90000");
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).click();
     await expect(page.getByRole("dialog", { name: "Add alert" })).not.toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
     await capture(page, phone.name, theme, "goals");
+    for (const chip of await page.locator(".ios-d3-goals [data-ai-setup-suggestion]").all()) {
+      const bounds = await chip.boundingBox();
+      const card = await chip.locator("xpath=ancestor::*[@data-ai-setup-card]").boundingBox();
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(card!.x + card!.width);
+    }
     await expect(page.getByRole("progressbar", { name: /Portfolio value goal/i })).toBeVisible();
     await page.locator(".ios-d3-goal-rule").first().evaluate((element) => element.scrollIntoView({ block: "start" }));
     const goalProgress = await page.locator(".ios-d3-goal-rule").first().getByRole("progressbar").boundingBox();
@@ -95,10 +111,19 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.goto("/#/rebalance");
     await expect(page.getByRole("heading", { level: 1, name: "Rebalance" })).toBeVisible();
     await capture(page, phone.name, theme, "rebalance");
+    for (const chip of await page.locator(".ios-d3-rebalance [data-ai-setup-suggestion]").all()) {
+      const bounds = await chip.boundingBox();
+      const card = await chip.locator("xpath=ancestor::*[@data-ai-setup-card]").boundingBox();
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(card!.x + card!.width);
+    }
     await page.getByText("Manual setup", { exact: true }).click();
     await page.locator(".ios-d3-target").first().scrollIntoViewIfNeeded();
     await capture(page, phone.name, theme, "rebalance-targets");
     await page.locator(".ios-d3-trade").first().scrollIntoViewIfNeeded();
+    const tradeSymbol = page.locator(".ios-d3-trade .ios-d3-trade-symbol").first();
+    const symbolBounds = await tradeSymbol.boundingBox();
+    const tradeBounds = await page.locator(".ios-d3-trade").first().boundingBox();
+    expect(symbolBounds!.x + symbolBounds!.width).toBeLessThanOrEqual(tradeBounds!.x + tradeBounds!.width);
     await capture(page, phone.name, theme, "rebalance-trades");
     await page.goto("/#/assistant");
     await expect(page.getByRole("textbox", { name: "Ask the assistant..." })).toBeVisible();
@@ -107,7 +132,7 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     const chatHeader = await page.locator(".ios-d3-chat-header").boundingBox();
     const firstSuggestion = await page.getByTestId("chat-example-summary").boundingBox();
     const composer = await page.locator(".ios-d3-chat-composer").boundingBox();
-    expect(chatHeader!.height).toBeLessThanOrEqual(70);
+    expect(chatHeader!.height).toBeLessThanOrEqual(56);
     expect(firstSuggestion!.y + firstSuggestion!.height).toBeLessThanOrEqual(composer!.y);
     await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
     await page.getByRole("button", { name: "Send" }).click();
@@ -122,11 +147,18 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(tabBar).not.toBeNull();
     expect(reply!.y + reply!.height).toBeLessThanOrEqual(composerAfterReply!.y);
     expect(composerAfterReply!.y + composerAfterReply!.height).toBeLessThanOrEqual(tabBar!.y);
-    expect(chatHeader!.height).toBeLessThanOrEqual(56);
+    await expect(page.locator('.ios-d3-chat-bubble[data-streaming="true"]')).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+    const chatHeaderAfterReply = await page.locator(".ios-d3-chat-header").boundingBox();
+    expect(chatHeaderAfterReply!.height).toBeLessThanOrEqual(56);
+    const topBar = await page.locator("#app-top-bar").boundingBox();
+    expect(chatHeaderAfterReply!.y).toBeLessThan(topBar!.y + topBar!.height);
     await capture(page, phone.name, theme, "assistant-chat");
     await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Show my tool activity");
     await page.getByRole("button", { name: "Send" }).click();
     await expect(page.getByText("Tool activity")).toBeVisible();
+    await expect(page.locator(".ios-d3-tool-activity summary")).toContainText(/2 tools · (running|done)/);
+    await expect(page.locator(".ios-d3-tool-chevron")).toBeVisible();
     await capture(page, phone.name, theme, "assistant-tools");
 
     await page.goto("/#/overview");
