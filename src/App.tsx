@@ -6,6 +6,10 @@ import { ThemeProvider } from "@/components/common/theme";
 import { themeLocalStorageKey } from "./middlelayers/configuration";
 import { renderRightClickMenu } from "./utils/hook";
 import { I18nProvider, useTranslation } from "@/i18n";
+import { isIOS, PlatformProvider } from "@/utils/platform";
+import IOSKeyRecoveryNotice from "@/components/ios-key-recovery-notice";
+import AppErrorBoundary from "@/components/app-error-boundary";
+import IOSStartupGate from "@/components/ios-startup-gate";
 
 export const ChartResizeContext = React.createContext<{
   needResize: number;
@@ -24,8 +28,8 @@ function Shell() {
   );
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey={themeLocalStorageKey}>
-      <div className="min-h-dvh" onContextMenu={renderRightClickMenu}>
+    <ThemeProvider defaultTheme={isIOS() ? "system" : "light"} storageKey={themeLocalStorageKey}>
+      <div className="min-h-dvh" onContextMenu={isIOS() ? undefined : renderRightClickMenu}>
         <a
           href="#app-main-content"
           onClick={focusMainContent}
@@ -35,11 +39,14 @@ function Shell() {
         </a>
         <Toaster />
         <AutoUpdater />
-        <div>
-          <ChartResizeContext.Provider value={{ needResize, setNeedResize }}>
-            <IndexApp />
-          </ChartResizeContext.Provider>
-        </div>
+        <IOSStartupGate>
+          <IOSKeyRecoveryNotice />
+          <div>
+            <ChartResizeContext.Provider value={{ needResize, setNeedResize }}>
+              <IndexApp />
+            </ChartResizeContext.Provider>
+          </div>
+        </IOSStartupGate>
       </div>
     </ThemeProvider>
   );
@@ -48,7 +55,11 @@ function Shell() {
 function App() {
   return (
     <I18nProvider>
-      <Shell />
+      <AppErrorBoundary>
+        <PlatformProvider>
+          <Shell />
+        </PlatformProvider>
+      </AppErrorBoundary>
     </I18nProvider>
   );
 }

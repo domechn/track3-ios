@@ -34,6 +34,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { BottomSheet, useHaptics, useIsMobile } from "./mobile";
 import { isSameDay } from "date-fns";
 import { useTranslation } from "@/i18n";
 
@@ -52,6 +53,7 @@ type CoinComparison = {
 };
 
 type QuickCompareType = "7D" | "1M" | "1Y" | "YTD" | "ALL";
+const quickRanges: QuickCompareType[] = ["7D", "1M", "1Y", "YTD", "ALL"];
 
 type DateOption = {
   label: string;
@@ -69,6 +71,9 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const haptic = useHaptics();
+  const quickSwipeStart = useRef<{ x: number; y: number } | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const loadGenRef = useRef(0);
 
@@ -495,13 +500,14 @@ const App = ({
   function onQuickCompareButtonClick(type: QuickCompareType) {
     localStorage.removeItem(COMPARISON_DATES_KEY);
     setCurrentQuickCompare(type);
+    if (isMobile) haptic("selection");
   }
 
   const hasData = coinComparisons.length > 0;
 
   return (
     <div className="relative min-h-[400px]" aria-busy={pageLoading}>
-      <h1 className="sr-only">{t("comparison.h1")}</h1>
+      {!isMobile && <h1 className="sr-only">{t("comparison.h1")}</h1>}
       <StaggerContainer className="space-y-3">
         <FadeUp>
           <Card>
@@ -529,7 +535,7 @@ const App = ({
                       />
                     )}
                   </Button>
-                  <div className="flex items-center touch:min-w-0 touch:flex-wrap gap-2">
+                  <div className="flex items-center touch:grid touch:w-full touch:min-w-0 touch:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">
                     <ComparisonDatePicker
                       label={t("comparison.baseDate")}
                       value={baseId}
@@ -554,6 +560,23 @@ const App = ({
                     onValueChange={(val: string) =>
                       onQuickCompareButtonClick(val as QuickCompareType)
                     }
+                    onTouchStart={(event) => {
+                      if (!isMobile) return;
+                      quickSwipeStart.current = {
+                        x: event.touches[0].clientX,
+                        y: event.touches[0].clientY,
+                      };
+                    }}
+                    onTouchEnd={(event) => {
+                      if (!quickSwipeStart.current) return;
+                      const dx = event.changedTouches[0].clientX - quickSwipeStart.current.x;
+                      const dy = event.changedTouches[0].clientY - quickSwipeStart.current.y;
+                      quickSwipeStart.current = null;
+                      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+                      event.preventDefault();
+                      const index = Math.max(0, quickRanges.indexOf(currentQuickCompare ?? "7D"));
+                      onQuickCompareButtonClick(quickRanges[Math.max(0, Math.min(quickRanges.length - 1, index + (dx < 0 ? 1 : -1)))]);
+                    }}
                   >
                     <ButtonGroupItem value="7D">
                       {t("comparison.7D")}
@@ -597,7 +620,7 @@ const App = ({
                   <p className="text-sm font-medium text-muted-foreground mb-3">
                     {t("comparison.totalValue")}
                   </p>
-                  <div className="grid grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] items-center gap-2">
+                  <div className="comparison-total-grid grid grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] items-center gap-2">
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground truncate">
                         {baseDate}
@@ -694,6 +717,7 @@ function ComparisonDatePicker({
   onChange: (value: string) => void;
 }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [activeDateLabel, setActiveDateLabel] = useState<string | undefined>();
   const selectedOption = useMemo(
@@ -767,6 +791,34 @@ function ComparisonDatePicker({
 
   function isDayDisabled(day: Date) {
     return !selectableDates.some((date) => isSameDay(date, day));
+  }
+
+  if (isMobile) {
+    return <>
+      <Button type="button" variant="outline" className="min-h-11 min-w-0 max-w-[8.5rem] touch:max-w-none touch:px-2 justify-start"
+        disabled={dateOptions.length === 0} aria-label={selectedOption ? `${label}: ${selectedOption.displayLabel}` : label} onClick={() => setOpen(true)}>
+        <CalendarIcon aria-hidden="true" className="mr-1 h-4 w-4 shrink-0" />
+        <span className="truncate">{selectedOption?.displayLabel || label}</span>
+      </Button>
+      <BottomSheet open={open} onOpenChange={setOpen} title={label}>
+        <div className="space-y-4">
+          <label className="grid gap-1 text-sm">{label}
+            <input type="date" className="mobile-date-input"
+              min={dateOptions.at(-1)?.label} max={dateOptions[0]?.label}
+              value={activeDateLabel ?? selectedOption?.label ?? ""}
+              onChange={(event) => setActiveDateLabel(event.target.value)} />
+          </label>
+          <div className="mobile-date-snapshots">
+            {activeDateOptions.map((option) => <button type="button" key={option.value}
+              className="mobile-date-snapshot" aria-current={option.value === value ? "true" : undefined}
+              onClick={() => onSnapshotSelect(option)}>
+              <span>{option.displayLabel}</span>
+              {option.value === value && <span className="text-sm text-muted-foreground">{t("comparison.selected")}</span>}
+            </button>)}
+          </div>
+        </div>
+      </BottomSheet>
+    </>;
   }
 
   return (
@@ -901,7 +953,7 @@ function CoinCard({
           <AssetLabel asset={coin} labelClassName="text-sm font-medium" />
         </div>
 
-        <div className="grid grid-cols-[56px_minmax(0,1fr)_96px_minmax(0,1fr)] mb-1 gap-2">
+        <div className="comparison-metric-header grid grid-cols-[56px_minmax(0,1fr)_96px_minmax(0,1fr)] mb-1 gap-2">
           <span className="text-xs text-muted-foreground">
             {t("common.metricLabel")}
           </span>
@@ -924,7 +976,7 @@ function CoinCard({
             return (
               <div
                 key={m.type}
-                className="grid grid-cols-[56px_minmax(0,1fr)_128px_minmax(0,1fr)] items-center gap-3 py-0.5"
+                className="comparison-metric-row grid grid-cols-[56px_minmax(0,1fr)_128px_minmax(0,1fr)] items-center gap-3 py-0.5"
               >
                 <div className="text-xs text-muted-foreground">{m.label}</div>
                 <span

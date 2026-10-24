@@ -28,13 +28,14 @@ import {
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { insertEllipsis } from "@/utils/string";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { WALLET_ANALYZER } from "@/middlelayers/charts";
+import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
 import { ChartResizeContext } from "@/App";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import AssetLabel from "./common/asset-label";
 import { useWindowSize } from "@/utils/hook";
 import { WALLET_DETAIL_URLS } from "@/middlelayers/constants";
 import { useTranslation } from "@/i18n";
+import { MobileRecordList } from "./mobile";
 import {
   classifyWalletType,
   pickTileTextColor,
@@ -225,6 +226,7 @@ const App = ({
   // Click-driven popover: track which tile is selected + where to position.
   const [selectedTileKey, setSelectedTileKey] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<LayoutItem | null>(null);
+  const [mobileListLimit, setMobileListLimit] = useState(50);
   const [popoverPos, setPopoverPos] = useState<{
     left: number;
     top: number;
@@ -736,6 +738,28 @@ const App = ({
             </div>
           )}
         </div>
+
+        {isMobile && sortedWallets.length > 0 && <div className="space-y-2">
+          <MobileRecordList className="wallet-allocation-mobile-list" records={sortedWallets.slice(0, mobileListLimit).map((wallet) => {
+            const detailUrl = wallet.walletType ? WALLET_DETAIL_URLS[wallet.walletType]?.(wallet.wallet) : undefined;
+            return {
+              id: `${wallet.wallet}-${wallet.walletType ?? "none"}`,
+              title: getWalletDisplayName(wallet),
+              subtitle: `${wallet.percentage.toFixed(2)}%`,
+              fields: [
+                { label: t("walletValueChanges.col.type"), value: t(WALLET_CATEGORY_BASE_COLORS[classifyWalletType(wallet.walletType)].labelKey) },
+                { label: t("walletValueChanges.col.percentage"), value: `${wallet.percentage.toFixed(2)}%` },
+                { label: t("walletAllocation.totalValue"), value: `${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(wallet.value))}` },
+                ...(displayAmount ? [{ label: t("common.amountLabel"), value: prettyNumberKeepNDigitsAfterDecimalPoint(wallet.amount, 4) }] : []),
+              ],
+              actions: detailUrl ? [{ label: t("walletValueChanges.openDetails"), onClick: () => { void openUrl(detailUrl); } }] : [],
+            };
+          })} />
+          {sortedWallets.length > mobileListLimit && <button type="button" className="min-h-11 w-full text-sm"
+            onClick={() => setMobileListLimit((limit) => limit + 50)}>
+            {t("history.showMoreCount").replace("{n}", String(Math.min(50, sortedWallets.length - mobileListLimit)))}
+          </button>}
+        </div>}
 
         {chartHasData && (
           <div

@@ -23,6 +23,7 @@ import AssetsPercentageChange from "./assets-percentage-change";
 import { StaggerContainer, FadeUp } from "./motion";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
+import { useIsMobile } from "./mobile";
 
 const MAIN_COMPONENT_COUNT = 4;
 
@@ -36,6 +37,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [isShowMore, setIsShowMore] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState(true);
   const loadedCountRef = useRef(0);
@@ -61,7 +63,7 @@ const App = ({
   return (
     <OverviewLoadingContext.Provider value={loadingContextValue}>
       <div className="relative min-h-[400px]" aria-busy={pageLoading}>
-        <h1 className="sr-only">{t("overview.h1")}</h1>
+        {!isMobile && <h1 className="sr-only">{t("overview.h1")}</h1>}
         <Collapsible open={isShowMore} onOpenChange={setIsShowMore}>
           <StaggerContainer className="space-y-3">
             <div className="grid gap-5 grid-cols-2">

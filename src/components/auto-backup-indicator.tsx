@@ -5,6 +5,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "@/i18n";
+import { isIOS } from "@/utils/platform";
 
 export type AutoBackupStatus = "idle" | "running";
 
@@ -22,6 +23,13 @@ export default function AutoBackupIndicator({
 
   if (status !== "running") {
     return null;
+  }
+
+  if (isIOS()) {
+    return <div role="status" aria-live="polite" className="fixed inset-x-4 z-40 rounded-xl border bg-card p-3 text-sm shadow-sm" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}>
+      <p className="font-medium">{t("autoBackup.indicator.title")}</p>
+      <p className="text-muted-foreground">{t("autoBackup.indicator.description")}</p>
+    </div>;
   }
 
   return (

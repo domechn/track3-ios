@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartResizeContext } from "@/App";
 import { DATE_RANGE_KEY } from "@/middlelayers/ai/actions";
+import AppErrorBoundary from "@/components/app-error-boundary";
 
 const lazySummary = vi.hoisted(() => {
   let shouldHold = false;
@@ -56,7 +57,11 @@ vi.mock("../coin-analytics", () => ({
 
 vi.mock("../date-picker", () => ({
   default: ({ value }: { value?: { from?: Date; to?: Date } }) =>
-    <div data-testid="selected-range">{value?.from?.toISOString()}|{value?.to?.toISOString()}</div>,
+    <div data-testid="selected-range">{
+      value?.from && !Number.isNaN(value.from.getTime()) ? value.from.toISOString() : ""
+    }|{
+      value?.to && !Number.isNaN(value.to.getTime()) ? value.to.toISOString() : ""
+    }</div>,
 }));
 
 vi.mock("../realtime-total-value", () => ({
@@ -203,6 +208,24 @@ describe("Summary route date range", () => {
       lazySummary.releaseImport();
     }
     expect(await screen.findByTestId("summary-range")).toBeInTheDocument();
+  });
+
+  it("opens an empty portfolio without formatting invalid dates", async () => {
+    vi.mocked(queryLastRefreshAt).mockResolvedValue(undefined);
+    vi.mocked(getAvailableDates).mockResolvedValue([]);
+    vi.mocked(getInitialQueryDateRange).mockResolvedValue({
+      dr: { from: new Date(Infinity), to: new Date(-Infinity) },
+      size: 10,
+    });
+    render(
+      <AppErrorBoundary>
+        <ChartResizeContext.Provider value={{ needResize: 0, setNeedResize: vi.fn() }}>
+          <App />
+        </ChartResizeContext.Provider>
+      </AppErrorBoundary>,
+    );
+    await waitFor(() => expect(screen.getByTestId("selected-range")).toHaveTextContent("|"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows an app loading overlay while startup data is still being prepared", async () => {

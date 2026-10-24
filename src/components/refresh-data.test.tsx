@@ -12,11 +12,16 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts } from "@/middlelayers/alert-notifications";
 import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-service";
 import axe from "axe-core";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 
 // Hoist mock fn references so they're available inside vi.mock factories
 const mockSetButtonLoading = vi.hoisted(() => vi.fn());
 const mockSetProgress = vi.hoisted(() => vi.fn());
 const mockToast = vi.hoisted(() => vi.fn());
+const mockRefreshAction = vi.hoisted(() => ({ current: null as null | (() => Promise<void>) }));
 
 vi.mock("@/components/index/index", async () => {
   const { createContext } = await import("react");
@@ -26,6 +31,7 @@ vi.mock("@/components/index/index", async () => {
       setButtonLoading: mockSetButtonLoading,
       progress: 0,
       setProgress: mockSetProgress,
+      refreshAction: mockRefreshAction,
     }),
   };
 });
@@ -61,6 +67,8 @@ vi.mock("@/middlelayers/insights-service", () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(isIOS).mockReturnValue(false);
+  mockRefreshAction.current = null;
   localStorage.clear();
   vi.mocked(updateAllCurrencyRates).mockResolvedValue(undefined as never);
   vi.mocked(refreshAllData).mockResolvedValue({
@@ -77,6 +85,45 @@ beforeEach(() => {
 });
 
 describe("RefreshData — currency rates refresh ordering", () => {
+  it("exposes a refresh promise for pull to refresh until the refresh completes", async () => {
+    let finish: (() => void) | undefined;
+    vi.mocked(refreshAllData).mockImplementation(() => new Promise((resolve) => {
+      finish = () => resolve({ failedSources: [], requiresDataSourceAction: false, usedLastKnownData: false } as never);
+    }));
+    render(<RefreshData loading={false} />);
+    expect(mockRefreshAction.current).not.toBeNull();
+    let settled = false;
+    const refresh = mockRefreshAction.current!().then(() => { settled = true; });
+    await waitFor(() => expect(refreshAllData).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    await act(async () => { finish?.(); await refresh; });
+    expect(settled).toBe(true);
+  });
+  it("opens a progress sheet while an iPhone refresh is running", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+  });
+
+  it("hides results from the previous run while an iPhone refresh is pending", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockResolvedValueOnce({
+      failedSources: [], requiresDataSourceAction: false, usedLastKnownData: true,
+      persisted: true, sourceResults: [], sourceStatuses: [{ sourceId: "btc:0", label: "Old BTC result", status: "stale" }],
+    } as never);
+    const user = userEvent.setup();
+    render(<RefreshData loading={false} />);
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText("Old BTC result")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(screen.getByRole("alertdialog", { name: "Source status" })).toHaveTextContent("Refreshing portfolio");
+    expect(screen.queryByText("Old BTC result")).not.toBeInTheDocument();
+  });
+
   it("announces an active refresh to assistive technology", () => {
     render(<RefreshData loading={true} />);
     expect(screen.getByRole("status")).toHaveTextContent("Refreshing portfolio");

@@ -72,7 +72,7 @@ const App = ({
       year: number;
     }[]
   >([]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(dateRange.end.getFullYear());
   const [summaryType, setSummaryType] = useState<SummaryType>("month");
   const [clickedMonth, setClickedMonth] = useState<number | null>(null);
   const { t } = useTranslation();
@@ -122,6 +122,12 @@ const App = ({
       [...new Set(listAllFirstAndLastDays(dateRange.start, dateRange.end).map((d) => d.firstDay.getFullYear()))],
     [rangeKey]
   );
+
+  useEffect(() => {
+    if (availableYears.length && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears.at(-1)!);
+    }
+  }, [availableYears, selectedYear]);
 
   useEffect(() => {
     if (summaryType !== "year") {

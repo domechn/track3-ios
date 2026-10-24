@@ -5,7 +5,7 @@ import App from "./index";
 import { ChartResizeContext } from "@/App";
 import { APP_SOFT_REFRESH_EVENT } from "@/utils/hook";
 import { useDataChangedVersion } from "@/contexts/data-changed";
-import { processAlerts } from "@/middlelayers/alerts";
+import { countUnreadAlerts, processAlerts } from "@/middlelayers/alerts";
 
 let lastDataChangedVersion = 0;
 let lastDateRange: { start: Date; end: Date } | undefined;
@@ -161,7 +161,11 @@ vi.mock("@/middlelayers/data", () => ({
   autoBackupHistoricalData: vi.fn(),
   autoImportHistoricalData: vi.fn(),
 }));
-vi.mock("@/middlelayers/alerts", () => ({ processAlerts: vi.fn() }));
+vi.mock("@/middlelayers/alerts", () => ({
+  processAlerts: vi.fn(),
+  countUnreadAlerts: vi.fn().mockResolvedValue(0),
+  ALERTS_CHANGED_EVENT: "track3-alerts-changed",
+}));
 
 vi.mock("@/middlelayers/datafetch/utils/cache", () => ({
   invalidateCacheGroups: cacheMocks.invalidateCacheGroups,
@@ -188,6 +192,8 @@ import {
 import { useDataChangedVersion as realUseDataChangedVersion } from "@/contexts/data-changed";
 
 beforeEach(() => {
+  vi.mocked(countUnreadAlerts).mockResolvedValue(0);
+  vi.stubGlobal("scrollTo", vi.fn());
   vi.mocked(processAlerts).mockReset();
   vi.mocked(processAlerts).mockResolvedValue([]);
   lastDataChangedVersion = 0;
@@ -258,6 +264,29 @@ function renderApp() {
 }
 
 describe("App data-changed version bumps on refresh and soft refresh", () => {
+  it("renders mobile tabs and routes to the More hub", async () => {
+    const view = renderApp();
+    await view.findByTestId("summary-range");
+    const nav = view.container.querySelector(".mobile-tab-bar");
+    expect(nav).not.toBeNull();
+    expect(nav!.querySelectorAll("a")).toHaveLength(4);
+    expect(view.container.querySelector('.mobile-analytics-hub a[href="#/cost-basis"]')).toBeInTheDocument();
+    fireEvent.click(nav!.querySelector('a[href="#/more"]')!);
+    await waitFor(() => expect(view.container.querySelector(".mobile-more-hub")).toBeInTheDocument());
+    expect(view.container.querySelector('.mobile-more-hub a[href="#/cost-basis"]')).not.toBeInTheDocument();
+  });
+
+  it("shows the unread count on the Goals row in More", async () => {
+    vi.mocked(countUnreadAlerts).mockResolvedValue(3);
+    vi.mocked(countUnreadAlerts).mockClear();
+    window.location.hash = "#/more";
+    const view = renderApp();
+    const goals = view.container.querySelector('.mobile-more-hub a[href="#/goals"]');
+    await waitFor(() => expect(goals).toHaveTextContent("3"));
+    expect(goals).toHaveTextContent("Goals & Alerts");
+    expect(countUnreadAlerts).toHaveBeenCalledTimes(1);
+  });
+
   it("finishes boot while startup alert evaluation is pending", async () => {
     vi.mocked(processAlerts).mockImplementation(() => new Promise(() => {}));
     const view = renderApp();

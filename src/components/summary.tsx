@@ -14,6 +14,7 @@ import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import PageLoadingOverlay from "./page-loading-overlay";
 import { useLayoutEffect } from "react";
 import { useTranslation } from "@/i18n";
+import { useIsMobile } from "./mobile";
 const SUMMARY_COMPONENT_COUNT = 4;
 
 const App = ({
@@ -26,6 +27,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [pageLoading, setPageLoading] = useState(true);
   const loadedCountRef = useRef(0);
   const rangeKey = useMemo(
@@ -59,7 +61,7 @@ const App = ({
   return (
     <OverviewLoadingContext.Provider value={overviewLoadingContext}>
       <div className="relative min-h-[400px]" aria-busy={pageLoading}>
-        <h1 className="sr-only">{t("summary.h1")}</h1>
+        {!isMobile && <h1 className="sr-only">{t("summary.h1")}</h1>}
         <StaggerContainer className="space-y-3">
           {hasValidRange && (
             <>

@@ -79,6 +79,13 @@ describe("App shell accessibility", () => {
     expect(mainContent).toHaveFocus();
   });
 
+  it("leaves shell safe-area spacing to its header and content", () => {
+    render(<App />);
+    const shell = screen.getByRole("main").parentElement?.parentElement;
+    expect(shell).toHaveClass("min-h-dvh");
+    expect(shell).not.toHaveClass("ios-safe-area");
+  });
+
   it("renders an overview page heading", () => {
     render(
       <Overview

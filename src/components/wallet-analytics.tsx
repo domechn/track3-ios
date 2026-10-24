@@ -11,6 +11,7 @@ import { useDataChangedVersion } from "@/contexts/data-changed";
 import { StaggerContainer, FadeUp } from "./motion";
 import PageLoadingOverlay from "./page-loading-overlay";
 import { useTranslation } from "@/i18n";
+import { useIsMobile } from "./mobile";
 
 const App = ({
   currency,
@@ -22,6 +23,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const LOAD_COUNT = 2;
   const [pageLoading, setPageLoading] = useState(true);
   const loadedCountRef = useRef(0);
@@ -46,7 +48,7 @@ const App = ({
   return (
     <OverviewLoadingContext.Provider value={{ reportLoaded }}>
       <div className="relative min-h-[400px]" aria-busy={pageLoading}>
-        <h1 className="sr-only">{t("wallets.h1")}</h1>
+        {!isMobile && <h1 className="sr-only">{t("wallets.h1")}</h1>}
         <StaggerContainer className="space-y-3">
           <FadeUp>
             <WalletAssetsPercentage currency={currency} dateRange={dateRange} />

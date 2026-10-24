@@ -9,6 +9,7 @@ export default defineConfig({
   webServer: {
     command: `corepack yarn dev --host 127.0.0.1 --port ${port}`,
     url: `http://127.0.0.1:${port}`,
+    env: { VITE_TRACK3_IOS_READY_PROBE: "0" },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

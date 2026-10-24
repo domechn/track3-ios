@@ -31,12 +31,12 @@ async function checkRouteAccessibility(page: Page, route: string, width: number)
     await page.goto(`/#${route}`);
     await expect(page.locator("main")).toBeVisible();
     try {
-      await expect(page.locator("main > div")).toHaveAttribute("aria-busy", "false", { timeout: 15_000 });
+      await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false", { timeout: 15_000 });
     } catch {
       throw new Error(`Initialization stalled on ${route}: ${page.url()}; ${pageErrors.join("; ")}`);
     }
     try {
-      await expect(page.locator("main h1, main h2").first()).toBeVisible();
+      await expect(page.locator("main h1:visible, main h2:visible").first()).toBeVisible();
     } catch {
       throw new Error(`Missing page heading on ${route}: ${page.url()}; ${pageErrors.join("; ")}`);
     }
@@ -121,15 +121,16 @@ test("navigation follows visual order and shows a keyboard focus ring", async ({
 test.describe("coarse pointer date picker", () => {
 test.use({ isMobile: true, hasTouch: true });
 
-test("date picker popover fits a narrow viewport", async ({ page }) => {
+test("date picker sheet fits a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriBridge(page);
   await page.goto("/#/overview");
   await page.getByRole("button", { name: "Choose date range" }).click();
-  const popover = page.locator("[data-radix-popper-content-wrapper]");
-  await expect(popover).toBeVisible();
-  const box = await popover.boundingBox();
+  const sheet = page.getByRole("dialog", { name: "Choose date range" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByLabel("From")).toBeVisible();
+  const box = await sheet.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(360);
@@ -167,7 +168,11 @@ async function checkAttributionAccessibility(page: Page, width: number) {
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeAttached();
     await page.getByRole("radio", { name: "Attribution" }).click();
     await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("data-state", "checked");
-    await expect(page.getByText("Attribution details")).toBeAttached();
+    if (await page.evaluate(() => matchMedia("(max-width: 950px) and (pointer: coarse)").matches)) {
+      await expect(page.locator(".mobile-record-list").first()).toBeVisible();
+    } else {
+      await expect(page.getByText("Attribution details")).toBeAttached();
+    }
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`)).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -272,16 +277,18 @@ test("history first cell shows the row hover feedback with a mouse", async ({ pa
   expect(await firstCell.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
 });
 
-test("P&L rank column moves with its table instead of pinning", async ({ page }) => {
+test.describe("coarse pointer profit", () => {
+test.use({ isMobile: true, hasTouch: true });
+test("P&L leaders open from the phone record list", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await installTauriBridge(page, undefined, true);
   await page.goto("/#/summary");
-  const table = page.getByText("Top Profit", { exact: true }).locator("xpath=..").getByRole("table");
-  await expect(table).toBeVisible();
-  const wrapper = table.locator("xpath=..");
-  const rank = table.locator("td").first();
-  await wrapper.evaluate((node) => { node.style.width = "80px"; });
-  expect(await rank.evaluate((node) => getComputedStyle(node).position)).not.toBe("sticky");
+  const leaders = page.locator(".profit-mobile-list .mobile-list-row");
+  await expect(leaders.first()).toBeVisible();
+  await expect(page.locator("main table:visible")).toHaveCount(0);
+  await leaders.first().click();
+  await expect(page).toHaveURL(/#\/coins\//);
+});
 });
 
 test("configuration dialog fits mobile width and passes axe", async ({ page }) => {
@@ -330,7 +337,7 @@ test("visible controls across routes have 44px targets or 44px labels", async ({
   await installTauriBridge(page);
   for (const route of routes) {
     await page.goto(`/#${route}`);
-    await expect(page.locator("main > div")).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false");
     const small = await page.locator("main button, main a, main input, main select, aside button, aside a, header button, header a").evaluateAll((controls) =>
       controls.filter((control) => {
         const style = getComputedStyle(control);
@@ -350,7 +357,9 @@ test("date picker controls have 44px targets", async ({ page }) => {
   await installTauriBridge(page);
   await page.goto("/#/overview");
   await page.getByRole("button", { name: "Choose date range" }).click();
-  const small = await page.locator("[data-radix-popper-content-wrapper] button").evaluateAll((buttons) =>
+  const sheet = page.getByRole("dialog", { name: "Choose date range" });
+  await expect(sheet).toBeVisible();
+  const small = await sheet.locator("button, input").evaluateAll((buttons) =>
     buttons.filter((button) => {
       const box = button.getBoundingClientRect();
       return box.width > 0 && box.height > 0 && (box.width < 44 || box.height < 44);
@@ -378,12 +387,12 @@ test("visible mobile controls provide 44px touch targets", async ({ page }) => {
   const undersized: string[] = [];
   for (const route of ["/overview", "/rebalance", "/goals", "/history", "/assistant", "/settings/sync"]) {
     await page.goto(`/#${route}`);
-    await expect(page.locator("main > div")).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false");
     await expect(({
       "/overview": page.locator('main h1:text-is("Overview")'),
       "/rebalance": page.locator('main h1:text-is("Rebalance")'),
       "/goals": page.locator('main h1:text-is("Goals & Alerts")'),
-      "/history": page.locator('main h1:text-is("Historical Data")'),
+      "/history": page.locator('main h1:text-is("History")'),
       "/assistant": page.getByTestId("chat-input"),
       "/settings/sync": page.getByText("S3 endpoint", { exact: true }),
     } as Record<string, ReturnType<typeof page.locator>>)[route]).toBeAttached();
@@ -459,23 +468,14 @@ test("sync status popover stays visible and announces state", async ({ page }) =
 test.describe("coarse pointer cost basis table", () => {
 test.use({ isMobile: true, hasTouch: true });
 
-test("wide cost basis tables keep their first column visible while scrolling", async ({ page }) => {
+test("cost basis details render as phone records", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await installTauriBridge(page);
   await page.goto("/#/cost-basis");
   await page.getByText("Details", { exact: true }).click();
-  const table = page.locator("main table").first();
-  await expect(table).toBeVisible();
-  const wrapper = table.locator("xpath=..");
-  const widths = await wrapper.evaluate((node) => ({ scroll: node.scrollWidth, visible: node.clientWidth }));
-  expect(widths.scroll).toBeGreaterThan(widths.visible);
-  const first = table.locator("th").first();
-  const before = await first.boundingBox();
-  await wrapper.evaluate((node) => { node.scrollLeft = 150; });
-  const after = await first.boundingBox();
-  expect(before).not.toBeNull();
-  expect(after).not.toBeNull();
-  expect(Math.abs(after!.x - before!.x)).toBeLessThan(2);
+  await expect(page.locator(".mobile-record-list").first()).toBeVisible();
+  await expect(page.locator("main table:visible")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 });
 });
 

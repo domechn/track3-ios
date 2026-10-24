@@ -10,6 +10,7 @@ import type { Chart as ChartJS } from "chart.js";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
+import { useEffect, useRef } from "react";
 
 const palette = ["#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#14b8a6", "#f97316", "#ec4899", "#94a3b8"];
 const tone = (positive: boolean, quoteColor: QuoteColor) =>
@@ -20,6 +21,8 @@ function useChartOptions() {
   const text = dark ? "#cbd5e1" : "#475569";
   return {
     responsive: true, maintainAspectRatio: false,
+    interaction: { mode: "index" as const, intersect: false },
+    animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
       x: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
@@ -30,11 +33,30 @@ function useChartOptions() {
 
 function ChartPanel({ title, children, empty }: { title: string; children?: React.ReactNode; empty?: boolean }) {
   const { t } = useTranslation();
+  const press = useRef<number>();
+  const inspecting = useRef(false);
+  useEffect(() => () => window.clearTimeout(press.current), []);
   return <Card className="min-w-0">
     <CardHeader className="px-4 pb-1 pt-3"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-4">
       {empty ? <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t("finance.noChartData")}</p>
-        : <div className="relative h-44">{children}</div>}
+        : <div className="relative h-44 mobile-chart-touch"
+          onTouchStartCapture={() => {
+            window.clearTimeout(press.current);
+            inspecting.current = false;
+            press.current = window.setTimeout(() => { inspecting.current = true; }, 350);
+          }}
+          onTouchMoveCapture={(event) => {
+            if (!inspecting.current) event.stopPropagation();
+          }}
+          onTouchEndCapture={() => {
+            window.clearTimeout(press.current);
+            inspecting.current = false;
+          }}
+          onTouchCancelCapture={() => {
+            window.clearTimeout(press.current);
+            inspecting.current = false;
+          }}>{children}</div>}
     </CardContent>
   </Card>;
 }

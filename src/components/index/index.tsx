@@ -27,10 +27,10 @@ import PageLoadingOverlay from "../page-loading-overlay";
 import AutoBackupIndicator from "../auto-backup-indicator";
 import SyncStatusIndicator from "../sync-status-indicator";
 import "./index.css";
-import { Route, Routes, HashRouter, Outlet, Navigate, useLocation } from "react-router-dom";
+import { Route, Routes, HashRouter, Outlet, Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   getAvailableDates,
   queryLastRefreshAt,
@@ -50,7 +50,7 @@ import {
   autoImportHistoricalData,
 } from "@/middlelayers/data";
 import { DateRange } from "react-day-picker";
-import { format, parseISO } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { invalidateCacheGroups } from "@/middlelayers/datafetch/utils/cache";
 import { CACHE_GROUP_KEYS } from "@/middlelayers/consts";
 import { APP_SOFT_REFRESH_EVENT } from "@/utils/hook";
@@ -62,6 +62,13 @@ import { processAlerts } from "@/middlelayers/alerts";
 import { deliverAlerts, formatAlert } from "@/middlelayers/alert-notifications";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { markIOSReady } from "@/utils/ios-ready";
+import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
+import { useAlertBadge } from "@/components/use-alert-badge";
+import { MobileHeaderTotal } from "@/components/mobile/header-total";
+import { ChevronLeftIcon } from "@radix-ui/react-icons";
 
 const Setting = React.lazy(() => import("../settings"));
 const HistoricalData = React.lazy(() => import("../historical-data"));
@@ -101,9 +108,11 @@ export const RefreshButtonLoadingContext = React.createContext<{
   setButtonLoading: React.Dispatch<React.SetStateAction<boolean>>;
   progress: number;
   setProgress: React.Dispatch<React.SetStateAction<number>>;
+  refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
 }>(null as any);
 
 function TopBar({
+  mobile,
   isProUser,
   quoteColor,
   currentCurrency,
@@ -112,7 +121,11 @@ function TopBar({
   onDatePickerValueChange,
   lastRefreshAt,
   onRefreshSuccess,
+  compactTitle,
+  refreshAction,
+  onBack,
 }: {
+  mobile: boolean;
   isProUser: boolean;
   quoteColor: QuoteColor;
   currentCurrency: CurrencyRateDetail;
@@ -124,15 +137,24 @@ function TopBar({
   ) => void;
   lastRefreshAt?: string;
   onRefreshSuccess: () => void;
+  compactTitle?: string;
+  refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
+  onBack?: () => void;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
 
   return (
-    <div className="sticky top-0 z-10 glass-subtle border-b relative">
+    <div id="app-top-bar" className="sticky top-0 z-10 glass-subtle border-b relative">
       <div className="flex h-12 items-center px-4">
-        {isProUser && (
+        {mobile && onBack && <button type="button" className="mobile-back mobile-header-back"
+          onClick={onBack} aria-label={t("common.back", "Back")}>
+          <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
+        </button>}
+        {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
+        {!(mobile && onBack && compactTitle) && <MobileHeaderTotal currency={currentCurrency} live={isProUser} />}
+        {isProUser && !mobile && (
           <div className="mr-4">
             <RealTimeTotalValue
               quoteColor={quoteColor}
@@ -156,6 +178,7 @@ function TopBar({
                       setButtonLoading: setRefreshButtonLoading,
                       progress: refreshProgress,
                       setProgress: setRefreshProgress,
+                      refreshAction,
                     }}
                   >
                     <RefreshData
@@ -234,21 +257,77 @@ function Layout({
   onRefreshSuccess,
 }: LayoutProps) {
   const { t } = useTranslation();
+  const mobile = useIsMobile();
   const sidebarWidth = sidebarCollapsed ? 52 : 200;
+  const unread = useAlertBadge();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = tabForPath(location.pathname);
+  const routePath = location.pathname + location.search;
+  const rootPath = tabRoots[currentTab];
+  const tabStacks = useRef<Record<"overview" | "history" | "analytics" | "more", string[]>>({
+    overview: [tabRoots.overview], history: [tabRoots.history],
+    analytics: [tabRoots.analytics], more: [tabRoots.more],
+  });
+  const stack = tabStacks.current[currentTab];
+  if (stack.at(-1) !== routePath) {
+    const existing = stack.indexOf(routePath);
+    if (existing >= 0) stack.splice(existing + 1);
+    else stack.push(routePath);
+  }
+  const backPath = stack.at(-2) ?? rootPath;
+  const canGoBack = routePath !== rootPath;
+  const previousRoute = useRef({ tab: currentTab, path: routePath });
+  const tabScroll = useRef<Record<"overview" | "history" | "analytics" | "more", number>>({
+    overview: 0, history: 0, analytics: 0, more: 0,
+  });
+  const tabPaths = useRef<Record<"overview" | "history" | "analytics" | "more", string>>({ ...tabRoots });
+  const tabSwitchCaptured = useRef(false);
+  const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const refreshAction = useRef<(() => Promise<void>) | null>(null);
+  useLayoutEffect(() => {
+    const previous = previousRoute.current;
+    if (previous.tab === currentTab && previous.path === routePath) return;
+    const switchingTabs = previous.tab !== currentTab;
+    if (switchingTabs && !tabSwitchCaptured.current) tabScroll.current[previous.tab] = window.scrollY;
+    tabSwitchCaptured.current = false;
+    const target = switchingTabs && tabPaths.current[currentTab] === routePath
+      ? tabScroll.current[currentTab] : 0;
+    const restore = () => window.scrollTo(0, target);
+    restore();
+    const main = document.getElementById("app-main-content");
+    const observer = target > 0 && main && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => {
+        restore();
+        if (Math.abs(window.scrollY - target) < 2) observer?.disconnect();
+      }) : null;
+    if (main && observer) observer.observe(main);
+    tabPaths.current[currentTab] = routePath;
+    previousRoute.current = { tab: currentTab, path: routePath };
+    return () => observer?.disconnect();
+  }, [currentTab, routePath]);
+  useEffect(() => {
+    const update = () => setHeaderCollapsed(window.scrollY > 64);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [location.pathname]);
 
   return (
-    <div className="min-h-screen">
-      <Sidebar
+    <div className="app-layout min-h-screen">
+      {!mobile && <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={onSidebarToggle}
         isProUser={isProUser}
-      />
+      />}
 
       <div
-        style={{ marginLeft: sidebarWidth }}
-        className="transition-[margin-left] duration-300 ease-in-out"
+        style={{ marginLeft: mobile ? 0 : sidebarWidth, transition: mobile ? "none" : undefined }}
+        className="app-content transition-[margin-left] duration-300 ease-in-out"
       >
         <TopBar
+          mobile={mobile}
           isProUser={isProUser}
           quoteColor={quoteColor}
           currentCurrency={currentCurrency}
@@ -256,16 +335,41 @@ function Layout({
           dateRange={dateRange}
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
+          compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
+          refreshAction={refreshAction}
         />
 
         {/* Main content */}
-        <main id="app-main-content" tabIndex={-1} className="p-5">
-          <div className="relative min-h-[400px]" aria-busy={initializing}>
+        <main id="app-main-content" tabIndex={-1} className="p-5"
+          onPointerDown={(event) => {
+            if (!mobile || event.pointerType !== "touch") return;
+            swipeStart.current = event.clientX < 24 &&
+              !(event.target as Element).closest('[aria-modal="true"]')
+              ? { id: event.pointerId, x: event.clientX, y: event.clientY } : null;
+          }}
+          onPointerUp={(event) => {
+            const start = swipeStart.current;
+            swipeStart.current = null;
+            if (!mobile || !canGoBack || !start || event.pointerId !== start.id) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            if (dx > 90 && Math.abs(dx) > Math.abs(dy)) navigate(backPath);
+          }}
+          onPointerCancel={() => { swipeStart.current = null; }}>
+          <PullToRefresh disabled={!mobile || /^\/assistant(\/|$)/.test(location.pathname)} onRefresh={() => refreshAction.current?.()}
+            lastRefreshText={lastRefreshAt
+              ? t("topbar.lastRefreshAt") + lastRefreshAt
+              : t("topbar.neverRefreshBefore")}>
+          {!/^\/(settings|goals|rebalance)(\/|$)/.test(location.pathname) && <div className="mobile-route-heading">
+            <MobilePage title={routeTitle(location.pathname, t)} />
+          </div>}
+          <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
             >
-              <Outlet />
+              <Outlet context={unread} />
             </React.Suspense>
             {initializing && (
               <PageLoadingOverlay
@@ -274,10 +378,41 @@ function Layout({
               />
             )}
           </div>
+          </PullToRefresh>
         </main>
       </div>
+      <MobileNavigation unread={unread} onTabSwitch={() => {
+        tabScroll.current[currentTab] = window.scrollY;
+        tabSwitchCaptured.current = true;
+      }} />
     </div>
   );
+}
+
+function MoreHub() {
+  const { t } = useTranslation();
+  const unread = useOutletContext<number>();
+  const items = [
+    { href: "#/rebalance", label: t("nav.rebalance") },
+    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined },
+    { href: "#/assistant", label: t("nav.assistant") },
+    { href: "#/settings", label: t("nav.settings") },
+  ];
+  return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
+    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>{item.label}</ListRow>)}
+  </InsetGroup></div>;
+}
+
+function AnalyticsHub() {
+  const { t } = useTranslation();
+  const items = [
+    { href: "#/wallets", label: t("nav.wallets") },
+    { href: "#/comparison", label: t("nav.comparison") },
+    { href: "#/cost-basis", label: t("nav.costBasis") },
+  ];
+  return <div className="mobile-analytics-hub"><InsetGroup title={t("nav.analytics", "Analytics")}>
+    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
+  </InsetGroup></div>;
 }
 
 type AppRoutesProps = {
@@ -358,6 +493,7 @@ function AppRoutes({
         }
       >
         <Route index element={<Navigate to="/overview" />} />
+        <Route path="more" element={<MoreHub />} />
         <Route
           path="overview"
           element={
@@ -377,6 +513,7 @@ function AppRoutes({
           element={
             <AnimatedPage>
               <PageWrapper dateRange={maxDateRange} hasData={hasData}>
+                <AnalyticsHub />
                 <Summary
                   currency={currentCurrency}
                   dateRange={maxDateRange}
@@ -556,43 +693,57 @@ const App = () => {
   useEffect(() => {
     let active = true;
 
-    void Promise.all([
+    const loadStartupData = () => Promise.all([
       queryPreferCurrency().then((c) => {
-        if (active) {
-          setCurrentCurrency(c);
-        }
+        if (active) setCurrentCurrency(c);
       }),
       getLicenseIfIsPro().then((l) => {
-        if (active) {
-          setIsProUser(!!l);
-        }
+        if (active) setIsProUser(!!l);
       }),
       getQuoteColor().then((c) => {
-        if (active) {
-          setQuoteColor(c);
-        }
+        if (active) setQuoteColor(c);
       }),
-    ])
-      .then(() => loadAllData(active))
-      .then(() => {
-        if (!active) return;
-        void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
-          const text = formatAlert(alert, t);
-          toast({ title: text.title, description: text.message });
-        }, t)).catch(() => {
-          console.warn("startup alert evaluation failed");
+    ]).then(() => loadAllData(active));
+
+    const start = () => {
+      if (!active) return;
+      setInitializing(true);
+      void loadStartupData()
+        .then(() => {
+          if (!active) return;
+          void processAlerts().then((alerts) => deliverAlerts(alerts, (alert) => {
+            const text = formatAlert(alert, t);
+            toast({ title: text.title, description: text.message });
+          }, t)).catch(() => {
+            console.warn("startup alert evaluation failed");
+          });
+        })
+        .catch(() => {
+          if (!active) return;
+          console.warn("startup data loading failed");
+          toast({
+            title: t("app.dataLoadFailed"),
+            duration: 86_400_000,
+            action: <ToastAction altText={t("app.retryDataLoad")} onClick={start} className="touch:min-h-11">
+              {t("app.retryDataLoad")}
+            </ToastAction>,
+          });
+        })
+        .finally(() => {
+          if (active) {
+            setInitializing(false);
+            void markIOSReady().catch(() => {
+              console.warn("iOS readiness check failed");
+            });
+            // Defer to the next tick so the boot overlay clears first;
+            // auto backup is intentionally off the critical path.
+            window.setTimeout(() => {
+              void runAutoBackupInBackground();
+            }, 0);
+          }
         });
-      })
-      .finally(() => {
-        if (active) {
-          setInitializing(false);
-          // Defer to the next tick so the boot overlay clears first;
-          // auto backup is intentionally off the critical path.
-          window.setTimeout(() => {
-            void runAutoBackupInBackground();
-          }, 0);
-        }
-      });
+    };
+    start();
 
     return () => {
       active = false;
@@ -632,7 +783,7 @@ const App = () => {
     [dateRange],
   );
   useEffect(() => {
-    if (dateRange?.from && dateRange.to) {
+    if (dateRange?.from && dateRange.to && isValid(dateRange.from) && isValid(dateRange.to)) {
       localStorage.setItem(CURRENT_DATE_RANGE_KEY, JSON.stringify({
         from: format(dateRange.from, "yyyy-MM-dd"), to: format(dateRange.to, "yyyy-MM-dd"),
       }));

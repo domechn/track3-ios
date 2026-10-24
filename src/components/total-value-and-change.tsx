@@ -34,6 +34,7 @@ import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
+import { useIsMobile } from "@/components/mobile";
 
 interface TotalValueShower {
   currencyName(): string;
@@ -193,6 +194,7 @@ const App = ({
   const [showPercentageInChart, setShowPercentageInChart] = useState(false);
 
   const [showValue, setShowValue] = useState(false);
+  const isMobile = useIsMobile();
   const [chartWidth, setChartWidth] = useState(600);
   const loadGenRef = useRef(0);
   const rangeKey = useMemo(
@@ -491,8 +493,8 @@ const App = ({
     <div className="h-full">
       <Card
         className="flex h-full flex-col"
-        onMouseEnter={() => setShowValue(true)}
-        onMouseLeave={() => setShowValue(false)}
+        onMouseEnter={() => { if (!isMobile) setShowValue(true); }}
+        onMouseLeave={() => { if (!isMobile) setShowValue(false); }}
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -557,15 +559,16 @@ const App = ({
             {totalValueShower.formatTotalValue()}
           </div>
           <p className="text-xs text-muted-foreground mb-2">
-            <span
-              className={`tabular-nums ${changePercentageColorClass(
+            <button type="button" aria-label={`${changedValueOrPercentage}, ${t("totalValue.toggleChange")}`}
+              onClick={() => setShowValue((value) => !value)}
+              className={`tabular-nums touch:min-h-11 touch:px-2 ${changePercentageColorClass(
                 totalValueShower,
                 totalValue,
                 firstTotalValue,
               )}`}
             >
               {changedValueOrPercentage}
-            </span>{" "}
+            </button>{" "}
             {t("totalValue.from").replace("{date}", firstDate)}
           </p>
           <div className="min-h-[120px] flex-1">

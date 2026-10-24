@@ -66,6 +66,7 @@ import { StaggerContainer, FadeUp } from "./motion";
 import PageLoadingOverlay from "./page-loading-overlay";
 import { useTranslation } from "@/i18n";
 import { ScrollArea } from "./ui/scroll-area";
+import { SwipeableRow, useIsMobile } from "./mobile";
 
 type RankData = {
   id: number;
@@ -96,6 +97,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   const [data, setData] = useState<HistoricalPageRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -111,6 +113,7 @@ const App = ({
   const [measuredDetailHeights, setMeasuredDetailHeights] = useState<Map<number, number>>(() => new Map());
   const [pageLoading, setPageLoading] = useState(true);
   const [logoMap, setLogoMap] = useState<{ [x: string]: string }>({});
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
 
   const { run: runDelete, isDeleting: deleting } = useOptimisticDelete(setData);
   const { run: runDetailDelete, isDeleting: deletingDetail } = useOptimisticDelete(setSelectedData);
@@ -551,8 +554,19 @@ const App = ({
 
   return (
     <div aria-busy={pageLoading} data-testid="history-content">
-      <h1 className="sr-only">{t("history.h1")}</h1>
+      {!isMobile && <h1 className="sr-only">{t("history.h1")}</h1>}
       <StaggerContainer className="space-y-4">
+        {isMobile && <ConfirmDeleteDialog
+          open={deleteCandidate !== null}
+          onOpenChange={(open) => { if (!open) setDeleteCandidate(null); }}
+          title={t("history.deleteLatestTitle")}
+          description={t("history.deleteLatestDesc")}
+          cancelLabel={t("common.cancel")}
+          actions={[{ label: t("common.confirm"), onClick: () => {
+            if (deleteCandidate) onHistoricalDataDeleteClick(deleteCandidate);
+            setDeleteCandidate(null);
+          } }]}
+        />}
         <Dialog
           open={isModalOpen}
           onOpenChange={(open) => {
@@ -563,7 +577,7 @@ const App = ({
             }
           }}
         >
-          <DialogContent className="min-w-[80%] touch:min-w-0 touch:w-[calc(100vw-1rem)] touch:max-w-[1200px] touch:max-h-[calc(100dvh-1rem)]">
+          <DialogContent className="history-detail-dialog min-w-[80%] touch:min-w-0 touch:w-[calc(100vw-1rem)] touch:max-w-[1200px] touch:max-h-[calc(100dvh-1rem)]">
             <DialogHeader>
               <DialogTitle>{t("history.detailTitle")}</DialogTitle>
               <DialogDescription className="sr-only">
@@ -582,6 +596,16 @@ const App = ({
                   )}
                 </p>
               ) : null}
+              {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
+                <button type="button" className="history-mobile-delete self-start"
+                  disabled={deleting}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setDeleteCandidate(selectedDataId);
+                  }}>
+                  {t("history.deleteSnapshot")}
+                </button>
+              )}
             </DialogHeader>
             {detailLoading ? <p role="status" className="text-sm text-muted-foreground">{t("common.loading")}</p> : null}
             {detailError ? <p role="alert" className="text-sm text-destructive">{t("history.detailLoadFailed")}</p> : null}
@@ -622,9 +646,31 @@ const App = ({
                 />
               </div>
             </div>
-            <div
+            {isMobile && <div className="history-mobile-detail-list">
+              {visibleRankData.map((item) => <div key={item.assetId} className="history-mobile-asset">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="min-w-0 font-medium break-words">#{item.rank} {item.symbol}</span>
+                  <span className="font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                  <span>{t("common.amountLabel")}: {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
+                  <span>{t("common.priceLabel")}: {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
+                </div>
+                <ConfirmDeleteDialog
+                  trigger={<button type="button" className="history-mobile-delete" disabled={deletingDetail}>{t("common.delete")}</button>}
+                  title={t("history.deleteDialogTitle")}
+                  description={t("history.deleteDialogDesc")}
+                  cancelLabel={t("common.cancel")}
+                  actions={[
+                    { label: t("history.deleteBlacklist"), onClick: () => onHistoricalDataDetailDeleteAndBlacklistClick(item.assetId, item.symbol) },
+                    { label: t("common.delete"), onClick: () => onHistoricalDataDetailDeleteClick(item.assetId) },
+                  ]}
+                />
+              </div>)}
+            </div>}
+            {!isMobile && <div
               ref={detailRegionRef}
-              className="w-full max-h-[70vh] overflow-auto"
+              className="history-desktop-detail-table w-full max-h-[70vh] overflow-auto"
               role="region"
               aria-label={t("history.assets")}
               tabIndex={0}
@@ -742,7 +788,7 @@ const App = ({
                   ) : null}
                 </TableBody>
               </Table>
-            </div>
+            </div>}
             {filteredRankDataCount > DETAIL_PAGE_SIZE ? (
               <Button
                 variant="ghost"
@@ -868,6 +914,7 @@ const App = ({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  <div className="flex shrink-0 items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -929,11 +976,40 @@ const App = ({
                   >
                     <ChevronRightIcon />
                   </Button>
+                  </div>
                 </div>
               </div>
 
               <div className="relative">
-                <ScrollArea className="w-full touch:min-w-0 touch:max-w-full rounded-lg border border-border/40 bg-background/20">
+                {isMobile && <div className="history-mobile-list">
+                  {data.map((row, idx) => {
+                    const isLatest = dataPage === 0 && idx === 0;
+                    return <SwipeableRow key={row.id} className="history-mobile-snapshot"
+                      actions={isLatest ? [{ label: t("common.delete"), destructive: true, disabled: deleting,
+                        onClick: () => setDeleteCandidate(row.id) }] : []}>
+                      <button type="button" data-testid="history-mobile-row"
+                        className="history-mobile-snapshot-button" onClick={() => onRowClick(row.id)}>
+                        <span className="sr-only">{t("history.viewSnapshot").replace("{date}", timeToDateStr(new Date(row.createdAt).getTime(), true))}</span>
+                        <span className="flex min-w-0 justify-between gap-3">
+                          <span className="min-w-0 break-words text-left font-medium">{timeToDateStr(new Date(row.createdAt).getTime(), true)}</span>
+                          <span className="shrink-0 font-mono font-semibold">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
+                        </span>
+                        <span className="flex justify-between gap-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-2">
+                            <ImageStack imageSrcs={row.topAssets.map((asset) =>
+                              resolveAssetLogoSrc(asset, logoMap[asset.symbol]))}
+                              imageWidth={18} imageHeight={18} />
+                            {t("history.assetCount").replace("{n}", String(row.assetCount))}
+                          </span>
+                          <span style={{ color: positiveNegativeColor(row.change ?? 0, quoteColor) }}>
+                            {row.change === null ? "—" : `${row.change > 0 ? "+" : row.change < 0 ? "-" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.change)))}`}
+                          </span>
+                        </span>
+                      </button>
+                    </SwipeableRow>;
+                  })}
+                </div>}
+                {!isMobile && <ScrollArea className="history-desktop-table w-full touch:min-w-0 touch:max-w-full rounded-lg border border-border/40 bg-background/20">
                   <Table className="touch:min-w-[600px]">
                     <TableHeader>
                       <TableRow>
@@ -1048,7 +1124,7 @@ const App = ({
                       })}
                     </TableBody>
                   </Table>
-                </ScrollArea>
+                </ScrollArea>}
 
                 {pageLoading && (
                   <PageLoadingOverlay

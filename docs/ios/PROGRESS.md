@@ -1,0 +1,328 @@
+# iOS port progress
+
+The earlier S1–S4 sections record their handoff results. The current state
+for this worktree is S5 below.
+
+## S5 reviewer closeout
+
+- Pull to refresh now ignores gestures beginning inside a scrolled vertical
+  child and is disabled on assistant routes. Vitest and phone browser cases
+  cover inner scrolling and the assistant thread.
+- Comparison totals use unbroken values and stack the base and head dates
+  below 400px. Browser checks cover 320px and 375px widths.
+- The More hub receives the unread count from the shell's existing alert
+  subscription, avoiding a second badge query and native badge write.
+  The goal creation screenshot now scrolls the saved $50,000 rule fully
+  into view.
+- The round5 desktop density and Vite probe fixes were already present.
+  No feature was added in this closeout.
+- Local checks passed: both frontend and Playwright TypeScript checks,
+  1,803 Vitest tests in 218 files, 81 mobile-suite Playwright tests, and 61
+  Rust pure tests. The frontend production build passed. The three
+  regenerated goal screenshots show the saved $50,000 rule; the iPhone SE
+  image was visually inspected.
+- The latest successful iOS foundation run on the S4 head `660e9bf` was
+  `40002540819`: both web and iOS jobs passed. Run `39998981335` on the
+  same head also passed both jobs, with 1,802 Vitest tests, 77 phone and
+  77 desktop Playwright tests, and 61 Rust pure tests. Its simulator showed
+  a rendered empty Overview and a readiness marker, and it uploaded the
+  unsigned builds and 82 phone browser screenshots. An intervening attempt,
+  `40002534459`, timed out installing Ubuntu packages in the web job;
+  its iOS job passed. The separate `test-on-pr` run `40002541174` passed.
+  These are S4-head results; S5 has no pushed CI run yet.
+- Signed physical-device checks listed in S4 remain open.
+
+## S4 integration, parity and release preparation
+
+- The S2 More tab now opens the S3 iPhone Settings hub. Its section links,
+  direct hash routes, Back stack, and page titles are exercised in browser
+  tests. Settings, Goals and Rebalance have one visible page heading. The
+  shared S2 phone row is used in Settings; S3's duplicate row was removed.
+  Full-screen editors and confirmation sheets share
+  `src/components/mobile/overlays.tsx` and mount at the document root, so
+  the shell header cannot sit above a source editor. Focused Settings pages
+  rely on the shell's single Back button.
+- The iPhone haptic hook calls the S3 native bridge. The assistant composer
+  measures the space above the tab bar as the visual viewport changes. The
+  iOS share command accepts the UUID cache folder and export filename
+  created by the JavaScript export flow, while rejecting unrelated paths.
+  The main-content back swipe now uses touch pointer events so the gesture
+  survives Chromium's canceled touch sequence; swipes inside modal editors
+  leave the form open. The initial goals query no longer closes an editor
+  opened before loading finishes. The phone chat header wraps without
+  overlapping usage controls, and the shell shows one Back control.
+  Wallet chart components import their analyzer directly, removing Rollup's
+  circular chunk warning.
+- Reviewer follow-up removes duplicate shell safe-area padding. The header,
+  content and tab bar now own their insets, with a browser regression that
+  injects nonzero top and side insets. The More Goals row shows its unread
+  alert count. Startup portfolio read failures show a persistent retry toast.
+  Rebalance now uses the shell's touch-width signal for its phone controls.
+- [FEATURE_PARITY.md](FEATURE_PARITY.md) inventories the desktop routes,
+  Settings controls, data sources, charts and assistant skills with iPhone
+  locations and test references. The README and
+  [RELEASE.md](RELEASE.md) describe builds, signing, privacy, platform
+  limits and device checks. Desktop updater, window controls, tray and
+  external digital subscription checkout have justified iOS exclusions.
+- The new Playwright suite checks iPhone SE, 14 and Pro Max viewports,
+  navigation, first launch, source creation, refresh, Files flows, goal
+  creation, rebalance, chat, language/theme, overflow, safe-area spacing,
+  tab touch targets and browser errors. The primary flows run at all three
+  sizes, and disclosure and form-label targets are checked at 44px.
+  A configured but locked sync pill clears the More tab. The Xcode target
+  now supports iPhone only; iPad has no validated layout. It saves screenshots in
+  `test-results/mobile/`. CI now installs cached Chromium and runs the
+  mobile suites, browser typecheck and Rust pure tests.
+- Run `39988241737` on head `5d5d18b` passed both jobs. The simulator app
+  launched with a rendered empty Overview and a ready marker; native symbols,
+  the committed Xcode project and unsigned IPA passed. The web job passed
+  TypeScript, 1,800 Vitest tests in 218 files, 76 iPhone Playwright tests,
+  77 desktop Playwright tests and 61 Rust pure tests. Simulator screenshots
+  and build artifacts uploaded. Browser screenshots were not uploaded because
+  the desktop Playwright run cleared their output directory; the upload step
+  is now immediately after the iPhone run and awaits CI verification.
+- The README now discloses Aptabase telemetry on iPhone. The release
+  checklist requires App Store privacy labels and an accurate
+  `PrivacyInfo.xcprivacy` manifest; both remain release tasks. The release
+  checklist also flags the existing Pro license-key flow as an unresolved
+  App Store Guideline 3.1.1 review risk. Browser tests now save an exchange
+  and wallet at all three iPhone sizes and collect page and console errors
+  across the mobile route suite.
+- A signed physical-device run remains necessary for Face ID/Touch ID
+  and passcode fallback, Keychain migration and restore, app-switcher cover,
+  notification delivery and badge, haptics, share sheet, Files/iCloud Drive,
+  keyboard movement and iOS background suspension. Browser mocks and the
+  unsigned simulator cannot establish those behaviors.
+
+### S4 local verification
+
+- `corepack yarn tsc --noEmit` and
+  `corepack yarn tsc -p tests/e2e/tsconfig.json --noEmit` passed in this
+  reviewer follow-up. Full Vitest passed: 1,802 tests in 218 files.
+  The three iPhone Playwright files passed 77/77, including the injected
+  nonzero safe-area regression. The narrow desktop rebalance browser check
+  passed 1/1. After the density test fix, its 12 tests passed three times
+  each, and the CI desktop browser command passed 77/77 locally.
+  Playwright saved phone screenshots during the mobile run; the later
+  desktop check cleared the local `test-results/` directory as expected.
+- `corepack yarn build` passed after these fixes. The seven-route production
+  preview passed before this review follow-up. `cargo test --locked -p track3-pure-tests --lib`
+  passed 61 tests in this follow-up; no Rust code changed in it.
+  The full Vitest suite emits expected jsdom canvas and intentional
+  error-boundary messages while exiting successfully. Workflow YAML parsed.
+- Run `39993408716` on head `49dc2f3` passed the macOS iOS job, including
+  simulator launch, screenshots and unsigned IPA. Its web job failed in the
+  desktop density test because Chromium measured a 36px tab as 36.000015px;
+  the later Rust checks were skipped. The S4 follow-up reduced motion and
+  rounded pixel measurements in that test, and set the Playwright server's
+  readiness probe variable to stop Vite's repeated warning. The later
+  successful runs on `660e9bf` are recorded in S5 above. No signed-device
+  claim is made from the local checks.
+
+## S1 foundation
+
+- Last pushed run `39932803896` failed in both jobs. The web job could not
+  install `libwebkit2gtk-4.0-dev` on Ubuntu 24.04. The iOS job built and
+  passed both Rust target checks, then showed a blank white simulator
+  screenshot and timed out waiting for the frontend readiness marker. WebKit
+  loaded the page assets, but the available log did not show JavaScript
+  errors. The run uploaded no artifacts.
+- This round removes the obsolete 4.0 package from the foundation workflow,
+  lets the readiness probe recognize a fresh install's empty portfolio, adds
+  an app error screen and startup JavaScript error capture, and checks the
+  initial simulator screenshot. The workflow now attempts to upload the
+  simulator `.app`, unsigned `.ipa`, screenshots, and logs on every run.
+  Artifacts uploaded successfully in the later S4 run `39981443802`.
+- A local production build reproduced the blank page: a circular Vite manual
+  chunk made `vendor-charts` read React before initialization. Removing that
+  chunk rule removed the circular import. At an iPhone viewport the rebuilt
+  bundle has no JavaScript page error; the production Playwright portfolio
+  smoke test passes with its Tauri bridge fixture.
+- Local `corepack yarn tsc --noEmit` and the probe-enabled frontend build
+  passed. `corepack yarn vitest run` passed (1,723 tests in 203 files).
+
+The S1 simulator exit condition was met by run `39981443802` on `dde653d`.
+Physical device and signed build checks remain pending.
+
+## S2 mobile shell and data screens
+
+- Added the phone shell with four bottom tabs, per-tab back navigation,
+  including stock asset query parameters, collapsing titles, a compact
+  portfolio total, safe-area spacing, pull to
+  refresh through the existing refresh flow, and a floating source-status
+  sheet. Desktop routing remains available.
+- Added reusable touch components in `src/components/mobile/`; their usage
+  contract is in `docs/ios/MOBILE-UI.md`. History, comparison, cost basis,
+  coin transactions, wallet analytics, and attribution now show phone rows,
+  sheets, or date inputs instead of wide tables and popovers. Overview
+  rankings and shared dialog styles fit phone widths. Comparison ranges
+  support horizontal swipes; finance charts accept touch inspection.
+- Local checks passed before review: `corepack yarn tsc --noEmit`; Vitest
+  (205 files, 1,736 tests); Playwright mobile suite (18 tests); Rust pure tests
+  (60 tests). Playwright saved 28 route screenshots in `test-results/mobile/`
+  at 320, 375, 390, and 430 CSS pixels. Each route check waits for content
+  to load, then asserts no document overflow or clipped visible leaf text
+  and checks bottom safe-area clearance.
+- Review follow-up: iOS foundation run `39944121990` built but failed at
+  simulator launch. Its stack traced to formatting Invalid Dates on an empty
+  database. Fresh portfolios now receive an empty date range, and date range
+  persistence checks validity before formatting. The iOS error report now
+  includes the message. A new app render test covers the empty portfolio.
+- Viewport screenshots now use viewport capture; full-page capture made
+  Chromium switch to desktop layout during screenshot. The route loop also
+  visits More and Goals, and the history list gets a scrolled screenshot.
+  History swipe actions handle canceled pointers, leave the tab order while
+  concealed, and suppress the accidental row tap after a swipe. The suite
+  exercises swipe, delete confirmation, and undo. History pagination stays
+  together at phone width. The Pro header total polls, pull to refresh awaits
+  the actual refresh promise, and the portfolio change value can be toggled
+  by touch. The allocation chart accepts nearby taps.
+- Review follow-up local checks passed: `corepack yarn tsc --noEmit`;
+  Vitest (207 files, 1,743 tests); Playwright mobile suite (21 tests).
+  The final Playwright run saved 40 viewport screenshots in
+  `test-results/mobile/` at 320, 375, 390, and 430 CSS pixels. Live DOM
+  metrics check overflow, clipped text, tab visibility, and safe-area
+  clearance; a 390pt history screenshot and a 320pt scrolled history-list
+  screenshot were visually inspected.
+- The run also hit GitHub Actions artifact storage quota when uploading
+  simulator evidence and unsigned builds. Upload failure is now nonfatal so
+  the next job can report the simulator result independently. Artifact
+  retention remains unavailable until GitHub recalculates or frees quota.
+- CI run `39949174467` built and launched the simulator app and built the IPA,
+  but its final generated Xcode project diff check failed. This follow-up
+  matches the two generated files to that exact CI diff. The mobile shell now
+  covers coarse-pointer landscape widths through 950px, avoids a second
+  hidden Pro total poll, and exposes the last refresh time while pulling.
+  Finance charts gate touch drags behind a long press and allow vertical page
+  scrolling. The toast close control is visible, named, and 44px wide on
+  touch screens. History has one mobile `h1`; the More settings link uses its
+  canonical route so Back returns through configuration to More.
+- This follow-up passed `corepack yarn tsc --noEmit`, Vitest (207 files,
+  1,745 tests), and the full mobile Playwright suite (24 tests). Playwright
+  saved 40 PNGs in `test-results/mobile/`; all have the expected dimensions.
+  The route sweep checked overflow, clipped text, tab visibility, and
+  injected safe-area clearance at 320, 375, 390, and 430 CSS pixels.
+- Reviewer follow-up: the Xcode project check now restores the committed
+  variable based `Info.plist` and its trailing newline after Tauri rewrites
+  the file. Portal sheet gestures no longer trigger page refresh or swipe-back.
+  Sheet detents track the handle during a drag. Phone data routes have one
+  `h1`, history rows retain logo previews, mobile inputs use at least 16px
+  text, and `/more` renders on desktop.
+- Local checks after this follow-up passed: `corepack yarn tsc --noEmit`;
+  Vitest (208 files, 1,748 tests); Playwright mobile suite (26 tests).
+  The four viewport sweeps regenerated 40 PNGs in `test-results/mobile/`
+  and checked width, clipped text, tab visibility, and safe-area clearance.
+  The comparison sheet tests cover portal drag isolation and both detents.
+- Reviewer follow-up: pushed routes now open at the top, the sticky header
+  keeps Back visible, and tab switches restore their saved scroll position.
+  Tapping the active tab returns to its root or scrolls that root to the top.
+  The Analytics root links to Wallets, Comparison, and Cost basis; More keeps
+  its own routes. The latest history snapshot has a visible delete action in
+  its detail. Phone gestures are gated by the mobile media query, and touch
+  icons remain visible on wider touch displays. Locale keys added for S2
+  are at the end of both files, and the duplicate empty-date guard was removed.
+  This review explicitly requested that correction in S3-owned
+  `configuration.ts`. The existing S2 edits to S3-owned `refresh-data.tsx`
+  register the pull-to-refresh callback and its loading guard; the driver
+  should reconcile them with S3 before merging.
+- macOS CI run `39957522652` passed on the previous HEAD. This follow-up
+  still needs a new CI run after the driver commits and pushes it.
+  Local checks for this follow-up passed: `corepack yarn tsc --noEmit`,
+  Vitest (208 files, 1,748 tests), and Playwright mobile (31 tests).
+  Playwright regenerated 40 PNGs under `test-results/mobile/`; all have
+  the expected 2x dimensions, and the route sweep checked horizontal
+  overflow, clipped text, tab visibility, and safe-area clearance.
+  Physical-device interaction checks and a native haptic bridge remain pending. The
+  shared haptic hook uses vibration where a WebView supports it; WKWebView
+  needs a native bridge for physical feedback. S3-owned screens will need
+  to adopt the shared phone components.
+
+## S3 feature screens and native integrations
+
+The S2 shell and S3 screens are now combined in this worktree. Native behavior
+still needs signed-device validation. The S3 iOS run `39951716004` failed
+the committed-project check; the later S4 run `39969080654` passed it.
+
+- iPhone Settings now opens focused pages for data sources, base currency,
+  appearance, language, blacklist, Pro, assistant configuration, security,
+  backup, sync, and About. Desktop settings retain their existing layout.
+  `src/components/mobile/` provides the page, row, and overlay patterns.
+- Exchanges, wallets, IBKR Flex, and custom holdings have phone source lists
+  and full-screen add/edit forms. Provider selection precedes credentials;
+  credential fields suppress autocorrection and mask secrets. Existing source
+  validators, Pro gating, attachments, and quick views remain connected.
+  Source deletion and backup restore use confirmation sheets.
+- Backup settings keep Files import/export and the existing automatic backup
+  format. iPhone export also opens the native share sheet. Automatic backups
+  use Track3's Documents directory, which S1 exposes in Files, including
+  iCloud Drive when the user moves files there. Alerts use the existing local
+  notification permission flow and now update the app icon badge.
+- The assistant has a full phone chat and session view with a composer that
+  follows the visual viewport above the keyboard and collapsed tool activity.
+  Alert editing uses a focus-trapping page with background scroll locked.
+  Rebalance targets have touch sliders and 44 pt increment and decrement
+  buttons; detailed iPhone results are cards instead of a wide table.
+  refresh opens a progress sheet with existing source status and retry.
+  The backup status is visible without hover.
+- A small Swift bridge supplies Face ID, Touch ID, or device passcode app
+  lock, an opaque app-switcher privacy cover, haptics, badge updates, and the
+  iOS share sheet. The persistent encryption key now lives in a
+  device-only iOS Keychain item. Existing protected `.ent-key` files migrate
+  to Keychain on launch; key rotation and recovery now use the Keychain item.
+  The rotation journal can temporarily contain key material during a crash
+  recovery and remains protected and excluded from backup by S1's file policy.
+- The Swift lock prompts after entering the background, covers the app
+  switcher snapshot whenever activity resigns, even when app lock is off,
+  and no longer reacts to keyboard windows. A device without an available
+  passcode policy disables the lock
+  and shows an explanation. The Rust iOS cdylib permits the Swift symbols to
+  resolve at the final app link; the CI build now checks the final executable
+  for every native bridge symbol. The Swift typecheck step is appended after
+  the iOS build and artifact steps. A newly visible app window now receives
+  the cover before an unlock prompt, and a timed-out settings prompt
+  invalidates its authentication context. Badge updates use
+  `UNUserNotificationCenter.setBadgeCount` on iOS 16 and newer; the installed
+  notification plugin requests badge, alert, and sound permission together.
+- Editing a saved source keeps its attachment identity fixed. The alert
+  editor has a Cancel button, and refresh hides old source results until the
+  current run finishes.
+- The current review removes the blocking Keychain retry loop and fabricated
+  simulator signature. A simulator lacking Keychain entitlement uses a
+  protected, backup-excluded key file. Other startup key errors leave Track3
+  locked with the database closed instead of panicking; a temporary key error
+  retries when the app becomes active or the user taps Retry. CI prints recent
+  crash details in the job log; upload quota errors no longer mask the launch
+  result. Mobile dialogs trap focus, lock background scrolling, and dismiss
+  through Escape or a backdrop tap. Changing a new exchange's provider clears
+  its old password and passphrase. The iPhone Pro page keeps license entry
+  but hides external subscription links. The share sheet preserves the
+  export filename by staging it in a private UUID directory as
+  `track3-export-data.json`. The System theme choice is limited to iOS.
+
+### Remaining S3 work and verification limits
+
+- Wallet QR scanning is not implemented. Users can type or paste addresses;
+  camera permission is not requested.
+- Automatic backup and refresh run while the app is active. iOS can suspend
+  WKWebView work in the background, so scheduled execution after suspension
+  is not guaranteed; no BGTaskScheduler integration exists.
+- Keychain migration, native lock, privacy cover, badge, haptics, share sheet,
+  Files visibility, and background behavior still need physical-device
+  checks. In particular, cold-start lock coverage must be
+  checked on a device after launch with lock enabled. The S4 simulator
+  screenshot verifies launch and empty Overview, but cannot establish the
+  signed-device behaviors above. A Keychain failure leaves the portfolio
+  locked; the debug startup log reports its OSStatus.
+
+### S3 local checks
+
+- `corepack yarn tsc --noEmit` passed after the current review fixes.
+- `corepack yarn vitest run` passed: 1,771 tests in 212 files, including
+  English/Chinese catalog parity.
+- `E2E_PORT=1423 corepack yarn playwright test
+  tests/e2e/ios-settings.spec.ts --workers=1` passed: 14 browser checks at
+  375, 390, and 430 pixel widths. It covers the remaining settings pages,
+  assistant composer, alert editor, rebalance cards with data, and refresh
+  sheet.
+- Previously, `cargo test --locked -p track3-pure-tests --lib` passed: 60
+  tests. It was not rerun for this review pass.

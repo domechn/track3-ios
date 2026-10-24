@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/i18n";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
+import { isIOS } from "@/utils/platform";
 
 export default function SyncStatusIndicator() {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export default function SyncStatusIndicator() {
   }
 
   return (
-    <div className="fixed bottom-14 right-4 z-50">
+    <div className="fixed bottom-14 right-4 z-50" style={isIOS() ? { bottom: "calc(env(safe-area-inset-bottom) + 5rem)" } : undefined}>
       <span role="status" aria-live="polite" className="sr-only">
         {busy ? t("common.loading") : t(`sync.status.${phase}`)}
       </span>

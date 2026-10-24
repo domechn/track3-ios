@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
 import ConfirmDeleteDialog from "@/components/common/confirm-delete-dialog";
@@ -11,6 +11,7 @@ import {
   PinTopIcon,
   Cross2Icon,
   PlusIcon,
+  DotsHorizontalIcon,
 } from "@radix-ui/react-icons";
 import type { ChatSessionMeta } from "@/middlelayers/ai";
 
@@ -23,6 +24,7 @@ export type SessionSidebarProps = {
   onNew: () => void;
   onDelete: (id: string) => void;
   onPin: (id: string, pinned: boolean) => void;
+  mobile?: boolean;
 };
 
 function relativeTime(iso: string, t: (key: string) => string): string {
@@ -45,6 +47,7 @@ export default function SessionSidebar({
   onNew,
   onDelete,
   onPin,
+  mobile = false,
 }: SessionSidebarProps) {
   const { t } = useTranslation();
 
@@ -53,7 +56,7 @@ export default function SessionSidebar({
 
   return (
     <div
-      className="flex w-[260px] shrink-0 flex-col border-r border-[var(--glass-border)] bg-card/40"
+      className={cn("flex shrink-0 flex-col border-r border-[var(--glass-border)] bg-card/40", mobile ? "w-full min-w-0 flex-1" : "w-[260px]")}
       data-testid="session-sidebar"
     >
       {/* Header */}
@@ -103,6 +106,7 @@ export default function SessionSidebar({
                     onSelect={onSelect}
                     onDelete={onDelete}
                     onPin={onPin}
+                    mobile={mobile}
                     t={t}
                   />
                 ))}
@@ -127,6 +131,7 @@ export default function SessionSidebar({
                     onSelect={onSelect}
                     onDelete={onDelete}
                     onPin={onPin}
+                    mobile={mobile}
                     t={t}
                   />
                 ))}
@@ -146,6 +151,7 @@ function SessionItem({
   onSelect,
   onDelete,
   onPin,
+  mobile = false,
   t,
 }: {
   session: ChatSessionMeta;
@@ -154,12 +160,16 @@ function SessionItem({
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onPin: (id: string, pinned: boolean) => void;
+  mobile?: boolean;
   t: (key: string) => string;
 }) {
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const touchStart = useRef<{ x: number; y: number }>();
   const handlePin = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       onPin(session.id, session.pinned === 1 ? false : true);
+      setActionsOpen(false);
     },
     [session.id, session.pinned, onPin],
   );
@@ -174,11 +184,25 @@ function SessionItem({
         )}
         data-testid={`session-item-${session.id}`}
         data-active={isActive ? "true" : undefined}
+        data-actions-open={mobile ? String(actionsOpen) : undefined}
+        onTouchStart={mobile ? (event) => {
+          touchStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+        } : undefined}
+        onTouchEnd={mobile ? (event) => {
+          if (!touchStart.current) return;
+          const dx = event.changedTouches[0].clientX - touchStart.current.x;
+          const dy = event.changedTouches[0].clientY - touchStart.current.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) setActionsOpen(dx < 0);
+          touchStart.current = undefined;
+        } : undefined}
       >
         <div className="flex items-start gap-1">
           <button
             type="button"
-            onClick={() => onSelect(session.id)}
+            onClick={() => {
+              if (actionsOpen) setActionsOpen(false);
+              else onSelect(session.id);
+            }}
             aria-current={isActive ? "true" : undefined}
             className="min-h-8 touch:min-h-11 min-w-0 flex-1 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-testid={`session-select-${session.id}`}
@@ -198,8 +222,14 @@ function SessionItem({
               {relativeTime(session.updatedAt, t)}
             </span>
           </button>
+          {mobile && !actionsOpen && <button
+            type="button"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground"
+            aria-label={`${t("ai.session.moreActions")} ${session.title || t("ai.session.untitled")}`}
+            onClick={() => setActionsOpen(true)}
+          ><DotsHorizontalIcon className="h-5 w-5" /></button>}
           {/* Hover actions */}
-          <span className="mt-0.5 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 touch:opacity-100 motion-reduce:opacity-100">
+          <span className={cn("mt-0.5 flex shrink-0 items-center gap-0.5 transition-opacity", mobile ? (actionsOpen ? "opacity-100" : "hidden") : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 touch:opacity-100 motion-reduce:opacity-100")}>
             <button
               type="button"
               onClick={handlePin}

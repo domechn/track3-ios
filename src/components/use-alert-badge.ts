@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ALERTS_CHANGED_EVENT, countUnreadAlerts } from "@/middlelayers/alerts";
+import { setAppBadge } from "@/utils/ios-native";
 
 export function useAlertBadge(): number {
   const [unread, setUnread] = useState(0);
@@ -7,9 +8,15 @@ export function useAlertBadge(): number {
     let active = true;
     const refresh = () => {
       void countUnreadAlerts().then((count) => {
-        if (active) setUnread(count);
+        if (active) {
+          setUnread(count);
+          void setAppBadge(count).catch(() => {});
+        }
       }).catch(() => {
-        if (active) setUnread(0);
+        if (active) {
+          setUnread(0);
+          void setAppBadge(0).catch(() => {});
+        }
       });
     };
     refresh();

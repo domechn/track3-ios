@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -7,6 +7,10 @@ import GoalsAlerts from "./goals-alerts";
 import { listAlertRules, listAlertHistory, saveAlertRule, setAlertRuleEnabled, acknowledgeAllAlerts, clearAlertHistory, deleteAlertRule, loadAlertEvaluationData, type AlertRule } from "@/middlelayers/alerts";
 import { enableSystemNotifications, systemNotificationsEnabled } from "@/middlelayers/alert-notifications";
 import { queryPNLChartValue } from "@/middlelayers/charts-timeseries";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 vi.mock("@/middlelayers/charts-timeseries", async (original) => ({
   ...await original<typeof import("@/middlelayers/charts-timeseries")>(),
   queryPNLChartValue: vi.fn().mockResolvedValue([]),
@@ -38,12 +42,54 @@ const savedRule: AlertRule = {
   lastTriggeredAt: null, lastValue: null, armed: true,
 };
 beforeEach(() => {
+  vi.mocked(isIOS).mockReturnValue(false);
   vi.clearAllMocks();
   vi.mocked(listAlertRules).mockResolvedValue([]);
   vi.mocked(listAlertHistory).mockResolvedValue([]);
   vi.mocked(loadAlertEvaluationData).mockResolvedValue({ snapshots: [], prices: {}, excludedSymbols: [] });
   vi.mocked(systemNotificationsEnabled).mockResolvedValue(false);
   vi.mocked(queryPNLChartValue).mockResolvedValue([]);
+});
+
+it("opens rule editing as a full-screen page on iPhone", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<GoalsAlerts />);
+  await screen.findByText("No rules yet");
+  expect(screen.queryByRole("button", { name: "Save rule" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByText("Add alert"));
+  expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Save rule" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+});
+
+it("keeps the iPhone rule editor open when the initial rule query finishes", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  let finishRules!: (rules: AlertRule[]) => void;
+  vi.mocked(listAlertRules).mockImplementation(() => new Promise((resolve) => {
+    finishRules = resolve;
+  }));
+  render(<GoalsAlerts />);
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
+  expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
+  await act(async () => { finishRules([]); });
+  await screen.findByText("No rules yet");
+  expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
+});
+
+it("traps focus and locks background scroll while the iPhone rule editor is open", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<><button>Outside</button><GoalsAlerts /></>);
+  await screen.findByText("No rules yet");
+  await userEvent.click(screen.getByText("Add alert"));
+  const dialog = screen.getByRole("dialog", { name: "Add alert" });
+  expect(document.body.style.overflow).toBe("hidden");
+  within(dialog).getByRole("button", { name: "Cancel" }).focus();
+  await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+  expect(document.body.style.overflow).toBe("");
 });
 
 it("shows stored portfolio values as a line chart", async () => {

@@ -155,6 +155,7 @@ const App = ({
   const options = {
     maintainAspectRatio: false,
     responsive: true,
+    interaction: { mode: "nearest" as const, intersect: false },
     layout: {
       padding: 20,
     },
@@ -319,7 +320,7 @@ const App = ({
                       className="min-w-0"
                       labelClassName="text-muted-foreground text-xs truncate"
                     />
-                    <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block text-muted-foreground" />
+                    <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block touch:inline-block text-muted-foreground" />
                   </Link>
                 </TableCell>
                 <TableCell className="text-right py-1.5">

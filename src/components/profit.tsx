@@ -31,6 +31,7 @@ import {
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import ProfitAttribution from "./profit-attribution";
+import { ListRow, useIsMobile } from "./mobile";
 
 function getToneBadgeClass(value: number, quoteColor: QuoteColor) {
   const tone = positiveNegativeColor(value, quoteColor);
@@ -55,6 +56,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [profit, setProfit] = useState(0);
   // note: undefined means infinite
   const [profitPercentage, setProfitPercentage] = useState<
@@ -232,7 +234,7 @@ const App = ({
               className="min-w-0"
               labelClassName="font-medium text-sm"
             />
-            <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block text-muted-foreground" />
+            <OpenInNewWindowIcon className="ml-2 h-3 w-3 hidden group-hover:inline-block touch:inline-block text-muted-foreground" />
           </Link>
         </TableCell>
         <TableCell className="text-right py-1.5">
@@ -255,6 +257,31 @@ const App = ({
         </TableCell>
       </TableRow>
     ));
+
+  const renderMobileRows = (
+    rows: typeof coinsProfit,
+  ) => <div className="profit-mobile-list mobile-record-list">
+    {rows.map((row, index) => {
+      const key = getAssetLogoKey(row);
+      return <ListRow key={key} href={`#${buildAssetDetailsPath(row)}`}
+        value={<span className="text-right">
+          <span className={`block text-sm ${positiveNegativeTextClass(row.value, quoteColor, 500)}`}>
+            {`${row.value < 0 ? "-" : "+"}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.value)))}`}
+          </span>
+          {showCoinsProfitPercentage && <span className="block text-xs">
+            {row.percentage === undefined ? t("common.infinity")
+              : `${row.percentage < 0 ? "" : "+"}${prettyNumberKeepNDigitsAfterDecimalPoint(row.percentage, 2)}%`}
+          </span>}
+        </span>}>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground">#{index + 1}</span>
+          <img className="h-6 w-6 shrink-0 rounded-full"
+            src={resolveAssetLogoSrc(row, logoMap[key])} alt={formatAssetLabel(row)} />
+          <AssetLabel asset={row} labelClassName="truncate text-sm font-medium" />
+        </span>
+      </ListRow>;
+    })}
+  </div>;
 
   return (
     <Card>
@@ -308,17 +335,17 @@ const App = ({
             <div className="text-xs text-muted-foreground font-medium">
               {t("profit.topProfit")}
             </div>
-            <Table>
+            {isMobile ? renderMobileRows(topProfitData) : <Table>
               <TableBody>{renderRows(topProfitData)}</TableBody>
-            </Table>
+            </Table>}
           </div>
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground font-medium">
               {t("profit.topLoss")}
             </div>
-            <Table>
+            {isMobile ? renderMobileRows(topLossData) : <Table>
               <TableBody>{renderRows(topLossData)}</TableBody>
-            </Table>
+            </Table>}
           </div>
         </div>
         {coinsProfit.length === 0 && (

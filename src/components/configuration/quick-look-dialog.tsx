@@ -11,6 +11,7 @@ import { useTranslation } from "@/i18n";
 import { resolveAssetLogoSrc } from "@/utils/assets";
 import { prettyPriceNumberToLocaleString } from "@/utils/currency";
 import type { QuickLookDialogProps } from "./types";
+import { isIOS } from "@/utils/platform";
 
 const QuickLookDialog = memo(function QuickLookDialog({
   open,
@@ -24,9 +25,11 @@ const QuickLookDialog = memo(function QuickLookDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className={isIOS()
+        ? "bottom-0 left-0 top-auto max-h-[80dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+        : "sm:max-w-[425px]"}>
         <DialogHeader>
-          <DialogTitle>Quick Look - {title}</DialogTitle>
+          <DialogTitle>{t("config.quickLookTitle").replace("{source}", title)}</DialogTitle>
           <DialogDescription>
             {t("config.currentAssetBalances")}
           </DialogDescription>

@@ -24,6 +24,26 @@ beforeEach(() => vi.clearAllMocks());
 function view() { return <ProfitAttribution currency={currency} dateRange={range} quoteColor="red-up-green-down" />; }
 
 describe("profit attribution", () => {
+  it("opens grouped attribution fields in a phone detail sheet", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    try {
+      vi.mocked(queryAttribution).mockResolvedValue(filled);
+      render(view());
+      expect(await screen.findByText("Top contributors")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /BTC/ }));
+      const dialog = screen.getByRole("dialog", { name: "BTC" });
+      expect(within(dialog).getByText("Quantity change")).toBeInTheDocument();
+      expect(within(dialog).getByText("+€200.00")).toBeInTheDocument();
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
+  });
+
   it("shows loading, then an honest empty state when the range has no comparison", async () => {
     let resolve!: (value: typeof empty) => void;
     vi.mocked(queryAttribution).mockReturnValue(new Promise((done) => { resolve = done; }));

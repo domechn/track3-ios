@@ -10,6 +10,7 @@ import { LinkBreak2Icon } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { getWalletLogo } from "@/lib/utils";
 import type { AttachModalProps } from "./types";
+import { isIOS } from "@/utils/platform";
 
 const AttachModal = memo(function AttachModal({
   open,
@@ -32,14 +33,16 @@ const AttachModal = memo(function AttachModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[380px]">
+      <DialogContent className={isIOS()
+        ? "bottom-0 left-0 top-auto max-h-[75dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+        : "sm:max-w-[380px]"}>
         <DialogHeader>
           <DialogTitle>{t("config.others.attachTo")}</DialogTitle>
           <DialogDescription>
             {t("config.others.attachToModalDesc")}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[360px] overflow-y-auto space-y-1 py-2">
+        <div className={`${isIOS() ? "max-h-[30dvh]" : "max-h-[360px]"} overflow-y-auto space-y-1 py-2`}>
           {/* None / detach */}
           <button
             type="button"

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useToast } from "@/components/ui/use-toast";
 import ConfirmDeleteDialog from "@/components/common/confirm-delete-dialog";
@@ -9,6 +8,7 @@ import {
   exportHistoricalData,
   importHistoricalData,
   readHistoricalDataFromFile,
+  shareHistoricalData,
 } from "@/middlelayers/data";
 import { UniqueIndexConflictResolver } from "@/middlelayers/types";
 import {
@@ -21,7 +21,7 @@ import {
   removeFromBlacklist,
   saveAutoBackupDirectory,
 } from "@/middlelayers/configuration";
-import { ExportData } from "@/middlelayers/datamanager";
+import type { ExportData } from "@/middlelayers/datamanager";
 import { timeToDateStr } from "@/utils/date";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -52,16 +52,23 @@ import {
   runEncryptionKeyRotation,
 } from "@/middlelayers/encryption-write-gate";
 import { redactSecrets } from "@/middlelayers/security/redact";
+import { chooseBackupLocation } from "@/utils/backup-location";
+import { isIOS } from "@/utils/platform";
+import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
+import { ConfirmSheet } from "@/components/mobile/overlays";
+import { useSearchParams } from "react-router-dom";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const [exportConfiguration, setExportConfiguration] = useState(false);
   const [showConflictResolverDialog, setShowConflictResolverDialog] =
     useState(false);
   const [exportData, setExportData] = useState<ExportData | undefined>(
     undefined,
   );
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [autoBackupDirectory, setAutoBackupDirectory] = useState<string>();
   const { run: runBackupFolderDelete } = useOptimisticDelete(setAutoBackupDirectory);
   const [lastBackupAt, setLastBackupAt] = useState<Date>();
@@ -71,6 +78,24 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const [encKeyInput, setEncKeyInput] = useState("");
   const [encKeyConfirm, setEncKeyConfirm] = useState("");
   const [encKeySaving, setEncKeySaving] = useState(false);
+  const [lockEnabled, setLockEnabled] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
+  const [lockError, setLockError] = useState(false);
+  useEffect(() => {
+    if (isIOS()) void appLockEnabled().then(setLockEnabled).catch(() => setLockError(true));
+  }, []);
+  async function toggleAppLock() {
+    setLockBusy(true);
+    setLockError(false);
+    try {
+      await setAppLockEnabled(!lockEnabled);
+      setLockEnabled(!lockEnabled);
+    } catch {
+      setLockError(true);
+    } finally {
+      setLockBusy(false);
+    }
+  }
   async function handleChangeEncryptionKey() {
     if (!encKeyInput || encKeyInput !== encKeyConfirm) {
       toast({
@@ -143,29 +168,45 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
     }
   }
 
+  async function onShareDataClick() {
+    try {
+      await shareHistoricalData(exportConfiguration);
+    } catch {
+      toast({ description: t("data.shareFailed"), variant: "destructive" });
+    }
+  }
+
   async function onImportDataClick() {
     const ed = await readHistoricalDataFromFile();
     setExportData(ed);
     if (!ed) {
       return;
     }
+    if (isIOS()) {
+      setShowImportConfirm(true);
+      return;
+    }
+    await inspectImport(ed);
+  }
+
+  async function inspectImport(ed: ExportData) {
     const hasConflicts = await checkIfDuplicatedHistoricalData(ed);
     if (hasConflicts) {
       setShowConflictResolverDialog(true);
     } else {
-      importData("IGNORE");
+      await importData("IGNORE", ed);
     }
   }
 
-  async function importData(cr: UniqueIndexConflictResolver) {
-    if (!exportData) {
+  async function importData(cr: UniqueIndexConflictResolver, selectedData = exportData) {
+    if (!selectedData) {
       toast({
         description: t("data.noDataToImport"),
         variant: "destructive",
       });
       return;
     }
-    return importHistoricalData(cr, exportData)
+    return importHistoricalData(cr, selectedData)
       .then((imported) => {
         if (!imported) {
           return;
@@ -188,10 +229,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   }
 
   async function onChooseAutoBackupFolderButtonClick() {
-    const selected = await open({
-      multiple: false,
-      directory: true,
-    });
+    const selected = await chooseBackupLocation();
     if (selected) {
       const path = selected as string;
       await saveAutoBackupDirectory(path);
@@ -236,9 +274,28 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
     });
   }
 
+  const section = isIOS() ? searchParams.get("section") : null;
+  const showBackup = !section || section === "backup";
+  const showBlacklist = !section || section === "blacklist";
+  const showSecurity = !section || section === "security";
+
   return (
     <div className="space-y-6">
-      <Dialog
+      {showBackup && showImportConfirm && <ConfirmSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
+        setShowImportConfirm(false);
+        setExportData(undefined);
+      }}>
+        <p className="py-2 text-center">{t("data.restoreConfirm.description")}</p>
+        <Button variant="destructive" className="min-h-12 w-full" onClick={() => {
+          setShowImportConfirm(false);
+          if (exportData) void inspectImport(exportData);
+        }}>{t("data.restoreConfirm.action")}</Button>
+        <Button variant="outline" className="min-h-12 w-full" onClick={() => {
+          setShowImportConfirm(false);
+          setExportData(undefined);
+        }}>{t("common.cancel")}</Button>
+      </ConfirmSheet>}
+      {showBackup && <Dialog
         open={showConflictResolverDialog}
         onOpenChange={setShowConflictResolverDialog}
       >
@@ -258,16 +315,16 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
-      <div>
+      {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("data.title")}</h3>
         <p className="text-sm text-muted-foreground">
           {t("data.subtitle")}
         </p>
-      </div>
+      </div>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {showBackup && <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -310,11 +367,14 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             <Button onClick={onExportDataClick} size="sm">
               {t("data.exportButton")}
             </Button>
+            {isIOS() && <Button onClick={() => void onShareDataClick()} variant="outline" className="ml-2 min-h-11">
+              {t("data.shareJSON")}
+            </Button>}
           </CardContent>
         </Card>
-      </div>
+      </div>}
 
-      <Card>
+      {showBackup && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.autoBackup")}
@@ -322,7 +382,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <TooltipProvider>
+            {!isIOS() && <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <InfoCircledIcon className="text-muted-foreground w-4 h-4 mt-0.5" />
@@ -340,11 +400,21 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
                   </div>
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
+            </TooltipProvider>}
             <span>
               {t("data.autoBackupDesc")}
             </span>
           </div>
+          {isIOS() && <dl className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex justify-between gap-3">
+              <dt>{t("data.lastBackupAt")}</dt>
+              <dd>{lastBackupAt ? timeToDateStr(lastBackupAt, true) : t("data.na")}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>{t("data.lastImportAt")}</dt>
+              <dd>{lastImportAt ? timeToDateStr(lastImportAt, true) : t("data.na")}</dd>
+            </div>
+          </dl>}
 
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
             <div
@@ -357,7 +427,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
             <div className="flex items-center gap-2">
               <Button onClick={onChooseAutoBackupFolderButtonClick} size="sm">
-                {t("data.chooseFolder")}
+                {t(isIOS() ? "data.useDocumentsFolder" : "data.chooseFolder")}
               </Button>
               <ConfirmDeleteDialog
                 trigger={<Button variant="outline" size="sm">{t("data.clearFolder")}</Button>}
@@ -372,9 +442,9 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showBlacklist && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.blacklist")}
@@ -414,9 +484,22 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      <Card>
+      {showSecurity && isIOS() && <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">{t("data.appLock.title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t("data.appLock.description")}</p>
+          {lockError && <p role="alert" className="text-sm text-destructive">{t("data.appLock.failed")}</p>}
+          <Button className="min-h-11" disabled={lockBusy} onClick={() => void toggleAppLock()}>
+            {t(lockEnabled ? "data.appLock.disable" : "data.appLock.enable")}
+          </Button>
+        </CardContent>
+      </Card>}
+
+      {showSecurity && <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.encryption.key.title")}
@@ -446,7 +529,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
               : t("data.encryption.key.update")}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 };

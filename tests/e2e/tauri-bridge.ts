@@ -9,7 +9,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -35,6 +35,12 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   db.run("INSERT INTO configuration (id, data) VALUES (11, ?)", [
     "btc: {addresses: []}\nerc20: {addresses: []}\nsol: {addresses: []}\ndoge: {addresses: []}\ntrc20: {addresses: []}\nton: {addresses: []}\nsui: {addresses: []}\n",
   ]);
+  if (seedLockedSync) {
+    db.run("INSERT INTO configuration (id, data) VALUES (991, ?)", [
+      `!ent:e2e:${JSON.stringify({ enabled: true, endpoint: "https://s3.example.test", bucket: "track3", region: "us-east-1", accessKeyId: "e2e-access", secretAccessKey: "e2e-secret" })}`,
+    ]);
+  }
+  if (emptyPortfolio) db.run("DELETE FROM assets_v2");
   if (seedReviewContent) {
     db.run(`INSERT INTO chat_sessions (id, title, createdAt, updatedAt, pinned, messageCount, preview)
       VALUES ('pinned-e2e', 'Pinned portfolio review', '2026-01-01', '2026-01-02', 1, 0, ''),
@@ -51,6 +57,14 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   }
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/history_snapshots_up.sql"), "utf8"));
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/rebalance_profiles_up.sql"), "utf8"));
+  if (seedRebalanceProfile) {
+    db.run("INSERT INTO rebalance_profiles (id, targets, tolerance_percent) VALUES (1, ?, 0)", [
+      JSON.stringify([
+        { kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 },
+        { kind: "asset", assetType: "crypto", symbol: "ETH", percent: 50 },
+      ]),
+    ]);
+  }
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/alerts_up.sql"), "utf8"));
   db.run(readFileSync(resolve("src-tauri/migrations/v08t09/sync_state_up.sql"), "utf8"));
   const config = JSON.stringify({
@@ -60,11 +74,14 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     contextSize: 8192,
   });
   const files = new Map<string, string>();
+  let exportedPath: string | null = null;
   const requests = new Map<number, { url: string; method?: string; headers?: Record<string, string> | [string, string][]; data?: number[] }>();
   const responses = new Map<number, { bytes: number[]; read: boolean }>();
   let nextRid = 1;
   let refreshes = 0;
   let sseCalls = 0;
+  let haptics = 0;
+  let shares = 0;
 
   const select = (query: string, values: unknown[] = []) => {
     const result = db.exec(query, values as any[]);
@@ -79,6 +96,24 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
 
   await page.exposeBinding("__e2eInvoke", async (_source, cmd: string, args: any, options?: any) => {
     if (cmd === "get_database_url") return "sqlite:e2e.db";
+    if (cmd === "ios_startup_failure") return null;
+    if (cmd === "ios_retry_startup") return false;
+    if (cmd === "ios_haptic") { haptics++; return null; }
+    if (cmd === "ios_lock_enabled") return false;
+    if (cmd === "ios_set_badge") return null;
+    if (cmd === "query_binance_balance") {
+      if (args.apiKey !== "e2e-api-key" || args.apiSecret !== "e2e-api-secret") {
+        throw new Error("unexpected exchange credentials");
+      }
+      return {};
+    }
+    if (cmd === "ios_share_file") {
+      if (!/^\/e2e\/cache\/[0-9a-f-]{36}\/track3-export-data\.json$/.test(args.path) || !files.has(args.path)) {
+        throw new Error(`invalid export file: ${args.path}`);
+      }
+      shares++;
+      return null;
+    }
     if (cmd === "plugin:sql|load") return args.db;
     if (cmd === "plugin:sql|select") return select(args.query, args.values);
     if (cmd === "plugin:sql|execute") return execute(args.query, args.values);
@@ -106,7 +141,17 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       insert("transactions", snapshot.transactions);
       return true;
     }
-    if (cmd === "plugin:path|resolve_directory") return "/e2e/app";
+    if (cmd === "plugin:path|resolve_directory") {
+      if (args.directory === 16) return "/e2e/cache";
+      if (args.directory === 6) return "/e2e/documents";
+      return "/e2e/app";
+    }
+    if (cmd === "plugin:dialog|save") {
+      exportedPath = `/e2e/documents/${args.options.defaultPath}`;
+      files.set(exportedPath, "");
+      return exportedPath;
+    }
+    if (cmd === "plugin:dialog|open") return exportedPath;
     if (cmd === "plugin:app|version") return "0.8.2";
     if (cmd === "plugin:app|tauri_version") return "2.11.1";
     if (cmd === "plugin:updater|check") return null;
@@ -171,6 +216,17 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     }
     if (cmd === "plugin:fs|exists") return files.has(args.path);
     if (cmd === "plugin:fs|mkdir") return null;
+    if (cmd === "plugin:fs|copy_file") {
+      const text = files.get(args.fromPath);
+      if (text === undefined) throw new Error(`file missing: ${args.fromPath}`);
+      files.set(args.toPath, text);
+      return null;
+    }
+    if (cmd === "plugin:fs|stat") {
+      const text = files.get(args.path);
+      if (text === undefined) throw new Error(`file missing: ${args.path}`);
+      return { size: new TextEncoder().encode(text).length, isFile: true, isDirectory: false, isSymlink: false, mtime: null, atime: null, birthtime: null, readonly: false };
+    }
     if (cmd === "plugin:fs|remove") {
       files.delete(args.path);
       return null;
@@ -253,6 +309,8 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
           : '{"planType":"yearly","status":"active","currentPeriodEnd":"2026-12-01T00:00:00.000Z","cancelAtPeriodEnd":false,"isLegacy":false}';
       } else if (request.url.endsWith("/api/coins/price")) {
         body = '{"data":{"BTC":42000,"USDT":1}}';
+      } else if (request.url.endsWith("/api/coins/listStableCoins")) {
+        body = '{"data":[{"symbol":"USDT"},{"symbol":"USDC"}]}';
       } else if (request.url.endsWith("/chat/completions")) {
         const input = JSON.parse(new TextDecoder().decode(Uint8Array.from(request.data ?? [])));
         if (input.stream === true) {
@@ -312,6 +370,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   await page.addInitScript(() => {
     let callbackId = 0;
     const callbacks = new Map<number, Function>();
+    (window as any).isTauri = true;
     (window as any).__TAURI_INTERNALS__ = {
       invoke: (cmd: string, args: unknown, options: unknown) =>
         (window as any).__e2eInvoke(cmd, args, options),
@@ -329,5 +388,5 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     };
   });
-  return { persistedRefreshes: () => refreshes, sseRequests: () => sseCalls };
+  return { persistedRefreshes: () => refreshes, sseRequests: () => sseCalls, haptics: () => haptics, shares: () => shares };
 }

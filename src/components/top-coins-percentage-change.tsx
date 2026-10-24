@@ -238,7 +238,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
             {/* Column header — labels track the active sort. */}
             <div
               data-testid="tcpc-header"
-              className="grid grid-cols-[20px_minmax(0,1fr)_72px_64px_80px_96px] items-center gap-2 px-2 pb-1"
+              className="grid grid-cols-[20px_minmax(0,1fr)_64px_64px] sm:grid-cols-[20px_minmax(0,1fr)_72px_64px_80px_96px] items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 pb-1"
             >
               <div></div>
               <div></div>
@@ -296,7 +296,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                   key={logoKey}
                   data-testid="tcpc-row"
                   className={[
-                    "grid grid-cols-[20px_minmax(0,1fr)_72px_64px_80px_96px] items-center gap-2 rounded-md px-2 py-1.5",
+                    "grid grid-cols-[20px_minmax(0,1fr)_64px_64px] sm:grid-cols-[20px_minmax(0,1fr)_72px_64px_80px_96px] min-h-11 items-center gap-1.5 sm:gap-2 rounded-md px-1.5 sm:px-2 py-1.5",
                     isTop && showBadges ? "bg-emerald-500/[0.04]" : "",
                     isBot && showBadges ? "bg-rose-500/[0.04]" : "",
                   ]
@@ -316,17 +316,17 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                     })}
                   />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span
                         data-testid="tcpc-symbol"
-                        className="truncate text-sm font-semibold"
+                        className="w-full sm:w-auto truncate text-sm font-semibold"
                       >
                         {row.coin}
                       </span>
                       {isTop && showBadges ? (
                         <span
                           data-testid="tcpc-badge"
-                          className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-500"
+                          className="max-w-full rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-500"
                         >
                           {t("topCoinsPercentage.topGainer")}
                         </span>
@@ -334,7 +334,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                       {isBot && showBadges ? (
                         <span
                           data-testid="tcpc-badge"
-                          className="rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-rose-500"
+                          className="max-w-full rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-rose-500"
                         >
                           {t("topCoinsPercentage.topLoser")}
                         </span>
@@ -346,7 +346,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                     data-active={valueIsActive}
                     className={`font-mono tabular-nums tracking-tight text-right ${
                       valueIsActive
-                        ? `text-base font-semibold ${valueClass}`
+                        ? `text-sm sm:text-base font-semibold ${valueClass}`
                         : "text-[10px] text-muted-foreground"
                     }`}
                   >
@@ -357,7 +357,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                     data-active={priceIsActive}
                     className={`font-mono tabular-nums tracking-tight text-right ${
                       priceIsActive
-                        ? `text-base font-semibold ${priceClass}`
+                        ? `text-sm sm:text-base font-semibold ${priceClass}`
                         : "text-[10px] text-muted-foreground"
                     }`}
                   >

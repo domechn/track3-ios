@@ -36,9 +36,6 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("/src/middlelayers/charts")) {
-            return "app-charts";
-          }
           if (!id.includes("/node_modules/")) {
             return;
           }

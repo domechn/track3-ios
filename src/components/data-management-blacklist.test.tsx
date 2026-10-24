@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as testingRender, screen, waitFor, within } from "@testing-library/react";
+import { HashRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DataManagement from "@/components/data-management";
 import { Toast, ToastProvider, ToastViewport } from "@/components/ui/toast";
@@ -11,6 +12,16 @@ import {
   resetEncryptionWriteGateForTests,
   runWithEncryptionWriteGate,
 } from "@/middlelayers/encryption-write-gate";
+import { isIOS } from "@/utils/platform";
+import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
+
+const render = (ui: React.ReactElement) => testingRender(<HashRouter>{ui}</HashRouter>);
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
+vi.mock("@/utils/ios-native", () => ({
+  appLockEnabled: vi.fn().mockResolvedValue(false),
+  setAppLockEnabled: vi.fn().mockResolvedValue(undefined),
+}));
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -79,6 +90,71 @@ beforeEach(() => {
 });
 
 describe("Data Management", () => {
+  it("confirms a Files restore before importing on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/data?section=backup";
+    const imported = { assets: [] };
+    mocks.readHistoricalDataFromFile.mockResolvedValue(imported);
+    mocks.checkIfDuplicatedHistoricalData.mockResolvedValue(false);
+    mocks.importHistoricalData.mockResolvedValue(true);
+    render(<DataManagement />);
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(await screen.findByRole("alertdialog", { name: "Restore data?" })).toBeInTheDocument();
+    expect(mocks.importHistoricalData).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("alertdialog", { name: "Restore data?" })).getByRole("button", { name: "Cancel" }));
+    expect(mocks.importHistoricalData).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog", { name: "Restore data?" })).getByRole("button", { name: "Restore" }));
+    await waitFor(() => expect(mocks.importHistoricalData).toHaveBeenCalledWith("IGNORE", imported));
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
+  it("opens focused backup and blacklist pages on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/data?section=backup";
+    const view = render(<DataManagement />);
+    expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Share JSON" })).toBeInTheDocument();
+    expect(screen.queryByText("Blacklist")).not.toBeInTheDocument();
+    view.unmount();
+    window.location.hash = "#/settings/data?section=blacklist";
+    render(<DataManagement />);
+    expect(await screen.findByText("BTC")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
+  it("shows the last backup and import dates as readable text on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/data?section=backup";
+    mocks.getAutoBackupDirectory.mockResolvedValue("/Documents/Track3");
+    try {
+      render(<DataManagement />);
+      await waitFor(() => expect(screen.getByText(/Last Backup At:/)).toBeVisible());
+      expect(screen.getByText(/Last Import At:/)).toBeVisible();
+      expect(screen.getByText(/Last Backup At:/).parentElement).toHaveTextContent("2024-4-16");
+      expect(screen.getByText(/Last Import At:/).parentElement).toHaveTextContent("2024-4-15");
+    } finally {
+      vi.mocked(isIOS).mockReturnValue(false);
+      window.location.hash = "";
+    }
+  });
+
+  it("lets an iPhone owner enable app lock after native authentication", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(appLockEnabled).mockResolvedValue(false);
+    window.location.hash = "#/settings/data?section=security";
+    render(<DataManagement />);
+    const lock = await screen.findByRole("button", { name: "Enable app lock" });
+    fireEvent.click(lock);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Disable app lock" })).toBeInTheDocument());
+    expect(setAppLockEnabled).toHaveBeenCalledWith(true);
+    vi.mocked(isIOS).mockReturnValue(false);
+    window.location.hash = "";
+  });
+
   it("loads blacklisted tokens and removes one from the list", async () => {
     render(<DataManagement />);
 

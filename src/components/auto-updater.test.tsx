@@ -5,6 +5,9 @@ import AutoUpdater from "./auto-updater";
 import { check } from "@tauri-apps/plugin-updater";
 import { useToast } from "@/components/ui/use-toast";
 import { reloadApp } from "@/utils/app";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", () => ({ isIOS: vi.fn(() => false) }));
 
 vi.mock("@tauri-apps/plugin-updater", () => ({
   check: vi.fn(),
@@ -30,6 +33,11 @@ beforeEach(() => {
 });
 
 describe("AutoUpdater", () => {
+  it("does not invoke the desktop updater on iOS", () => {
+    vi.mocked(isIOS).mockReturnValueOnce(true);
+    render(<AutoUpdater />);
+    expect(check).not.toHaveBeenCalled();
+  });
   it("contains update check rejections without exposing the error", async () => {
     const consoleWarn = vi
       .spyOn(console, "warn")

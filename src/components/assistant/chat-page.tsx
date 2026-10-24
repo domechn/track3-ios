@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -49,6 +49,7 @@ import UsageLabel from "./usage-label";
 import { ASSISTANT_APP_ACTION_EVENT } from "@/middlelayers/ai/actions";
 import { INSIGHT_QUESTION_STORAGE_KEY } from "@/middlelayers/insights-service";
 import { takePendingAssistantQuestion } from "@/middlelayers/ai/pending-question";
+import { isIOS, usePlatform } from "@/utils/platform";
 
 type LoadState =
   | { status: "loading" }
@@ -155,6 +156,30 @@ function ReadyChat({
   baseCurrency: CurrencyRateDetail;
 }) {
   const { t } = useTranslation();
+  const { keyboardHeight } = usePlatform();
+  const mobile = isIOS();
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const [mobileHeight, setMobileHeight] = useState<number>();
+  useLayoutEffect(() => {
+    if (!mobile) return;
+    const visual = window.visualViewport;
+    const update = () => {
+      const top = layoutRef.current?.getBoundingClientRect().top;
+      if (top === undefined) return;
+      const viewportBottom = visual ? visual.offsetTop + visual.height : window.innerHeight;
+      const tabTop = document.querySelector(".mobile-tab-bar")?.getBoundingClientRect().top ?? viewportBottom;
+      setMobileHeight(Math.max(0, Math.floor(Math.min(viewportBottom, tabTop) - top - 8)));
+    };
+    update();
+    window.addEventListener("resize", update);
+    visual?.addEventListener("resize", update);
+    visual?.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      visual?.removeEventListener("resize", update);
+      visual?.removeEventListener("scroll", update);
+    };
+  }, [mobile, keyboardHeight]);
   const secrets = useMemo(() => configuredSecretValues(config), [config]);
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -336,11 +361,13 @@ function ReadyChat({
   const handleNewChat = useCallback(async () => {
     const meta = await createNew();
     navigate(`/assistant/${meta.id}`);
+    setSidebarOpen(false);
   }, [createNew, navigate]);
 
   const handleSelectSession = useCallback(
     (id: string) => {
       navigate(`/assistant/${id}`);
+      setSidebarOpen(false);
     },
    [navigate],
  );
@@ -365,7 +392,9 @@ function ReadyChat({
 
   return (
     <div
-      className="relative flex h-[calc(100vh-88px)] overflow-hidden"
+      ref={layoutRef}
+      className={`relative flex min-w-0 overflow-hidden ${mobile ? "" : "h-[calc(100vh-88px)]"}`}
+      style={mobile && mobileHeight !== undefined ? { height: mobileHeight } : undefined}
       data-testid="chat-session-layout"
     >
       {deleteError && (
@@ -373,7 +402,23 @@ function ReadyChat({
           {t("assistant.chat.deleteFailed")}: {deleteError}
         </p>
       )}
-      <div
+      {mobile && sidebarOpen && <div className="flex w-full min-w-0 flex-col">
+        <button className="min-h-11 self-start px-4 text-primary" onClick={() => setSidebarOpen(false)}>
+          {t("common.back")}
+        </button>
+        <SessionSidebar
+          mobile
+          sessions={sessions}
+          activeId={sessionId ?? null}
+          isLoading={isLoading}
+          onSelect={handleSelectSession}
+          onNew={handleNewChat}
+          onDelete={handleDeleteSession}
+          onPin={pin}
+          processingId={processingSessionId}
+        />
+      </div>}
+      {!mobile && <div
         className={`overflow-hidden transition-[width] duration-200 ease-in-out ${
           sidebarOpen ? "w-[260px]" : "w-0"
         }`}
@@ -390,8 +435,8 @@ function ReadyChat({
           processingId={processingSessionId}
        />
         </div>
-      </div>
-     {sessionLoadError ? (
+      </div>}
+     {mobile && sidebarOpen ? null : sessionLoadError ? (
        <div role="alert" className="flex-1 p-6 text-sm text-destructive">
          {t("assistant.chat.sessionLoadFailed")}: {sessionLoadError}
        </div>
@@ -527,8 +572,8 @@ function ChatHeader({
   const { t } = useTranslation();
   const percent = Math.min(100, Math.round(contextTokens / config.contextSize * 100));
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:flex-wrap touch:gap-y-1 touch:px-3">
+      <div className="flex min-w-0 items-center gap-3 touch:w-full">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -559,7 +604,7 @@ function ChatHeader({
           </p>
         </div>
       </div>
-      <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5">
+      <div className="ml-auto flex shrink-0 flex-col items-end gap-0.5 touch:ml-0 touch:items-start">
         {contextTokens > 0 && (
           <span role="progressbar" aria-label={t("assistant.usage.context").replace("{percent}", String(percent))}
             aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}

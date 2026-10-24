@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { CostCharts, FinanceChartSkeleton, GoalChart, RebalanceCharts } from "./finance-charts";
@@ -7,12 +8,31 @@ import type { RebalanceResult } from "@/middlelayers/rebalance";
 import type { AlertRule } from "@/middlelayers/alerts";
 
 vi.mock("react-chartjs-2", () => ({
-  Bar: vi.fn(() => <div />),
-  Line: vi.fn(() => <div />),
-  Doughnut: vi.fn(() => <div />),
+  Bar: vi.fn(() => <canvas onTouchMove={() => touchMoves++} />),
+  Line: vi.fn(() => <canvas onTouchMove={() => touchMoves++} />),
+  Doughnut: vi.fn(() => <canvas onTouchMove={() => touchMoves++} />),
 }));
 
-beforeEach(() => vi.clearAllMocks());
+let touchMoves = 0;
+beforeEach(() => { vi.clearAllMocks(); touchMoves = 0; });
+
+it("lets a chart inspect a drag only after a long press", () => {
+  vi.useFakeTimers();
+  try {
+    const { container } = render(<GoalChart rules={[]} snapshots={[]} portfolioValues={[
+      { date: "2025-01-01", value: 100 },
+    ]} />);
+    const chart = container.querySelector("canvas")!;
+    fireEvent.touchStart(chart, { touches: [{ clientX: 30, clientY: 40 }] });
+    fireEvent.touchMove(chart, { touches: [{ clientX: 70, clientY: 40 }] });
+    expect(touchMoves).toBe(0);
+    vi.advanceTimersByTime(400);
+    fireEvent.touchMove(chart, { touches: [{ clientX: 80, clientY: 40 }] });
+    expect(touchMoves).toBe(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
 
 it("shows zero cost basis gains with a neutral value and no plus sign", () => {
   const report: CostBasisReport = {
@@ -51,6 +71,7 @@ it("maps calculator gains and composition to charts without Cartesian axes on th
   const composition = vi.mocked(Doughnut).mock.calls[0][0];
   expect(composition.data.datasets[0].data).toEqual([80]);
   expect(composition.options?.scales).toBeUndefined();
+  expect(gains.options?.interaction).toEqual({ mode: "index", intersect: false });
   expect(getByText("BTC")).toBeVisible();
   report.disposals.push({
     eventId: "sale", lotId: "lot", assetType: "crypto", symbol: "BTC",

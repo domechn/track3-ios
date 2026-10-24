@@ -26,7 +26,7 @@ import {
   useState,
 } from "react";
 import { useDataChangedVersion } from "@/contexts/data-changed";
-import { WALLET_ANALYZER } from "@/middlelayers/charts";
+import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
 import { getWalletLogo } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
@@ -38,6 +38,7 @@ import { Button } from "./ui/button";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
+import { MobileRecordList, useIsMobile } from "./mobile";
 
 type SortMode = "changeValue" | "changePercentage" | "absChange";
 type PageSize = "20" | "50" | "100";
@@ -81,6 +82,7 @@ const App = ({
 }) => {
   const loadGenRef = useRef(0);
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const [walletAssetsChange, setWalletAssetsChange] =
     useState<WalletAssetsChangeData>([]);
@@ -259,7 +261,25 @@ const App = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        <div className="w-full overflow-x-auto">
+        {isMobile && <MobileRecordList className="wallet-change-mobile-list" records={pageRows.map((row) => {
+          const detailUrl = getWalletDetailUrl(row.wallet, row.walletType);
+          const airdropUrl = getWalletAirdropUrl(row.wallet, row.walletType);
+          const change = `${row.changeValue < 0 ? "-" : row.changeValue > 0 ? "+" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.changeValue)))}`;
+          return {
+            id: `${row.wallet}-${row.walletType}`, title: row.walletAliasText, subtitle: change,
+            fields: [
+              { label: t("walletValueChanges.col.type"), value: row.walletTypeText },
+              { label: t("walletValueChanges.col.alias"), value: row.walletAliasText },
+              { label: t("walletValueChanges.col.percentage"), value: formatSignedNumber(row.changePercentage, "%") },
+              { label: t("walletValueChanges.col.value"), value: change },
+            ],
+            actions: [
+              ...(detailUrl ? [{ label: t("walletValueChanges.openDetails"), onClick: () => { void openUrl(detailUrl); } }] : []),
+              ...(airdropUrl ? [{ label: t("walletValueChanges.openAirdrop"), onClick: () => { void openUrl(airdropUrl); } }] : []),
+            ],
+          };
+        })} />}
+        {!isMobile && <div className="w-full overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -306,7 +326,7 @@ const App = ({
                             {detailUrl && (
                               <img
                                 src={MoneyBankIcon}
-                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block cursor-pointer"
+                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block touch:inline-block cursor-pointer"
                                 onClick={() => openUrl(detailUrl)}
                                 alt="detail"
                               />
@@ -314,7 +334,7 @@ const App = ({
                             {airdropUrl && (
                               <img
                                 src={AirdropIcon}
-                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block cursor-pointer"
+                                className="h-4 w-4 text-muted-foreground hidden group-hover:inline-block touch:inline-block cursor-pointer"
                                 onClick={() => openUrl(airdropUrl)}
                                 alt="airdrop"
                               />
@@ -349,7 +369,7 @@ const App = ({
               })}
             </TableBody>
           </Table>
-        </div>
+        </div>}
 
         {sortedRows.length === 0 && (
           <div className="flex items-center justify-center text-lg text-muted-foreground py-6">

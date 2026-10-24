@@ -100,4 +100,28 @@ describe("Profit loading", () => {
     await waitFor(() => expect(title.parentElement).toHaveTextContent("2 coins"));
   });
 
+  it("uses navigable grouped rows for profit leaders on a phone", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    });
+    try {
+      const { container } = render(<MemoryRouter><Profit
+        currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
+        quoteColor="green-up-red-down"
+      /></MemoryRouter>);
+      await waitFor(() => expect(container.querySelectorAll(".profit-mobile-list .mobile-list-row")).toHaveLength(4));
+      expect(container.querySelector("table")).toBeNull();
+      expect(container.querySelector(".profit-mobile-list .mobile-list-row")?.getAttribute("href")).toMatch(/^#\/coins\/BTC/);
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
 });

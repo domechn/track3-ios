@@ -20,11 +20,13 @@ import {
 } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { ListRow, useIsMobile } from "./mobile";
 
 const PAGE_SIZE = 20;
 
 const App = ({ dateRange }: { dateRange: TDateRange }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [topCoinsRankData, setTopCoinsRankData] = useState({
     timestamps: [],
     coins: [],
@@ -157,7 +159,23 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          {isMobile && <div className="top-coins-rank-mobile mobile-record-list">
+            {pagedRows.map((row) => {
+              const asset = { symbol: row.coin, assetType: row.assetType };
+              const logoKey = getAssetLogoKey(asset);
+              return <ListRow key={logoKey} href={`#${buildAssetDetailsPath(asset)}`}
+                value={renderChangeBadge(row.change)}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="w-8 shrink-0 font-mono text-xs text-muted-foreground">#{row.rank}</span>
+                  <img className="h-6 w-6 shrink-0 rounded-full"
+                    src={resolveAssetLogoSrc(asset, logoMap[logoKey])}
+                    alt={formatAssetLabel(asset)} />
+                  <AssetLabel asset={asset} labelClassName="truncate text-sm font-medium" />
+                </span>
+              </ListRow>;
+            })}
+          </div>}
+          {!isMobile && <Table>
             <TableBody>
               {pagedRows.map((row) => (
                 <TableRow
@@ -211,7 +229,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table>}
           {rankRows.length > PAGE_SIZE ? (
             <div className="mt-2 flex items-center justify-end gap-2">
               <Button
