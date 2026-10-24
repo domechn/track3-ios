@@ -87,6 +87,7 @@ const App = ({
   const options = {
     maintainAspectRatio: false,
     responsive: true,
+    animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : { duration: 350 },
     onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
     hover: {
       mode: "index",
@@ -186,7 +187,9 @@ const App = ({
 
   function pnlBackgroundColor(val: "positive" | "negative"): string {
     const c = positiveNegativeColor(val === "positive" ? 1 : -1, quoteColor);
-    return c === "green" ? "rgba(16,185,129,0.8)" : "rgba(244,63,94,0.8)";
+    return c === "green"
+      ? document.documentElement.classList.contains("dark") ? "#30d158" : "#34c759"
+      : document.documentElement.classList.contains("dark") ? "#ff453a" : "#ff3b30";
   }
 
   function lineData() {

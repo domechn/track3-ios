@@ -148,11 +148,10 @@ for (const phone of phones) {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     await installTauriBridge(page, undefined, false, false, true);
     await page.goto("/#/overview");
-    await expect(page.getByText("There is not enough data")).toBeVisible();
+    await expect(page.getByText("Your portfolio starts here")).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-first-launch.png` });
-    await page.getByRole("button", { name: "Go to settings" }).click();
-    await expect(page).toHaveURL(/#\/settings$/);
-    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Data sources" }).click();
+    await page.getByRole("button", { name: "Add your first source" }).click();
+    await expect(page).toHaveURL(/#\/settings\/configuration$/);
     await page.getByRole("button", { name: "Add Symbol" }).click();
     const form = page.getByRole("dialog", { name: "Edit custom asset" });
     await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");

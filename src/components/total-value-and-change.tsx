@@ -26,6 +26,7 @@ import { ChartResizeContext } from "@/App";
 import { positiveNegativeTextClass } from "@/utils/color";
 import {
   chartColors,
+  darkChartColors,
   createGradientFill,
   glassScaleOptions,
   glassTooltip,
@@ -34,7 +35,9 @@ import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
-import { useIsMobile } from "@/components/mobile";
+import { AnimatedAmount, DeltaPill, SegmentedControl, useHaptics, useIsMobile } from "@/components/mobile";
+import { visibleHistoryIndices } from "@/components/mobile/chart-range";
+import { useTheme } from "@/components/common/theme";
 
 interface TotalValueShower {
   currencyName(): string;
@@ -171,15 +174,20 @@ const App = ({
   currency,
   dateRange,
   quoteColor,
+  onEmptyChange,
 }: {
   currency: CurrencyRateDetail;
   dateRange: TDateRange;
   quoteColor: QuoteColor;
+  onEmptyChange?: (empty: boolean) => void;
 }) => {
-  const lineColor = chartColors[0].main;
-  const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const lineColor = resolvedTheme === "dark" ? darkChartColors[0].main : chartColors[0].main;
+  const { t, locale } = useTranslation();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
+  const isMobile = useIsMobile();
+  const haptic = useHaptics();
 
   const [totalValueData, setTotalValueData] = useState<TotalValueData>({
     totalValue: 0,
@@ -194,7 +202,9 @@ const App = ({
   const [showPercentageInChart, setShowPercentageInChart] = useState(false);
 
   const [showValue, setShowValue] = useState(false);
-  const isMobile = useIsMobile();
+  const [chartRange, setChartRange] = useState<"1W" | "1M" | "3M" | "1Y" | "ALL">("ALL");
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const lastScrub = useRef<number | null>(null);
   const [chartWidth, setChartWidth] = useState(600);
   const loadGenRef = useRef(0);
   const rangeKey = useMemo(
@@ -204,13 +214,18 @@ const App = ({
   const dataChangedVersion = useDataChangedVersion();
 
   const totalValue = useMemo(() => totalValueData.totalValue, [totalValueData]);
+  const rangeDays = { "1W": 7, "1M": 30, "3M": 90, "1Y": 365, ALL: null }[chartRange];
+  const visibleIndices = useMemo(() => isMobile
+    ? visibleHistoryIndices(assetChangeData.timestamps, rangeDays)
+    : assetChangeData.timestamps.map((_, index) => index),
+  [assetChangeData.timestamps, rangeDays, isMobile]);
   const firstTotalValue = useMemo(
-    () => assetChangeData.data[0]?.usdValue ?? 0,
-    [assetChangeData],
+    () => assetChangeData.data[visibleIndices[0] ?? 0]?.usdValue ?? 0,
+    [assetChangeData, visibleIndices],
   );
   const firstDate = useMemo(
-    () => timeToDateStr(assetChangeData.timestamps[0] ?? 0),
-    [assetChangeData],
+    () => timeToDateStr(assetChangeData.timestamps[visibleIndices[0] ?? 0] ?? 0),
+    [assetChangeData, visibleIndices],
   );
 
   const totalValueShower = useMemo(
@@ -243,10 +258,11 @@ const App = ({
   useEffect(() => {
     const gen = ++loadGenRef.current;
     void loadData(dateRange, gen)
-      .then(() => {
+      .then(([tv, ac]) => {
         if (gen !== loadGenRef.current) {
           return;
         }
+        onEmptyChange?.(tv.totalValue === 0 && ac.data.length === 0);
         resizeChartWithDelay(chartName);
       })
       .finally(() => {
@@ -265,17 +281,19 @@ const App = ({
   async function loadTotalValue(dr: TDateRange, gen: number) {
     const tv = await queryTotalValue(dr);
     if (gen !== loadGenRef.current) {
-      return;
+      return tv;
     }
     setTotalValueData(tv);
+    return tv;
   }
 
   async function loadChartData(dr: TDateRange, gen: number) {
     const ac = await queryAssetChange(dr);
     if (gen !== loadGenRef.current) {
-      return;
+      return ac;
     }
     setAssetChangeData(ac);
+    return ac;
   }
 
   function getTotalValueShower(
@@ -288,7 +306,7 @@ const App = ({
       return new BTCTotalValue(
         firstTotalValue,
         totalValue,
-        assetChangeData.data[0]?.btcPrice ?? 0,
+        assetChangeData.data[visibleIndices[0] ?? 0]?.btcPrice ?? 0,
         assetChangeData.data[assetChangeData.data.length - 1]?.btcPrice ?? 0,
       );
     }
@@ -316,7 +334,7 @@ const App = ({
   }
 
   const lineValues = useMemo(() => {
-    const baseData = assetChangeData.data[0];
+    const baseData = assetChangeData.data[visibleIndices[0] ?? 0];
     if (!baseData) {
       return [];
     }
@@ -338,10 +356,11 @@ const App = ({
     return assetChangeData.data
       .map((d) => currencyWrapper(currency)(d.usdValue))
       .map((d) => (showPercentageInChart ? (d / baseDataValue) * 100 - 100 : d));
-  }, [assetChangeData, btcAsBase, currency, showPercentageInChart]);
+  }, [assetChangeData, btcAsBase, currency, showPercentageInChart, visibleIndices]);
   const plottedIndices = useMemo(
-    () => downsampleIndices([lineValues], Math.max(40, Math.floor(chartWidth / 2))),
-    [lineValues, chartWidth],
+    () => downsampleIndices([visibleIndices.map((index) => lineValues[index])],
+      Math.max(40, Math.floor(chartWidth / 2))).map((index) => visibleIndices[index]),
+    [lineValues, chartWidth, visibleIndices],
   );
   const plottedTimestamps = useMemo(
     () => plottedIndices.map((index) => assetChangeData.timestamps[index]),
@@ -361,7 +380,15 @@ const App = ({
     () => ({
       maintainAspectRatio: false,
       responsive: true,
+      animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : { duration: 350 },
       onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
+      onHover: (_event: unknown, elements: Array<{ index: number }>) => {
+        if (!isMobile) return;
+        const next = elements[0]?.index ?? null;
+        if (next !== null && next !== lastScrub.current) haptic("selection");
+        lastScrub.current = next;
+        setScrubIndex(next);
+      },
       hover: {
         mode: "index",
         intersect: false,
@@ -384,6 +411,7 @@ const App = ({
         },
         tooltip: {
           ...glassTooltip,
+          enabled: !isMobile,
           callbacks: {
             label: (context: { parsed: { y: number } }) => {
               const v = context.parsed.y.toLocaleString();
@@ -408,7 +436,8 @@ const App = ({
             maxRotation: 0,
             minRotation: 0,
             align: "center",
-            autoSkip: false,
+            autoSkip: isMobile,
+            maxTicksLimit: 3,
             callback: function (val: number, index: number) {
               const data = plottedTimestamps;
 
@@ -417,6 +446,7 @@ const App = ({
               const end = size - 1;
 
               // only show start and end date
+              if (isMobile) return "";
               if (index === start) {
                 return timeToDateStr(data[index]);
               }
@@ -441,7 +471,7 @@ const App = ({
           ticks: {
             ...glassScaleOptions.ticks,
             precision: 2,
-            maxTicksLimit: 4,
+            maxTicksLimit: 3,
             callback: (value: any) => {
               return showPercentageInChart
                 ? `${value.toLocaleString()}%`
@@ -460,6 +490,7 @@ const App = ({
       currency.symbol,
       currency.currency,
       plottedTimestamps,
+      isMobile,
     ],
   );
 
@@ -479,7 +510,7 @@ const App = ({
             }
             return createGradientFill(ctx, chartArea, lineColor);
           },
-          borderWidth: 2,
+          borderWidth: 2.5,
           tension: 0.4,
           pointRadius: 0,
           pointStyle: "rotRect",
@@ -490,15 +521,15 @@ const App = ({
   }, [plottedTimestamps, plottedIndices, lineValues, lineColor]);
 
   return (
-    <div className="h-full">
+    <div className="h-full overview-total">
       <Card
-        className="flex h-full flex-col"
+        className="flex h-full flex-col mobile-hero-card"
         onMouseEnter={() => { if (!isMobile) setShowValue(true); }}
         onMouseLeave={() => { if (!isMobile) setShowValue(false); }}
       >
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 mobile-hero-header">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            {t("totalValue.title").replace("{currency}", totalValueShower.currencyName())}
+            {isMobile ? t("overview.portfolioValue") : t("totalValue.title").replace("{currency}", totalValueShower.currencyName())}
           </CardTitle>
           <div className="flex space-x-2">
             <Button
@@ -555,10 +586,13 @@ const App = ({
           </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col">
-          <div className="text-2xl font-semibold font-mono tabular-nums tracking-tight">
-            {totalValueShower.formatTotalValue()}
+          <div className="text-2xl font-semibold tabular-nums tracking-tight mobile-hero-value">
+            {isMobile && !btcAsBase
+              ? <AnimatedAmount value={currencyWrapper(currency)(totalValue)}
+                  format={(value) => currency.symbol + prettyNumberToLocaleString(value)} />
+              : totalValueShower.formatTotalValue()}
           </div>
-          <p className="text-xs text-muted-foreground mb-2">
+          <p className="text-xs text-muted-foreground mb-2 mobile-hero-change">
             <button type="button" aria-label={`${changedValueOrPercentage}, ${t("totalValue.toggleChange")}`}
               onClick={() => setShowValue((value) => !value)}
               className={`tabular-nums touch:min-h-11 touch:px-2 ${changePercentageColorClass(
@@ -567,17 +601,34 @@ const App = ({
                 firstTotalValue,
               )}`}
             >
-              {changedValueOrPercentage}
+              {isMobile ? <DeltaPill value={totalValue - firstTotalValue} quoteColor={quoteColor}>{changedValueOrPercentage}</DeltaPill> : changedValueOrPercentage}
             </button>{" "}
             {t("totalValue.from").replace("{date}", firstDate)}
           </p>
-          <div className="min-h-[120px] flex-1">
+          <div className="min-h-[120px] flex-1 mobile-hero-chart" onPointerLeave={() => setScrubIndex(null)}>
+            {isMobile && scrubIndex !== null && plottedTimestamps[scrubIndex] !== undefined &&
+              <div className="mobile-chart-chip" role="status">
+                {timeToDateStr(plottedTimestamps[scrubIndex])} · {showPercentageInChart
+                  ? `${lineValues[plottedIndices[scrubIndex]]?.toFixed(2)}%`
+                  : `${btcAsBase ? btcSymbol : currency.symbol}${prettyNumberToLocaleString(lineValues[plottedIndices[scrubIndex]] ?? 0)}`}
+              </div>}
             <Line role="img" aria-label={t("totalValue.chartSummary")
               .replace("{value}", totalValueShower.formatTotalValue())
               .replace("{change}", changedValueOrPercentage)
               .replace("{date}", firstDate)}
               options={options as any} data={lineDataMemo} />
           </div>
+          {isMobile && plottedTimestamps.length > 0 && <div className="mobile-hero-dates" aria-hidden="true">
+            <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })
+              .format(new Date(plottedTimestamps[0]))}</span>
+            <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })
+              .format(new Date(plottedTimestamps[plottedTimestamps.length - 1]))}</span>
+          </div>}
+          {isMobile && <SegmentedControl label={t("overview.chartRange")} value={chartRange} onChange={(value) => setChartRange(value)}
+            options={([
+              ["1W", "overview.rangeWeek"], ["1M", "overview.rangeMonth"],
+              ["3M", "overview.rangeQuarter"], ["1Y", "overview.rangeYear"], ["ALL", "overview.rangeAll"],
+            ] as const).map(([value, key]) => ({ value, label: t(key) }))} />}
         </CardContent>
       </Card>
     </div>

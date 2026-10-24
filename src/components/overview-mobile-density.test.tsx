@@ -118,7 +118,7 @@ describe("Overview mobile density", () => {
       />,
     );
 
-    const summaryGrid = (await screen.findByText("Last PNL")).parentElement
+    const summaryGrid = (await screen.findByText("Latest")).parentElement
       ?.parentElement;
 
     expect(summaryGrid).not.toBeNull();

@@ -265,7 +265,7 @@ const App = ({
       const key = getAssetLogoKey(row);
       return <ListRow key={key} href={`#${buildAssetDetailsPath(row)}`}
         value={<span className="text-right">
-          <span className={`block text-sm ${positiveNegativeTextClass(row.value, quoteColor, 500)}`}>
+          <span className={`block text-sm ios-money ${positiveNegativeTextClass(row.value, quoteColor, 500)}`}>
             {`${row.value < 0 ? "-" : "+"}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.value)))}`}
           </span>
           {showCoinsProfitPercentage && <span className="block text-xs">
@@ -274,10 +274,11 @@ const App = ({
           </span>}
         </span>}>
         <span className="flex min-w-0 items-center gap-2">
-          <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground">#{index + 1}</span>
+          <span className="w-5 shrink-0 font-mono text-xs text-muted-foreground mobile-mover-rank">#{index + 1}</span>
           <img className="h-6 w-6 shrink-0 rounded-full"
             src={resolveAssetLogoSrc(row, logoMap[key])} alt={formatAssetLabel(row)} />
-          <AssetLabel asset={row} labelClassName="truncate text-sm font-medium" />
+          <AssetLabel asset={row} labelClassName="truncate text-sm font-medium"
+            badgeClassName="hidden" />
         </span>
       </ListRow>;
     })}
@@ -304,7 +305,7 @@ const App = ({
         {view === "summary" && <>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
-            <div className={`text-xl font-semibold tracking-tight ${totalToneClass}`}>
+            <div className={`text-xl font-semibold tracking-tight ios-money ${totalToneClass}`}>
               {(profit < 0 ? "-" : "+") +
                 currency.symbol +
                 prettyNumberToLocaleString(

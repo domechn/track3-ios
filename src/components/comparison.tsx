@@ -795,7 +795,7 @@ function ComparisonDatePicker({
 
   if (isMobile) {
     return <>
-      <Button type="button" variant="outline" className="min-h-11 min-w-0 max-w-[8.5rem] touch:max-w-none touch:px-2 justify-start"
+      <Button type="button" variant="outline" className="comparison-date-button min-h-11 min-w-0 max-w-[8.5rem] touch:max-w-none touch:px-2 justify-start"
         disabled={dateOptions.length === 0} aria-label={selectedOption ? `${label}: ${selectedOption.displayLabel}` : label} onClick={() => setOpen(true)}>
         <CalendarIcon aria-hidden="true" className="mr-1 h-4 w-4 shrink-0" />
         <span className="truncate">{selectedOption?.displayLabel || label}</span>

@@ -34,13 +34,73 @@ test("the iOS viewport permits text zoom", async ({ page }) => {
   expect(viewport).not.toContain("maximum-scale=1");
 });
 
+test("a first launch portfolio offers a direct source setup action", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.getByRole("button", { name: "Add your first source" })).toBeVisible();
+    await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+    mkdirSync("test-results/mobile", { recursive: true });
+    await page.screenshot({ path: "test-results/mobile/390x844-first-launch.png" });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.evaluate(() => localStorage.setItem("track3-ui-theme", "system"));
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await expect(page.getByRole("button", { name: "Add your first source" })).toBeVisible();
+    await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+    await page.screenshot({ path: "test-results/mobile/390x844-first-launch-dark.png" });
+    await page.getByRole("button", { name: "Add your first source" }).click();
+    await expect(page).toHaveURL(/#\/settings\/configuration/);
+  } finally {
+    await context.close();
+  }
+});
+
+test("review screenshots have several assets and a multi-month trend", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.locator(".mobile-allocation-row")).toHaveCount(5, { timeout: 5_000 });
+    await expect(page.getByRole("button", { name: "Next token holdings page" })).toBeVisible();
+    await expect(page.locator(".mobile-hero-value")).not.toContainText("$42,000.00");
+    await expect(page.locator(".mobile-hero-dates")).toContainText("Aug 24");
+    await expect(page.locator(".mobile-hero-dates")).toContainText("Oct 22");
+    const movers = (await page.locator(".profit-mobile-list").allTextContents()).join(" ");
+    expect(movers).toMatch(/\+\$/);
+    expect(movers).toMatch(/-\$/);
+    await expect(page.getByRole("region", { name: "Insights" })).not.toContainText("No significant changes yet");
+  } finally {
+    await context.close();
+  }
+});
+
+test("touching the trend reveals a readable value chip", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    const chart = page.locator(".mobile-hero-chart canvas");
+    await expect(chart).toBeVisible();
+    const box = (await chart.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByRole("status").filter({ hasText: "$" })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 for (const size of sizes) {
   test(`data routes fit an iPhone viewport at ${size.width}x${size.height}`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: size, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
     const page = watchPage(await context.newPage());
     mkdirSync("test-results/mobile", { recursive: true });
     try {
-      await installTauriBridge(page);
+      await installTauriBridge(page, undefined, false, false, false, false, true);
       for (const route of routes) {
         await page.goto(`/#/${route}`);
         await expect(page.locator(".mobile-tab-bar")).toBeVisible();
@@ -60,7 +120,10 @@ for (const size of sizes) {
           await expect.poll(() => page.getByTestId("coin-page-loading-overlay")
             .evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
         }
-        if (route === "overview") await expect(page.locator("#app-top-bar")).toContainText("$42,000.00");
+        if (route === "overview") {
+          await expect(page.locator(".mobile-hero-value")).toBeVisible();
+          await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+        }
         await page.evaluate(() => document.fonts.ready);
         const screenshot = await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-${route.replace("/", "-")}.png` });
         expect(screenshot.readUInt32BE(16)).toBe(size.width * 2);
@@ -99,6 +162,47 @@ for (const size of sizes) {
           await page.locator(".history-mobile-list").scrollIntoViewIfNeeded();
           await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-history-list.png` });
         }
+      }
+      if (size.width === 320 || size.width === 390) {
+        await page.goto("/#/overview");
+        await page.reload();
+        await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+        await page.locator(".overview-allocation-card").scrollIntoViewIfNeeded();
+        await page.locator(".overview-allocation-card").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await expect.poll(() => page.locator(".overview-allocation-card")
+          .evaluate((card) => Math.round(card.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
+        await expect(page.locator(".mobile-header-total-value")).toBeVisible();
+        await expect(page.locator(".mobile-header-total-value")).toHaveText(
+          (await page.locator(".mobile-hero-value").textContent()) ?? "",
+        );
+        expect(await page.locator(".mobile-header-total-value").evaluate((node) =>
+          node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-details.png` });
+        await page.locator(".overview-source-teaser").scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-bottom.png` });
+        await page.emulateMedia({ colorScheme: "dark" });
+        await page.evaluate(() => localStorage.setItem("track3-ui-theme", "system"));
+        await page.reload();
+        for (const route of routes) {
+          await page.goto(`/#/${route}`);
+          await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+          await expect(page.locator("html")).toHaveClass(/dark/);
+          await page.evaluate(() => document.fonts.ready);
+          await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-${route.replace("/", "-")}-dark.png` });
+        }
+        await page.goto("/#/overview");
+        await page.reload();
+        await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+        await page.locator(".overview-allocation-card").scrollIntoViewIfNeeded();
+        await page.locator(".overview-allocation-card").evaluate((card) =>
+          window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 100));
+        await expect.poll(() => page.locator(".overview-allocation-card")
+          .evaluate((card) => Math.round(card.getBoundingClientRect().top))).toBeLessThanOrEqual(110);
+        await expect(page.locator(".mobile-header-total-value")).toBeVisible();
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-details-dark.png` });
+        await page.locator(".overview-source-teaser").scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-overview-bottom-dark.png` });
       }
     } finally {
       await context.close();

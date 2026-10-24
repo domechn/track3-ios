@@ -80,8 +80,8 @@ it("maps calculator gains and composition to charts without Cartesian axes on th
   });
   rerender(<CostCharts report={report} quoteColor="red-up-green-down" />);
   const line = vi.mocked(Line).mock.calls.at(-1)?.[0];
-  expect(line?.data.datasets[0].borderColor).toBe("#f43f5e");
-  expect(line?.data.datasets[0].backgroundColor).toBe("#f43f5e20");
+  expect(line?.data.datasets[0].borderColor).toBe("#d70015");
+  expect(line?.data.datasets[0].backgroundColor).toBe("#d7001520");
 });
 
 it("maps deviations from the calculator and includes the configured tolerance", () => {

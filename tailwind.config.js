@@ -18,10 +18,10 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: [
-          "Outfit Variable",
-          "ui-sans-serif",
-          "system-ui",
           "-apple-system",
+          "SF Pro Text",
+          "SF Pro Display",
+          "system-ui",
           "Segoe UI",
           "Roboto",
           "Helvetica Neue",
@@ -29,9 +29,8 @@ module.exports = {
           "sans-serif",
         ],
         mono: [
-          "JetBrains Mono Variable",
-          "ui-monospace",
           "SFMono-Regular",
+          "ui-monospace",
           "Menlo",
           "Consolas",
           "monospace",

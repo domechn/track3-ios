@@ -11,11 +11,13 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme;
+  resolvedTheme: "light" | "dark";
   setTheme: (theme: Theme) => void;
 };
 
 const initialState: ThemeProviderState = {
   theme: "system",
+  resolvedTheme: "light",
   setTheme: () => null,
 };
 
@@ -48,14 +50,28 @@ export function ThemeProvider({
     applyThemeToDOM(stored);
     return stored;
   });
+  const [, setSystemVersion] = useState(0);
 
   // Keep DOM in sync when theme changes after initial render
   useEffect(() => {
     applyThemeToDOM(theme);
   }, [theme]);
+  useEffect(() => {
+    if (theme !== "system") return;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => {
+      applyThemeToDOM("system");
+      setSystemVersion((version) => version + 1);
+    };
+    query.addEventListener?.("change", onChange);
+    return () => query.removeEventListener?.("change", onChange);
+  }, [theme]);
 
   const value = {
     theme,
+    resolvedTheme: theme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" as const : "light" as const
+      : theme,
     setTheme: (theme: Theme) => {
       localStorage.setItem(storageKey, theme);
       setTheme(theme);

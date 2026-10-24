@@ -30,7 +30,8 @@ import {
 import { ChartResizeContext } from "@/App";
 import { offsetHoveredItemWrapper } from "@/utils/legend";
 import { ChartJSOrUndefined } from "react-chartjs-2/dist/types";
-import { chartColors, glassTooltip } from "@/utils/chart-theme";
+import { chartColors, darkChartColors, glassTooltip } from "@/utils/chart-theme";
+import { useTheme } from "@/components/common/theme";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import AssetLabel from "@/components/common/asset-label";
 import {
@@ -42,6 +43,7 @@ import {
 } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { useIsMobile } from "./mobile";
 
 const chartName = "Percentage of Assets";
 
@@ -53,6 +55,9 @@ const App = ({
   dateRange: TDateRange;
 }) => {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const palette = resolvedTheme === "dark" ? darkChartColors : chartColors;
+  const isMobile = useIsMobile();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const [dataPage, setDataPage] = useState<number>(0);
@@ -155,15 +160,16 @@ const App = ({
   const options = {
     maintainAspectRatio: false,
     responsive: true,
+    animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : { duration: 350 },
     interaction: { mode: "nearest" as const, intersect: false },
     layout: {
-      padding: 20,
+      padding: isMobile ? 0 : 20,
     },
     plugins: {
       // text is set for resizing
       title: { display: false, text: chartName },
       legend: {
-        display: true,
+        display: !isMobile,
         position: "right",
         font: {
           size: 13,
@@ -217,13 +223,13 @@ const App = ({
       datasets: [
         {
           data: d.map((coin) => currencyWrapper(currency)(coin.value)),
-          borderColor: "rgba(255,255,255,0.15)",
+          borderColor: "transparent",
           backgroundColor: d.map(
-            (_coin, i) => chartColors[i % chartColors.length].main,
+            (_coin, i) => palette[i % palette.length].main,
           ),
-          borderWidth: 2,
-          hoverOffset: 12,
-          cutout: "72%",
+          borderWidth: 0,
+          hoverOffset: 5,
+          cutout: "78%",
         },
       ],
     };
@@ -339,16 +345,50 @@ const App = ({
     );
   }
 
+  function renderMobileHoldingList() {
+    return <>
+      <div className="mobile-allocation-rows">
+        {pagedLatestAssetsPercentageData.map((asset) => {
+          const reference = { symbol: asset.coin, assetType: asset.assetType };
+          return <Link key={getAssetLogoKey(reference)} to={buildAssetDetailsPath(reference)}
+            className="mobile-list-row mobile-allocation-row"
+            aria-label={t("common.openAssetDetails").replace("{asset}", formatAssetLabel(reference))}>
+            {asset.assetType === "stock"
+              ? <span className="mobile-stock-mark" aria-hidden="true">{asset.coin.slice(0, 1)}</span>
+              : <img src={resolveAssetLogoSrc(reference, logoMap[getAssetLogoKey(reference)])} alt="" />}
+            <span className="mobile-allocation-name">
+              <strong>{asset.coin}</strong>
+              <span>{asset.amount >= 1
+                ? prettyNumberKeepNDigitsAfterDecimalPoint(asset.amount, 4)
+                : prettyPriceNumberToLocaleString(asset.amount)}</span>
+            </span>
+            <span className="mobile-allocation-value">
+              <strong className="ios-money">{currency.symbol + prettyNumberToLocaleString(currencyWrapper(currency)(asset.value))}</strong>
+              <span>{asset.percentage.toFixed(1)}%</span>
+            </span>
+          </Link>;
+        })}
+      </div>
+      {maxDataPage > 0 && <div className="mobile-allocation-pagination">
+        <Button variant="ghost" size="icon" aria-label={t("latestAssets.previousPage")}
+          disabled={dataPage <= 0} onClick={() => setDataPage(Math.max(0, dataPage - 1))}><ChevronLeftIcon /></Button>
+        <span className="ios-footnote">{dataPage + 1} / {maxDataPage + 1}</span>
+        <Button variant="ghost" size="icon" aria-label={t("latestAssets.nextPage")}
+          disabled={dataPage >= maxDataPage} onClick={() => setDataPage(Math.min(maxDataPage, dataPage + 1))}><ChevronRightIcon /></Button>
+      </div>}
+    </>;
+  }
+
   return (
     <div>
-      <Card>
+      <Card className="overview-allocation-card">
         <CardContent className="p-6">
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
-            <div className="col-span-2 md:col-span-3 h-[330px]">
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-5 mobile-allocation-layout">
+            <div className="col-span-2 md:col-span-3 h-[330px] mobile-allocation-chart">
               {renderDoughnut()}
             </div>
             <div className="col-span-2 md:col-span-2 flex flex-col items-start justify-center">
-              {renderTokenHoldingList()}
+              {isMobile ? renderMobileHoldingList() : renderTokenHoldingList()}
             </div>
           </div>
         </CardContent>

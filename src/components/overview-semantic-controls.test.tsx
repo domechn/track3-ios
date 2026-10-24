@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import TotalValue from "@/components/total-value-and-change";
@@ -230,6 +230,25 @@ describe("Overview semantic controls", () => {
     ).toBeInTheDocument();
   });
 
+  it("lets a phone reader choose a chart range", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      renderWithProviders(<TotalValue currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
+        quoteColor="green-up-red-down" />);
+      const month = await screen.findByRole("radio", { name: "1M" });
+      fireEvent.click(month);
+      expect(month).toHaveAttribute("aria-checked", "true");
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
   it("renders profit coin entries as detail links", async () => {
     renderWithProviders(
       <Profit
@@ -263,6 +282,23 @@ describe("Overview semantic controls", () => {
       name: /open btc details/i,
     });
     expect(btcLink).toHaveAttribute("href", "/coins/BTC?assetType=crypto");
+  });
+
+  it("shows allocation share and value together on phone asset rows", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }));
+    try {
+      renderWithProviders(<LatestAssetsPercentage currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }} />);
+      const link = await screen.findByRole("link", { name: /open btc details/i });
+      expect(link).toHaveTextContent("55.0%");
+      expect(link).toHaveTextContent("$825.00");
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
   });
 
   it("localizes profit copy and asset detail links with the Chinese provider", async () => {

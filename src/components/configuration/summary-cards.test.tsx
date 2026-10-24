@@ -63,6 +63,6 @@ describe("SummaryCards", () => {
 
     // Skeleton should be rendered instead of the currency text
     expect(screen.queryByText("USD")).not.toBeInTheDocument();
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+    expect(container.querySelector(".mobile-skeleton")).toBeInTheDocument();
   });
 });

@@ -124,6 +124,7 @@ function TopBar({
   compactTitle,
   refreshAction,
   onBack,
+  overview,
 }: {
   mobile: boolean;
   isProUser: boolean;
@@ -140,6 +141,7 @@ function TopBar({
   compactTitle?: string;
   refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
   onBack?: () => void;
+  overview: boolean;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
@@ -152,8 +154,10 @@ function TopBar({
           onClick={onBack} aria-label={t("common.back", "Back")}>
           <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
         </button>}
-        {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
-        {!(mobile && onBack && compactTitle) && <MobileHeaderTotal currency={currentCurrency} live={isProUser} />}
+        {compactTitle && <span className={`mobile-compact-title${overview ? " mobile-overview-compact-title" : ""}`}>{compactTitle}</span>}
+        {(!mobile || compactTitle) && !(mobile && onBack && compactTitle) &&
+          <MobileHeaderTotal currency={currentCurrency} live={isProUser}
+            range={overview && dateRange?.from && dateRange.to ? { start: dateRange.from, end: dateRange.to } : undefined} />}
         {isProUser && !mobile && (
           <div className="mr-4">
             <RealTimeTotalValue
@@ -336,6 +340,7 @@ function Layout({
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
           compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          overview={location.pathname === "/overview"}
           onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
           refreshAction={refreshAction}

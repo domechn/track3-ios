@@ -9,7 +9,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -41,6 +41,48 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     ]);
   }
   if (emptyPortfolio) db.run("DELETE FROM assets_v2");
+  if (richPortfolio && !emptyPortfolio) {
+    db.run("DELETE FROM assets_v2");
+    db.run("INSERT INTO configuration (id, data) VALUES (6, '60')");
+    const holdings = [
+      { symbol: "BTC", type: "crypto", wallet: "BTC", amount: 0.36, base: 28_000 },
+      { symbol: "ETH", type: "crypto", wallet: "Coinbase", amount: 3.8, base: 12_000 },
+      { symbol: "AAPL", type: "stock", wallet: "ibkr", amount: 43, base: 9_000 },
+      { symbol: "SOL", type: "crypto", wallet: "BTC", amount: 42, base: 7_000 },
+      { symbol: "USDC", type: "crypto", wallet: "Coinbase", amount: 6_400, base: 6_400 },
+      { symbol: "AVAX", type: "crypto", wallet: "Coinbase", amount: 81, base: 3_000 },
+      { symbol: "LINK", type: "crypto", wallet: "BTC", amount: 90, base: 1_600 },
+    ];
+    for (let day = 0; day < 60; day++) {
+      const uuid = `demo-${String(day).padStart(2, "0")}`;
+      const createdAt = new Date(Date.UTC(2026, 7, 24 + day)).toISOString();
+      const market = 0.84 + day * 0.005 + 0.1 * Math.sin(day * 0.4);
+      for (const [index, holding] of holdings.entries()) {
+        const value = Math.round(holding.base * (holding.symbol === "USDC"
+          ? 1 : market * (1 + 0.08 * Math.sin(day * 0.3 + index * 1.4))) * 100) / 100;
+        db.run(`INSERT INTO assets_v2 (uuid, createdAt, wallet, asset_type, symbol, amount, value, price)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, createdAt, holding.wallet, holding.type, holding.symbol, holding.amount, value, value / holding.amount]);
+      }
+    }
+    for (const [index, holding] of holdings.entries()) {
+      const first = db.exec("SELECT id FROM assets_v2 WHERE uuid = 'demo-00' AND symbol = ?", [holding.symbol])[0]?.values[0];
+      const last = db.exec("SELECT price, value FROM assets_v2 WHERE uuid = 'demo-59' AND symbol = ?", [holding.symbol])[0]?.values[0];
+      if (!first || !last) throw new Error("Demo holding snapshot is missing");
+      const costFactor = [0.78, 1.18, 0.86, 1.24, 1, 0.82, 1.26][index];
+      db.run(`INSERT INTO transactions (uuid, assetID, asset_type, wallet, symbol, amount, price, txnType, txnCreatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'buy', ?)`,
+      ["demo-00", first[0], holding.type, holding.wallet, holding.symbol,
+        holding.amount, Number(last[0]) * costFactor, new Date(Date.UTC(2026, 7, 24)).toISOString()]);
+    }
+    if (!seedReviewContent) db.run("INSERT INTO configuration (id, data) VALUES (992, ?)", [
+      `!ent:e2e:${JSON.stringify({
+        snapshotUuid: "demo-59", dismissedIds: [],
+        insights: [{ id: "new:crypto:SOL", severity: "info", messageKey: "insights.newAsset",
+          data: { symbol: "SOL", value: 7298.27 } }],
+      })}`,
+    ]);
+  }
   if (seedReviewContent) {
     db.run(`INSERT INTO chat_sessions (id, title, createdAt, updatedAt, pinned, messageCount, preview)
       VALUES ('pinned-e2e', 'Pinned portfolio review', '2026-01-01', '2026-01-02', 1, 0, ''),
@@ -214,7 +256,8 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       }
       return true;
     }
-    if (cmd === "plugin:fs|exists") return files.has(args.path);
+    if (cmd === "plugin:fs|exists") return files.has(args.path) ||
+      (richPortfolio && /\/assets\/coins\/(btc|eth|sol|usdc|avax|link)\.png$/.test(args.path));
     if (cmd === "plugin:fs|mkdir") return null;
     if (cmd === "plugin:fs|copy_file") {
       const text = files.get(args.fromPath);
@@ -367,7 +410,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     if (cmd === "plugin:http|fetch_cancel_body" || cmd === "plugin:http|fetch_cancel") return null;
     throw new Error(`Unhandled Tauri command: ${cmd}`);
   });
-  await page.addInitScript(() => {
+  await page.addInitScript((withLogos: boolean) => {
     let callbackId = 0;
     const callbacks = new Map<number, Function>();
     (window as any).isTauri = true;
@@ -384,9 +427,23 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
         callbacks.delete(id);
         delete (window as any)[`_${id}`];
       },
-      convertFileSrc: (path: string) => path,
+      convertFileSrc: (path: string) => {
+        if (!withLogos) return path;
+        const symbol = path.match(/\/assets\/coins\/([a-z]+)\.png$/)?.[1];
+        if (!symbol) return path;
+        const colors: Record<string, string> = {
+          btc: "#f7931a", eth: "#62688f", sol: "#0f827b",
+          usdc: "#2775ca", avax: "#e84142", link: "#315cbe",
+        };
+        const glyphs: Record<string, string> = { btc: "₿", eth: "Ξ", sol: "S", usdc: "$", avax: "A", link: "L" };
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="20" fill="${colors[symbol] ?? "#315cbe"}"/>
+          <text x="20" y="27" text-anchor="middle" fill="white" font-family="-apple-system,system-ui" font-size="22" font-weight="700">${glyphs[symbol] ?? symbol[0].toUpperCase()}</text>
+        </svg>`;
+        return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      },
       metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
     };
-  });
+  }, richPortfolio);
   return { persistedRefreshes: () => refreshes, sseRequests: () => sseCalls, haptics: () => haptics, shares: () => shares };
 }

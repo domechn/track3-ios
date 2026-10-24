@@ -54,7 +54,7 @@ describe("GeneralSettings", () => {
       <GeneralSettings {...baseProps} preferCurrencyLoading={true} />,
     );
 
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+    expect(container.querySelector(".mobile-skeleton")).toBeInTheDocument();
   });
 
   it("shows exchange rate text when non-USD currency is selected", () => {

@@ -12,21 +12,25 @@ import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
 import { useEffect, useRef } from "react";
 
-const palette = ["#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#14b8a6", "#f97316", "#ec4899", "#94a3b8"];
+const chartPalette = () => document.documentElement.classList.contains("dark")
+  ? ["#6d97fa", "#85ade0", "#79b6ac", "#b9a3cb", "#bda887", "#929bb1"]
+  : ["#315cbe", "#5f8cce", "#79aaa5", "#b39ac4", "#c4aa89", "#8e94a8"];
 const tone = (positive: boolean, quoteColor: QuoteColor) =>
-  (positive === (quoteColor === "green-up-red-down")) ? "#10b981" : "#f43f5e";
+  (positive === (quoteColor === "green-up-red-down"))
+    ? document.documentElement.classList.contains("dark") ? "#30d158" : "#248a3d"
+    : document.documentElement.classList.contains("dark") ? "#ff453a" : "#d70015";
 function useChartOptions() {
-  const { theme } = useTheme();
-  const dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const text = dark ? "#cbd5e1" : "#475569";
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
+  const text = dark ? "#aeaeb2" : "#636366";
   return {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: "index" as const, intersect: false },
     animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
-      x: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
-      y: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      x: { ticks: { color: text, font: { size: 11 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      y: { ticks: { color: text, font: { size: 11 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
     },
   };
 }
@@ -78,6 +82,7 @@ export function FinanceChartSkeleton() {
 
 export function CostCharts({ report, quoteColor }: { report: CostBasisReport; quoteColor: QuoteColor }) {
   const { t } = useTranslation();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = costBasisVisuals(report, 8, t("finance.other"));
   return <>
@@ -162,13 +167,14 @@ export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
   rules: AlertRule[]; snapshots: AlertSnapshot[]; portfolioValues?: Array<{ date: string; value: number }>;
 }) {
   const { t } = useTranslation();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = goalVisuals(rules, snapshots);
   const values = portfolioValues.length ? portfolioValues : visual.values;
   return <ChartPanel title={t("finance.portfolioAndGoals")} empty={!values.length}>
     <Line role="img" aria-label={values.map((row) => `${row.date}: ${row.value.toFixed(2)}`).join("; ")}
       data={{ labels: values.map((row) => row.date), datasets: [
-        { label: t("finance.portfolioValue"), data: values.map((row) => row.value), borderColor: palette[0], backgroundColor: "#6366f120", fill: true, tension: 0.2, pointRadius: 1 },
+        { label: t("finance.portfolioValue"), data: values.map((row) => row.value), borderColor: palette[0], backgroundColor: `${palette[0]}18`, fill: true, tension: 0.2, pointRadius: 1 },
         ...visual.goals.filter((goal) => goal.kind === "total_value_target").map((goal) => ({
           label: t("finance.goalThreshold"), data: values.map(() => goal.target),
           borderColor: palette[2], borderDash: [5, 4], pointRadius: 0,
@@ -181,6 +187,7 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
   result: RebalanceResult; quoteColor: QuoteColor; tolerancePercent: number;
 }) {
   const { t } = useTranslation();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = rebalanceVisuals(result);
   return <div className="grid gap-3 lg:grid-cols-2">

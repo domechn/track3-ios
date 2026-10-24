@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BarChartIcon, ClockIcon, DashboardIcon, DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { useHaptics } from "./index";
+import { MobileIcon } from "./icons";
 
 export type MobileTab = "overview" | "history" | "analytics" | "more";
 export const tabRoots: Record<MobileTab, string> = {
@@ -26,13 +26,13 @@ export function MobileNavigation({ unread = 0, onTabSwitch }: { unread?: number;
     lastPath.current[selected] = pathname + search;
   }, [pathname, search, selected]);
   const tabs = [
-    { id: "overview" as const, icon: DashboardIcon, title: t("nav.overview") },
-    { id: "history" as const, icon: ClockIcon, title: t("nav.history") },
-    { id: "analytics" as const, icon: BarChartIcon, title: t("nav.analytics", "Analytics") },
-    { id: "more" as const, icon: DotsHorizontalIcon, title: t("nav.more", "More") },
+    { id: "overview" as const, title: t("nav.overview") },
+    { id: "history" as const, title: t("nav.history") },
+    { id: "analytics" as const, title: t("nav.analytics", "Analytics") },
+    { id: "more" as const, title: t("nav.more", "More") },
   ];
   return <nav aria-label={t("mobile.tabs", "Tabs")} className="mobile-tab-bar">
-    {tabs.map(({ id, icon: Icon, title }) => <Link key={id} to={selected === id ? tabRoots[id] : lastPath.current[id]}
+    {tabs.map(({ id, title }) => <Link key={id} to={selected === id ? tabRoots[id] : lastPath.current[id]}
       onClick={(event) => {
         haptic("selection");
         if (selected === id && pathname === tabRoots[id]) {
@@ -43,7 +43,7 @@ export function MobileNavigation({ unread = 0, onTabSwitch }: { unread?: number;
         }
       }}
       className="mobile-tab" aria-current={selected === id ? "page" : undefined}>
-      <span className="mobile-tab-icon"><Icon aria-hidden="true" />{id === "more" && unread > 0 &&
+      <span className="mobile-tab-icon"><MobileIcon name={id} filled={selected === id} />{id === "more" && unread > 0 &&
         <span className="mobile-tab-badge" aria-hidden="true">{unread > 99 ? "99+" : unread}</span>}</span>
       <span>{title}</span>
       {id === "more" && unread > 0 && <span className="sr-only">{t("goals.unread").replace("{count}", String(unread))}</span>}

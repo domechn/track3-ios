@@ -1,7 +1,41 @@
 # iOS port progress
 
-The earlier S1–S4 sections record their handoff results. The current state
-for this worktree is S5 below.
+The earlier S1–S5 sections record their handoff results. The current state
+for this worktree is D1 below.
+
+## D1 visual foundation, shell, and Overview
+
+- Added [DESIGN.md](DESIGN.md) with the phone color, type, spacing, motion,
+  chart, and component rules. Shared phone primitives now expose grouped
+  cards and rows, a delta pill, icon button, number animation, skeleton,
+  and an illustrated empty state. Global typography uses system fonts; light
+  and dark tokens use grouped white and true-black surfaces with one blue
+  accent.
+- The phone shell has a blurred tab bar and compact bar, unified navigation
+  icons, safe-area spacing, and a compact portfolio total while scrolled.
+  The first-launch action opens source setup. System theme changes update
+  the theme class without an app restart; the existing manual theme choice
+  still takes precedence.
+- Overview now presents a large value, a range-filtered trend with touch
+  value chip, restrained allocation chart and asset rows, P&L, movers,
+  insight, and source links. Loading uses a reserved skeleton layout.
+  The mock screenshot portfolio has seven assets, 60 daily snapshots across
+  two months, both positive and negative movers, and a saved insight.
+  The 7D and 30D P&L labels replace the old 7T and 30T wording; their
+  existing calculations still use historical snapshot offsets.
+- Browser screenshots for the Overview and shell are generated in
+  `test-results/mobile/` at iPhone SE (320×568) and iPhone 14 (390×844) in
+  light and dark, including scrolled Overview captures. First launch also has
+  a light and dark capture at 390 px. The route sweep captures other primary
+  routes. Screens owned by the later D2/D3 redesign
+  steps still use their existing content styling. Browser screenshots do
+  not validate signed-device behavior listed below.
+- Local D1 checks passed: frontend and browser TypeScript checks,
+  1,814 Vitest tests in 221 files, all 84 phone Playwright tests, and the
+  frontend production build. The phone suite and focused first-launch check
+  left 110 PNGs under `test-results/mobile/`. The new Overview screenshots
+  were visually inspected at 320 and 390 px in both themes. No D1 CI run or signed-device
+  check has been performed in this worktree.
 
 ## S5 reviewer closeout
 

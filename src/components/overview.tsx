@@ -24,6 +24,8 @@ import { StaggerContainer, FadeUp } from "./motion";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useIsMobile } from "./mobile";
+import { EmptyState, ListRow, MobileCard, MobileSkeleton, SectionHeader } from "./mobile";
+import InsightsCard from "./insights-card";
 
 const MAIN_COMPONENT_COUNT = 4;
 
@@ -38,6 +40,7 @@ const App = ({
 }) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const [noData, setNoData] = useState(false);
   const [isShowMore, setIsShowMore] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState(true);
   const loadedCountRef = useRef(0);
@@ -48,6 +51,7 @@ const App = ({
   const dataChangedVersion = useDataChangedVersion();
   useLayoutEffect(() => {
     setPageLoading(true);
+    setNoData(false);
     loadedCountRef.current = 0;
   }, [rangeKey, dataChangedVersion]);
 
@@ -64,17 +68,23 @@ const App = ({
     <OverviewLoadingContext.Provider value={loadingContextValue}>
       <div className="relative min-h-[400px]" aria-busy={pageLoading}>
         {!isMobile && <h1 className="sr-only">{t("overview.h1")}</h1>}
-        <Collapsible open={isShowMore} onOpenChange={setIsShowMore}>
-          <StaggerContainer className="space-y-3">
-            <div className="grid gap-5 grid-cols-2">
+        {isMobile && noData && !pageLoading
+          ? <EmptyState title={t("overview.emptyTitle")} description={t("overview.emptyDescription")}
+              illustrationLabel={t("overview.emptyIllustration")}
+              action={t("overview.addFirstSource")} onAction={() => { window.location.hash = "#/settings/configuration"; }} />
+          : <Collapsible open={isShowMore} onOpenChange={setIsShowMore}>
+          <StaggerContainer className="space-y-3 overview-sections">
+            <div className="grid gap-5 grid-cols-2 overview-main-grid">
               <FadeUp className="col-span-2 h-full md:col-span-1">
                 <TotalValue
                   currency={currency}
                   dateRange={dateRange}
                   quoteColor={quoteColor}
+                  onEmptyChange={setNoData}
                 />
               </FadeUp>
               <FadeUp className="col-span-2 h-full md:col-span-1">
+                {isMobile && <SectionHeader>{t("overview.performance")}</SectionHeader>}
                 <PNL
                   currency={currency}
                   dateRange={dateRange}
@@ -83,18 +93,28 @@ const App = ({
               </FadeUp>
             </div>
             <FadeUp>
+              {isMobile && <SectionHeader>{t("overview.allocation")}</SectionHeader>}
               <LatestAssetsPercentage
                 currency={currency}
                 dateRange={dateRange}
               />
             </FadeUp>
             <FadeUp>
+              {isMobile && <SectionHeader>{t("overview.movers")}</SectionHeader>}
               <Profit
                 currency={currency}
                 dateRange={dateRange}
                 quoteColor={quoteColor}
               />
             </FadeUp>
+            {isMobile && <FadeUp><InsightsCard currency={currency} /></FadeUp>}
+            {isMobile && <FadeUp>
+              <SectionHeader>{t("overview.sources")}</SectionHeader>
+              <MobileCard className="overview-source-teaser">
+                <ListRow href="#/wallets">{t("overview.viewBreakdown")}</ListRow>
+                <ListRow href="#/settings/configuration">{t("overview.manageSources")}</ListRow>
+              </MobileCard>
+            </FadeUp>}
           </StaggerContainer>
           <CollapsibleTrigger asChild className="my-3 w-full">
             <Button
@@ -118,15 +138,22 @@ const App = ({
               </FadeUp>
             </StaggerContainer>
           </CollapsibleContent>
-        </Collapsible>
+        </Collapsible>}
         {pageLoading && (
           <div
-            className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/65 px-4 backdrop-blur-md"
+            className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/65 px-4 backdrop-blur-md overview-loading"
             role="status"
             aria-live="polite"
             aria-atomic="true"
           >
-            <div className="glass-subtle flex max-w-sm flex-col items-center gap-3 rounded-xl px-5 py-4 text-center">
+            {isMobile ? <div className="overview-skeleton" aria-hidden="true">
+              <MobileSkeleton className="h-4 w-24" />
+              <MobileSkeleton className="mt-4 h-14 w-64 max-w-full" />
+              <MobileSkeleton className="mt-3 h-7 w-36 rounded-full" />
+              <MobileSkeleton className="mt-9 h-44 w-full" />
+              <MobileSkeleton className="mt-4 h-11 w-full" />
+              <span className="sr-only">{t("loading.overview")}</span>
+            </div> : <div className="glass-subtle flex max-w-sm flex-col items-center gap-3 rounded-xl px-5 py-4 text-center">
               <div className="h-2 w-24 rounded-full bg-primary/20">
                 <div className="h-full w-1/2 animate-pulse rounded-full bg-primary/70 motion-reduce:animate-none" />
               </div>
@@ -138,7 +165,8 @@ const App = ({
                   {t("loading.overviewDesc")}
                 </p>
               </div>
-            </div>
+            </div>}
+            {isMobile && <span className="sr-only">{t("loading.overview")}</span>}
           </div>
         )}
       </div>
