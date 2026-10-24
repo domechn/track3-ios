@@ -393,7 +393,7 @@ function ReadyChat({
   return (
     <div
       ref={layoutRef}
-      className={`relative flex min-w-0 overflow-hidden ${mobile ? "" : "h-[calc(100vh-88px)]"}`}
+      className={`relative flex min-w-0 overflow-hidden ${mobile ? "ios-d3-chat" : "h-[calc(100vh-88px)]"}`}
       style={mobile && mobileHeight !== undefined ? { height: mobileHeight } : undefined}
       data-testid="chat-session-layout"
     >
@@ -572,7 +572,7 @@ function ChatHeader({
   const { t } = useTranslation();
   const percent = Math.min(100, Math.round(contextTokens / config.contextSize * 100));
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:flex-wrap touch:gap-y-1 touch:px-3">
+    <CardHeader className="ios-d3-chat-header flex flex-row items-center justify-between gap-3 space-y-0 border-b border-[var(--glass-border)] bg-card/40 px-5 py-3 touch:flex-wrap touch:gap-y-1 touch:px-3">
       <div className="flex min-w-0 items-center gap-3 touch:w-full">
         <button
           type="button"
@@ -623,9 +623,9 @@ function ChatHeader({
         className="gap-1 text-muted-foreground hover:text-foreground"
         data-testid="chat-open-settings"
       >
-        <Link to="/settings/assistant">
+        <Link to="/settings/assistant" aria-label={t("settings.tab.assistant")}>
           <GearIcon className="h-3.5 w-3.5" />
-          {t("settings.tab.assistant")}
+          <span className="ios-d3-chat-settings-label">{t("settings.tab.assistant")}</span>
         </Link>
       </Button>
     </CardHeader>

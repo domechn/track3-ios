@@ -25,8 +25,19 @@ describe("mobile data sources", () => {
   it("keeps Pro balance preview available from a saved source", () => {
     const preview = vi.fn();
     render(<MobileSources {...props} isPro onQuickLookExchange={preview} />);
+    fireEvent.click(screen.getByRole("button", { name: "More actions for Binance" }));
     fireEvent.click(screen.getByRole("button", { name: "Quick look Binance" }));
     expect(preview).toHaveBeenCalledWith(props.exchanges[0]);
+  });
+
+  it("keeps toggle and delete reachable from a compact source row", () => {
+    const toggle = vi.fn();
+    render(<MobileSources {...props} onToggleExchange={toggle} />);
+    fireEvent.click(screen.getByRole("switch", { name: "Toggle Binance" }));
+    expect(toggle).toHaveBeenCalledWith(props.exchanges[0]);
+    fireEvent.click(screen.getByRole("button", { name: "More actions for Binance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Binance" }));
+    expect(screen.getByRole("alertdialog", { name: "Remove this configuration?" })).toBeInTheDocument();
   });
 
   it("masks saved credentials and validates provider fields before saving", () => {
@@ -40,12 +51,33 @@ describe("mobile data sources", () => {
     expect(props.onSaveExchange).not.toHaveBeenCalled();
   });
 
+  it("reveals a secret only while its reveal control is held", () => {
+    render(<MobileSources {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const secret = screen.getByLabelText("Api Secret");
+    fireEvent.change(secret, { target: { value: "private-secret" } });
+    expect(secret).toHaveAttribute("type", "password");
+    const reveal = screen.getByRole("button", { name: "Hold to reveal Api Secret" });
+    fireEvent.pointerDown(reveal);
+    expect(secret).toHaveAttribute("type", "text");
+    fireEvent.pointerUp(reveal);
+    expect(secret).toHaveAttribute("type", "password");
+  });
+
   it("opens a wallet form with an address field reachable on a phone", () => {
     render(<MobileSources {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Add wallet" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocapitalize", "off");
     expect(screen.getByRole("textbox", { name: "Address" })).toHaveAttribute("autocomplete", "off");
+  });
+
+  it("introduces the three source setup steps on an empty portfolio", () => {
+    render(<MobileSources {...props} exchanges={[]} />);
+    const steps = screen.getByRole("list", { name: "Getting started" });
+    expect(steps.querySelectorAll("li")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Add exchange" })).toBeInTheDocument();
   });
 
   it.each([

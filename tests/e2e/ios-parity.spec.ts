@@ -271,7 +271,7 @@ for (const phone of phones) {
     await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
     const titleRow = (await page.getByTestId("sidebar-toggle").locator("..").boundingBox())!;
     const settings = (await page.getByTestId("chat-open-settings").boundingBox())!;
-    expect(settings.y).toBeGreaterThanOrEqual(titleRow.y + titleRow.height);
+    expect(settings.x >= titleRow.x + titleRow.width || settings.y >= titleRow.y + titleRow.height).toBe(true);
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-assistant.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(phone.width);
   });

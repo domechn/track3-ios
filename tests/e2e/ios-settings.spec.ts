@@ -120,6 +120,18 @@ test("switching iPhone tabs uses the native haptic bridge", async ({ page }) => 
   await expect.poll(bridge.haptics).toBe(1);
 });
 
+test("More and source selections use the native haptic bridge", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bridge = await installTauriBridge(page);
+  await page.goto("/#/more");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect.poll(bridge.haptics).toBe(1);
+  await page.getByRole("link", { name: "Data sources" }).click();
+  await expect.poll(bridge.haptics).toBe(2);
+  await page.getByRole("button", { name: "Add exchange" }).click();
+  await expect.poll(bridge.haptics).toBe(3);
+});
+
 test("the chat composer stays above the tab bar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installTauriBridge(page);

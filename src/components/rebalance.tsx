@@ -236,7 +236,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+    <div className="ios-d3-rebalance mx-auto flex max-w-6xl flex-col gap-4">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("rebalance.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("rebalance.description")}</p>
@@ -272,7 +272,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
             <CardContent className="space-y-3 px-4 pb-4">
               {targets.map((target, index) => (
                 <div key={target.id} className={mobile
-                  ? "grid min-w-0 grid-cols-2 items-end gap-3 rounded-2xl border bg-card p-4"
+                  ? "ios-d3-target grid min-w-0 grid-cols-2 items-end gap-3 rounded-2xl bg-card p-4"
                   : "grid grid-cols-[minmax(90px,1fr)_minmax(85px,1fr)_72px_32px] items-end gap-1.5 sm:grid-cols-[150px_minmax(120px,1fr)_110px_32px] touch:grid-cols-2 touch:sm:grid-cols-[150px_minmax(120px,1fr)_110px_44px]"}>
                   <label className="space-y-1 text-xs text-muted-foreground">
                     <span>{t("rebalance.targetKind")}</span>
@@ -335,6 +335,10 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                       aria-label={t("rebalance.increaseTarget").replace("{asset}", labelFor(target))}
                       onClick={() => updateTarget(index, { ...target, percent: stepPercent(target.percent, 1) })}>+</Button>
                   </div>}
+                  {mobile && <div role="progressbar"
+                    aria-label={t("rebalance.percentFor").replace("{asset}", labelFor(target))}
+                    aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number.isNaN(target.percent) ? 0 : target.percent}
+                    className="ios-d3-target-bar col-span-2"><span style={{ width: `${Math.max(0, Math.min(100, target.percent || 0))}%` }} /></div>}
                   <Button className={`${mobile ? "h-11 w-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
                     aria-label={t("rebalance.remove").replace("{asset}", labelFor(target))}
                     onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>×</Button>
@@ -404,7 +408,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                 </CardHeader>
                 <CardContent className="space-y-2 px-4 pb-4">
                   {visual?.trades.length ? visual.trades.map((row) => (
-                    <div key={`${row.assetType}:${row.symbol}`} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                    <div key={`${row.assetType}:${row.symbol}`} className={`ios-d3-trade flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${row.tradeValue > 0 ? "ios-d3-buy" : "ios-d3-sell"}`}>
                       <p className="font-medium">
                         {t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
                         {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: 8 })} `}

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,6 +18,7 @@ import { UpdateIcon } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { prettyPriceNumberToLocaleString } from "@/utils/currency";
 import type { GeneralSettingsProps } from "./types";
+import { isIOS } from "@/utils/platform";
 
 const defaultBaseCurrency = "USD";
 
@@ -42,6 +44,7 @@ const GeneralSettings = memo(function GeneralSettings({
   onUpdateCurrencyRatesClick,
 }: GeneralSettingsProps) {
   const { t } = useTranslation();
+  const mobile = isIOS();
 
   return (
     <Card>
@@ -51,24 +54,24 @@ const GeneralSettings = memo(function GeneralSettings({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex items-center space-x-2">
-          <Checkbox
+        <div className={mobile ? "ios-d3-currency-toggle flex items-center" : "flex items-center space-x-2"}>
+          {mobile ? <Switch id="groupUSD" checked={groupUSD} onCheckedChange={onGroupUSDChange} /> : <Checkbox
             id="groupUSD"
             checked={groupUSD}
             onCheckedChange={(v) => onGroupUSDChange(!!v)}
-          />
+          />}
           <Label htmlFor="groupUSD" className="text-sm touch:flex touch:min-h-11 touch:items-center">
-            Group stable coins into USDT (USDC, TUSD, DAI...)
+            {t("config.groupStablecoins")}
           </Label>
         </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
+        <div className={mobile ? "ios-d3-currency-toggle flex items-center" : "flex items-center space-x-2"}>
+          {mobile ? <Switch id="hideInactive" checked={hideInactive} onCheckedChange={onHideInactiveChange} /> : <Checkbox
             id="hideInactive"
             checked={hideInactive}
             onCheckedChange={(v) => onHideInactiveChange(!!v)}
-          />
+          />}
           <Label htmlFor="hideInactive" className="text-sm touch:flex touch:min-h-11 touch:items-center">
-            Hide inactive exchanges, brokers, and wallets
+            {t("config.hideInactiveSources")}
           </Label>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

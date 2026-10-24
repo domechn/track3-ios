@@ -14,6 +14,7 @@ import {
 } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { isIOS } from "@/utils/platform";
 import MessageBubble from "./message-bubble";
 import type { ChatMessage } from "./use-chat";
 
@@ -196,6 +197,12 @@ function WelcomePanel({
       data-testid="chat-welcome"
     >
       <div className="space-y-2 text-center sm:text-left">
+        <svg className="ios-d3-chat-art hidden" viewBox="0 0 104 104" fill="none" aria-hidden="true">
+          <circle cx="52" cy="52" r="47" fill="currentColor" opacity=".09" />
+          <path d="M29 36c0-7 6-13 13-13h23c7 0 13 6 13 13v24c0 7-6 13-13 13H46L32 83V70a13 13 0 0 1-3-8V36Z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M41 49h24M41 58h16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="76" cy="28" r="6" fill="currentColor" />
+        </svg>
         <h2 className="text-lg font-semibold tracking-tight text-foreground">
           {t("assistant.chat.welcome.greeting")}
         </h2>
@@ -232,6 +239,7 @@ function WelcomePanel({
             <li key={key}>
               <button
                 type="button"
+                aria-label={isIOS() ? t(`assistant.chat.examples.short.${key.split(".").pop()}`) : undefined}
                 onClick={() => onPickPrompt?.(t(key))}
                 disabled={!onPickPrompt}
                 className={cn(
@@ -248,11 +256,11 @@ function WelcomePanel({
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="ios-d3-example-tag block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                     {t(tagKey)}
                   </span>
                   <span className="mt-0.5 block text-sm leading-snug text-foreground/90">
-                    {t(key)}
+                    {t(isIOS() ? `assistant.chat.examples.short.${key.split(".").pop()}` : key)}
                   </span>
                 </span>
                 <ArrowRightIcon

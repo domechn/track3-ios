@@ -48,7 +48,7 @@ export default function SyncStatusIndicator() {
   }
 
   return (
-    <div className="fixed bottom-14 right-4 z-50" style={isIOS() ? { bottom: "calc(env(safe-area-inset-bottom) + 5rem)" } : undefined}>
+    <div className={isIOS() ? "ios-d3-sync-indicator fixed bottom-14 right-4 z-50" : "fixed bottom-14 right-4 z-50"} style={isIOS() ? { bottom: "calc(env(safe-area-inset-bottom) + 5rem)" } : undefined}>
       <span role="status" aria-live="polite" className="sr-only">
         {busy ? t("common.loading") : t(`sync.status.${phase}`)}
       </span>
@@ -61,7 +61,7 @@ export default function SyncStatusIndicator() {
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" side="top" collisionPadding={16}
-          className="w-[calc(100vw-2rem)] max-w-72 space-y-3 text-sm">
+          className={`w-[calc(100vw-2rem)] max-w-72 space-y-3 text-sm ${isIOS() ? "ios-d3-sync-popover" : ""}`}>
           <h2 className="font-semibold">{t("sync.status.details")}</h2>
           {status.mode === "unreadable" ? (
             <>

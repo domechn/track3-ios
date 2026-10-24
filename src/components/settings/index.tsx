@@ -14,10 +14,15 @@ import {
   InfoCircledIcon,
   RocketIcon,
   UpdateIcon,
+  GlobeIcon,
+  LockClosedIcon,
+  TokensIcon,
+  EyeNoneIcon,
+  FileTextIcon,
 } from "@radix-ui/react-icons";
 import { useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
-import { InsetGroup, ListRow } from "@/components/mobile";
+import { InsetGroup, ListRow, useHaptics } from "@/components/mobile";
 import AssistantSettings from "./assistant";
 
 const settingsTabs = [
@@ -54,17 +59,17 @@ const settingsTabs = [
 ];
 
 const mobileSettings = [
-  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources" },
-  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency" },
-  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme" },
-  { key: "settings.mobile.language", href: "/settings/appearance?section=language" },
-  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist" },
-  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro" },
-  { key: "settings.mobile.ai", href: "/settings/assistant" },
-  { key: "settings.mobile.security", href: "/settings/data?section=security" },
-  { key: "settings.mobile.backup", href: "/settings/data?section=backup" },
-  { key: "settings.mobile.sync", href: "/settings/sync" },
-  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about" },
+  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources", icon: TokensIcon, tone: "blue", group: "portfolio" },
+  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: GlobeIcon, tone: "green", group: "portfolio" },
+  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme", icon: SunIcon, tone: "orange", group: "preferences" },
+  { key: "settings.mobile.language", href: "/settings/appearance?section=language", icon: GlobeIcon, tone: "blue", group: "preferences" },
+  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist", icon: EyeNoneIcon, tone: "gray", group: "preferences" },
+  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro", icon: RocketIcon, tone: "orange", group: "preferences" },
+  { key: "settings.mobile.ai", href: "/settings/assistant", icon: RocketIcon, tone: "blue", group: "preferences" },
+  { key: "settings.mobile.security", href: "/settings/data?section=security", icon: LockClosedIcon, tone: "green", group: "privacy" },
+  { key: "settings.mobile.backup", href: "/settings/data?section=backup", icon: ArchiveIcon, tone: "blue", group: "privacy" },
+  { key: "settings.mobile.sync", href: "/settings/sync", icon: UpdateIcon, tone: "green", group: "privacy" },
+  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about", icon: FileTextIcon, tone: "gray", group: "privacy" },
 ] as const;
 
 function TabLink({
@@ -98,6 +103,7 @@ function TabLink({
 
 const App = () => {
   const { t } = useTranslation();
+  const haptic = useHaptics();
   const lo = useLocation();
   if (isIOS()) {
     const isHub = lo.pathname === "/settings";
@@ -105,27 +111,28 @@ const App = () => {
       `${item.href}` === `${lo.pathname}${lo.search}`)?.key ??
       mobileSettings.find((item) => item.href.split("?")[0] === lo.pathname)?.key;
     return (
-      <div className="mx-auto w-full max-w-2xl min-w-0 space-y-5 pb-6">
+      <div className="ios-d3-settings mx-auto w-full max-w-2xl min-w-0 space-y-5 pb-6">
         {isHub ? (
           <>
-            <h1 className="px-1 pt-2 text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
-            <nav aria-label={t("settings.sectionsAriaLabel")}>
-              <InsetGroup>
-                {mobileSettings.map((item) => (
-                  <ListRow
-                    key={item.href}
-                    href={`#${item.href}`}
-                  >{t(item.key)}</ListRow>
-                ))}
-              </InsetGroup>
+            <h1 className="ios-d3-large-title px-1 pt-2">{t("settings.title")}</h1>
+            <nav aria-label={t("settings.sectionsAriaLabel")} onClickCapture={() => haptic("selection")}>
+              {(["portfolio", "preferences", "privacy"] as const).map((group) => <InsetGroup key={group} title={t(`settings.mobile.group.${group}`)}>
+                {mobileSettings.filter((item) => item.group === group).map((item) => {
+                  const Icon = item.icon;
+                  return <ListRow key={item.href} href={`#${item.href}`}>
+                    <span aria-hidden="true" className={`ios-d3-settings-icon ios-d3-tone-${item.tone}`}><Icon /></span>
+                    {t(item.key)}
+                  </ListRow>;
+                })}
+              </InsetGroup>)}
             </nav>
           </>
         ) : (
           <>
             <header className="space-y-3 px-1 pt-1">
-              <h1 className="text-3xl font-bold tracking-tight">{t(title ?? "settings.title")}</h1>
+              <h1 className="ios-d3-large-title">{t(title ?? "settings.title")}</h1>
             </header>
-            <Outlet />
+            <div className="ios-d3-settings-page"><Outlet /></div>
           </>
         )}
       </div>

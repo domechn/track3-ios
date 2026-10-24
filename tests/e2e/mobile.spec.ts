@@ -109,7 +109,7 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await page.goto("/#/more");
     await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
-    await expect(page.locator(".mobile-more-hub .mobile-inset-heading")).toHaveCount(0);
+    await expect(page.locator(".mobile-more-hub .mobile-inset-heading")).toHaveText(["Plan", "Manage"]);
     await expect(page.locator(".mobile-more-hub .mobile-list-label svg")).toHaveCount(4);
   } finally {
     await context.close();

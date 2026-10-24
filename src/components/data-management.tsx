@@ -280,7 +280,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const showSecurity = !section || section === "security";
 
   return (
-    <div className="space-y-6">
+    <div className="ios-d3-settings-content space-y-6">
       {showBackup && showImportConfirm && <ConfirmSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
         setShowImportConfirm(false);
         setExportData(undefined);

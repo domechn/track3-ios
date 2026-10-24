@@ -10,7 +10,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false, lockedStartup = false, freshReviewData = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -71,9 +71,12 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       { symbol: "AVAX", type: "crypto", wallet: md5(coinbaseIdentity), amount: 81, base: 3_000 },
       { symbol: "LINK", type: "crypto", wallet: md5(coinbaseIdentity), amount: 90, base: 1_600 },
     ];
+    const firstReviewDay = freshReviewData
+      ? new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() - 59))
+      : new Date(Date.UTC(2026, 7, 24));
     for (let day = 0; day < 60; day++) {
       const uuid = `demo-${String(day).padStart(2, "0")}`;
-      const createdAt = new Date(Date.UTC(2026, 7, 24 + day)).toISOString();
+      const createdAt = new Date(firstReviewDay.getTime() + day * 86400000).toISOString();
       const dailyMove = [0.004, -0.012, 0.008, 0.015, -0.006, 0.003, -0.009, 0.011, -0.004];
       const market = 0.86 + day * 0.004
         + (day >= 13 ? -0.055 : 0) + (day >= 27 ? 0.045 : 0)
@@ -95,7 +98,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       db.run(`INSERT INTO transactions (uuid, assetID, asset_type, wallet, symbol, amount, price, txnType, txnCreatedAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'buy', ?)`,
       ["demo-00", first[0], holding.type, holding.wallet, holding.symbol,
-        holding.amount, Number(last[0]) * costFactor, new Date(Date.UTC(2026, 7, 24)).toISOString()]);
+        holding.amount, Number(last[0]) * costFactor, firstReviewDay.toISOString()]);
     }
     if (!seedReviewContent) db.run("INSERT INTO configuration (id, data) VALUES (992, ?)", [
       `!ent:e2e:${JSON.stringify({
@@ -160,7 +163,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
 
   await page.exposeBinding("__e2eInvoke", async (_source, cmd: string, args: any, options?: any) => {
     if (cmd === "get_database_url") return "sqlite:e2e.db";
-    if (cmd === "ios_startup_failure") return null;
+    if (cmd === "ios_startup_failure") return lockedStartup ? "Protected key unavailable" : null;
     if (cmd === "ios_retry_startup") return false;
     if (cmd === "ios_haptic") { haptics++; return null; }
     if (cmd === "ios_lock_enabled") return false;

@@ -31,14 +31,15 @@ export function MobileOthers(props: {
     props.onSave(editor.index, { ...editor.value, symbol: editor.value.symbol.trim().toUpperCase(), amount });
     setEditor(undefined);
   };
-  return <section className="space-y-2">
+  return <section className="ios-d3-others space-y-2">
     <div className="flex items-center justify-between gap-2">
-      <h2 className="text-base font-semibold">{t("config.others")}</h2>
-      <Button variant="outline" className="min-h-11" onClick={() => open(null)}>{t("config.addSymbol")}</Button>
+      <h2 className="ios-d3-section-heading">{t("config.others")}</h2>
+      <Button variant="ghost" className="ios-d3-text-action min-h-11" onClick={() => open(null)}>{t("config.addSymbol")}</Button>
     </div>
-    <div className="overflow-hidden rounded-2xl border bg-card">
+    <div className="ios-d3-others-group overflow-hidden rounded-2xl bg-card">
       {props.others.length === 0 && <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.others.empty")}</p>}
-      {props.others.map((other, index) => <div key={`${other.symbol}-${index}`} className="flex min-w-0 items-center gap-2 border-b px-4 py-2 last:border-0">
+      {props.others.map((other, index) => <div key={`${other.symbol}-${index}`} className="ios-d3-others-row flex min-w-0 items-center gap-2 px-4 py-2">
+        <span className="ios-d3-source-avatar" aria-hidden="true">{other.symbol.slice(0, 2).toUpperCase()}</span>
         <button className="min-h-11 min-w-0 flex-1 text-left" aria-label={`${t("goals.edit")} ${other.symbol}`} onClick={() => open(index)}>
           <span className="block truncate font-medium">{other.alias || other.symbol}</span>
           <span className="block truncate text-xs text-muted-foreground">{other.amount.toLocaleString()} {other.symbol}</span>
@@ -48,8 +49,8 @@ export function MobileOthers(props: {
       </div>)}
     </div>
     {editor && <ModalPage title={t("mobile.others.edit")} onDismiss={() => setEditor(undefined)}>
-      <div className="mx-auto max-w-xl space-y-5">
-        <Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button>
+      <div className="ios-d3-other-editor mx-auto max-w-xl space-y-5">
+        <div className="ios-d3-editor-nav"><Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button></div>
         <h2 className="text-3xl font-bold">{t("mobile.others.edit")}</h2>
         <div className="space-y-2"><Label htmlFor="other-alias">{t("config.formAlias")}</Label><Input id="other-alias" className="min-h-12 text-base" autoComplete="off" value={editor.value.alias ?? ""} onChange={(event) => setEditor({ ...editor, value: { ...editor.value, alias: event.target.value } })} /></div>
         <div className="space-y-2"><Label htmlFor="other-symbol">{t("config.formSymbol")}</Label><Input id="other-symbol" className="min-h-12 text-base" autoComplete="off" autoCapitalize="characters" value={editor.value.symbol} onChange={(event) => setEditor({ ...editor, value: { ...editor.value, symbol: event.target.value } })} /></div>

@@ -199,10 +199,11 @@ export default function MessageBubble({
   return (
     <div
       className={cn(
-        "flex w-full gap-2",
+        "ios-d3-chat-bubble flex w-full gap-2",
         isUser ? "justify-end" : "justify-start",
       )}
       data-testid={isUser ? "user-bubble" : "assistant-bubble"}
+      data-streaming={!isUser && Boolean(isStreaming)}
     >
       {!isUser && (
         <span

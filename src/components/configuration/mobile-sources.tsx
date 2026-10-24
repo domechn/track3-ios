@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 import { maskSensitive, truncateAddress } from "@/utils/attach-to";
-import { iosHaptic } from "@/utils/ios-native";
 import { redactSecrets } from "@/middlelayers/security/redact";
+import { ChevronRightIcon, DotsHorizontalIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { ActionSheet, useHaptics } from "@/components/mobile";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
 import type { ExchangeRow, StockBrokerRow, WalletRow, SelectOption } from "./types";
 
@@ -45,12 +46,15 @@ const blank = {
 
 export function MobileSources(props: MobileSourcesProps) {
   const { t } = useTranslation();
+  const haptic = useHaptics();
   const [editor, setEditor] = useState<Editor>();
   const [removal, setRemoval] = useState<PendingRemoval>();
+  const [menu, setMenu] = useState<(PendingRemoval & { name: string })>();
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<string>();
   const [saving, setSaving] = useState(false);
   const start = (kind: Kind, original?: Draft) => {
+    haptic("selection");
     setError("");
     setErrorField(undefined);
     setEditor({ kind, step: original ? 2 : 1, original, draft: original ? { ...original } : blank[kind]() });
@@ -95,7 +99,7 @@ export function MobileSources(props: MobileSourcesProps) {
       if (kind === "exchange") await props.onSaveExchange(draft as ExchangeRow, original as ExchangeRow | undefined);
       if (kind === "wallet") await props.onSaveWallet(draft as WalletRow, original as WalletRow | undefined);
       if (kind === "broker") await props.onSaveBroker(draft as StockBrokerRow, original as StockBrokerRow | undefined);
-      void iosHaptic("success").catch(() => {});
+      haptic("success");
       close();
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : String(failure);
@@ -126,7 +130,7 @@ export function MobileSources(props: MobileSourcesProps) {
     if (removal.kind === "exchange") props.onRemoveExchange(removal.value as ExchangeRow);
     if (removal.kind === "wallet") props.onRemoveWallet(removal.value as WalletRow);
     if (removal.kind === "broker") props.onRemoveBroker(removal.value as StockBrokerRow);
-    void iosHaptic("light").catch(() => {});
+    haptic("light");
     setRemoval(undefined);
   };
   const sections: { kind: Kind; label: string; add: string; rows: Draft[]; options: SelectOption[] }[] = [
@@ -135,53 +139,83 @@ export function MobileSources(props: MobileSourcesProps) {
     { kind: "broker", label: t("config.stockBrokers"), add: t("mobile.sources.addBroker"), rows: props.brokers, options: props.brokerOptions },
   ];
   return (
-    <div className="space-y-6">
+    <div className="ios-d3-sources">
+      {props.exchanges.length + props.wallets.length + props.brokers.length === 0 && <div className="ios-d3-onboarding">
+        <div className="ios-d3-onboarding-art" aria-hidden="true">
+          <svg viewBox="0 0 160 94" fill="none">
+            <rect x="26" y="12" width="108" height="70" rx="14" stroke="currentColor" strokeWidth="2" opacity=".35" />
+            <path d="M48 60h18l12-18 13 10 21-27" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="112" cy="25" r="5" fill="currentColor" />
+          </svg>
+        </div>
+        <h2>{t("mobile.sources.gettingStarted")}</h2>
+        <ol aria-label={t("mobile.sources.gettingStarted")}>
+          {[1, 2, 3].map((step) => <li key={step}><span>{step}</span>{t(`mobile.sources.step.${step}`)}</li>)}
+        </ol>
+      </div>}
       {sections.map(({ kind, label, add, rows, options }) => (
-        <section key={kind} aria-label={label} className="space-y-2">
+        <section key={kind} aria-label={label} className="ios-d3-source-section space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">{label}</h2>
-            <Button className="min-h-11" variant="outline" onClick={() => start(kind)}>{add}</Button>
+            <h2 className="ios-d3-section-heading">{label}</h2>
+            <Button className="ios-d3-text-action min-h-11" variant="ghost" onClick={() => start(kind)}>{add}</Button>
           </div>
-          <div className="overflow-hidden rounded-2xl border bg-card">
+          <div className="ios-d3-source-group overflow-hidden rounded-2xl bg-card">
             {rows.length === 0 ? <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.sources.empty")}</p> : rows.map((row, index) => {
               const identity = kind === "exchange" ? maskSensitive((row as ExchangeRow).apiKey)
                 : kind === "wallet" ? truncateAddress((row as WalletRow).address)
                 : maskSensitive((row as StockBrokerRow).queryId);
               const name = row.alias || options.find((option) => option.value === row.type)?.label || row.type;
-              return <div key={`${row.type}-${index}`} className="flex min-w-0 items-center gap-2 border-b px-4 py-2 last:border-0">
+              return <div key={`${row.type}-${index}`} className="ios-d3-source-row flex min-w-0 items-center gap-2 px-4 py-2">
+                <span className="ios-d3-source-avatar" aria-hidden="true">{name.slice(0, 2).toUpperCase()}</span>
                 <button className="min-h-11 min-w-0 flex-1 text-left" onClick={() => start(kind, row)}>
                   <span className="block truncate font-medium">{name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{identity}</span>
                 </button>
-                {props.isPro && <button className="min-h-11 rounded-lg px-2 text-sm text-primary" aria-label={`${t("config.quickLook")} ${name}`} onClick={() => {
-                  if (kind === "exchange") props.onQuickLookExchange?.(row as ExchangeRow);
-                  if (kind === "wallet") props.onQuickLookWallet?.(row as WalletRow);
-                  if (kind === "broker") props.onQuickLookBroker?.(row as StockBrokerRow);
-                }}>{t("config.quickLook")}</button>}
-                <button className="min-h-11 rounded-lg px-2 text-sm text-primary" aria-label={`${t("mobile.sources.toggle")} ${name}`} onClick={() => {
+                <button type="button" role="switch" aria-checked={row.active}
+                  className="ios-d3-source-switch" aria-label={`${t("mobile.sources.toggle")} ${name}`} onClick={() => {
+                  haptic("selection");
                   if (kind === "exchange") props.onToggleExchange(row as ExchangeRow);
                   if (kind === "wallet") props.onToggleWallet(row as WalletRow);
                   if (kind === "broker") props.onToggleBroker(row as StockBrokerRow);
-                }}>{row.active ? t("config.active") : t("config.inactive")}</button>
-                <button className="min-h-11 min-w-11 text-destructive" aria-label={`${t("common.delete")} ${name}`} onClick={() => setRemoval({ kind, value: row })}>×</button>
+                }}><span aria-hidden="true" /></button>
+                <button type="button" className="ios-d3-source-more" aria-label={t("mobile.sources.moreActions").replace("{source}", name)}
+                  onClick={() => { haptic("selection"); setMenu({ kind, value: row, name }); }}><DotsHorizontalIcon aria-hidden="true" /></button>
               </div>;
             })}
           </div>
         </section>
       ))}
+      {menu && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(undefined); }}
+        title={menu.name} actions={[
+          ...(props.isPro ? [{
+            label: t("mobile.sources.quickLookSource").replace("{source}", menu.name),
+            onClick: () => {
+              if (menu.kind === "exchange") props.onQuickLookExchange?.(menu.value as ExchangeRow);
+              if (menu.kind === "wallet") props.onQuickLookWallet?.(menu.value as WalletRow);
+              if (menu.kind === "broker") props.onQuickLookBroker?.(menu.value as StockBrokerRow);
+            },
+          }] : []),
+          { label: t("mobile.sources.deleteSource").replace("{source}", menu.name), destructive: true,
+            onClick: () => setRemoval({ kind: menu.kind, value: menu.value }) },
+        ]} />}
       {editor && <ModalPage title={t("mobile.sources.edit")} onDismiss={close}>
-        <div className="mx-auto max-w-xl space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="ios-d3-source-editor mx-auto max-w-xl space-y-6">
+          <div className="ios-d3-editor-nav flex items-center justify-between">
             <div className="flex items-center gap-2">
               {editor.step === 2 && !editor.original && <Button variant="ghost" className="min-h-11" onClick={() => setEditor({ ...editor, step: 1 })}>{t("common.back")}</Button>}
               <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
             </div>
             <span className="text-sm text-muted-foreground">{editor.step} / 2</span>
           </div>
-          <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
+          <div className="ios-d3-editor-intro">
+            <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
+              {(sections.find((section) => section.kind === editor.kind)?.options.find((option) => option.value === editor.draft.type)?.label ?? editor.draft.type).slice(0, 2).toUpperCase()}
+            </span>
+            <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
+          </div>
           {editor.step === 1 ? <>
             <Label htmlFor="mobile-provider">{t("config.formType")}</Label>
-            <select id="mobile-provider" className="mt-2 min-h-12 w-full rounded-xl border bg-card px-3" value={editor.draft.type} onChange={(event) => {
+            <select id="mobile-provider" className="ios-d3-provider-select mt-2 min-h-12 w-full rounded-xl bg-card px-3" value={editor.draft.type} onChange={(event) => {
               const type = event.target.value;
               if (editor.kind === "exchange" && type !== editor.draft.type) {
                 const { password: _password, passphrase: _passphrase, ...rest } = editor.draft as ExchangeRow;
@@ -190,7 +224,7 @@ export function MobileSources(props: MobileSourcesProps) {
             }}>
               {sections.find((section) => section.kind === editor.kind)?.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-            <Button className="min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}</Button>
+            <Button className="ios-d3-editor-primary min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}<ChevronRightIcon aria-hidden="true" /></Button>
           </> : <>
             <Field id="mobile-alias" label={t("config.formAlias")} value={editor.draft.alias ?? ""} onChange={(value) => update({ alias: value })} />
             {editor.kind === "exchange" && <>
@@ -205,7 +239,7 @@ export function MobileSources(props: MobileSourcesProps) {
               <Field id="mobile-query-id" label={t("config.queryId")} value={(editor.draft as StockBrokerRow).queryId} onChange={(value) => update({ queryId: value })} onPaste={editor.original ? undefined : () => void paste("queryId")} readOnly={!!editor.original} invalid={errorField === "queryId"} />
             </>}
             {error && <p id="mobile-source-error" role="alert" className="text-sm text-destructive">{error}</p>}
-            <Button className="min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
+            <Button className="ios-d3-editor-primary min-h-12 w-full" disabled={saving} onClick={() => void save()}>{t("config.saveChanges")}</Button>
           </>}
         </div>
       </ModalPage>}
@@ -222,10 +256,16 @@ function Field({ id, label, value, onChange, secret = false, onPaste, readOnly =
   id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; readOnly?: boolean; invalid?: boolean;
 }) {
   const { t } = useTranslation();
-  return <div className="space-y-2">
+  const [revealed, setRevealed] = useState(false);
+  return <div className="ios-d3-source-field space-y-2">
     <Label htmlFor={id}>{label}</Label>
-    <div className="flex gap-2">
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? "mobile-source-error" : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+    <div className="ios-d3-field-control flex gap-2">
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? "mobile-source-error" : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+      {secret && <button type="button" className="ios-d3-reveal" aria-label={`${t("mobile.sources.holdReveal")} ${label}`}
+        onPointerDown={() => setRevealed(true)} onPointerUp={() => setRevealed(false)}
+        onPointerCancel={() => setRevealed(false)} onPointerLeave={() => setRevealed(false)}
+        onBlur={() => setRevealed(false)} onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") setRevealed(true); }}
+        onKeyUp={() => setRevealed(false)}><EyeOpenIcon aria-hidden="true" /></button>}
       {onPaste && <Button variant="outline" className="min-h-12" onClick={onPaste}>{t("mobile.sources.paste")}</Button>}
     </div>
   </div>;

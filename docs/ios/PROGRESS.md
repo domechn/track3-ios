@@ -1,7 +1,16 @@
 # iOS port progress
 
-The earlier S1–S5 sections record their handoff results. The current state
-for this worktree is D1 below.
+The earlier S1–S5 and D1 sections record their handoff results. The current
+worktree includes the D3 feature-screen pass below.
+
+## D3 More and feature screens
+
+- Restyled More and the eleven pushed Settings sections as inset grouped iPhone pages. Settings icons have colored squares; other navigation icons remain plain. Appearance uses compact radio rows, and currency preferences use switches.
+- Data sources now show provider monograms, readable aliases and masked identities, enabled switches, and an action sheet for Quick Look and deletion. Add/edit retains provider selection, existing validation, identity rules, masked fields, and a hold-to-reveal control. The empty source screen introduces setup in three short steps.
+- Goals show a progress ring and bar with a fresh review snapshot and a switch for enabled rules. Rebalance has touch sliders, target bars, and clear buy/sell rows. Assistant chat uses a compact header, concise prompt chips, message bubbles, and the existing keyboard-aware composer. Refresh, sync, backup, custom assets, and the protected-startup fallback have phone styling.
+- The new D3 browser suite captures 30 screen states in each light/dark and SE/iPhone 14 combination, producing 120 PNGs in `test-results/mobile/`. Its current-dated 60-day review fixture shows seven assets, positive and negative trades, and a current goal value. Browser capture cannot validate native biometric prompts, the app-switcher privacy cover, hardware haptics, or iOS background suspension.
+- Refresh results include per-source status and retry. The existing source-status result has no duration field, so the sheet cannot display a truthful per-source duration without instrumentation in the data layer, which is outside this presentation-only step.
+- Final frontend and browser TypeScript checks and the frontend build passed. Vitest passed 1,830 tests in 224 files. The desktop browser suite passed 77/77 checks. The combined iPhone suite passed 101/101 checks after the final dark-sheet adjustment and left 243 PNGs in `test-results/mobile/`, including all 120 D3 captures. Earlier checks exposed an old More heading assertion and 36 px alert template buttons; both were corrected before these green runs.
 
 ## D1 third reviewer pass
 

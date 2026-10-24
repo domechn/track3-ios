@@ -90,6 +90,14 @@ describe("MessageBubble", () => {
     expect(screen.getByText("Thinking...")).toBeTruthy();
   });
 
+  it("marks only an active reply for the iPhone streaming caret", () => {
+    const message: ChatMessage = { role: "assistant", blocks: [{ kind: "text", text: "Working" }] };
+    const { rerender } = render(<MessageBubble message={message} isStreaming />);
+    expect(screen.getByTestId("assistant-bubble")).toHaveAttribute("data-streaming", "true");
+    rerender(<MessageBubble message={message} />);
+    expect(screen.getByTestId("assistant-bubble")).toHaveAttribute("data-streaming", "false");
+  });
+
   it("renders the thinking indicator for a legacy whitespace-only block", () => {
     const msg: ChatMessage = { role: "assistant", blocks: [{ kind: "text", text: "\n\n" }] };
     render(<MessageBubble message={msg} isStreaming />);

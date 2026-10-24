@@ -22,6 +22,7 @@ import ConfirmDeleteDialog from "./common/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Progress } from "./ui/progress";
+import { Switch } from "./ui/switch";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -238,7 +239,7 @@ export default function GoalsAlerts() {
   </Card>;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-8">
+    <div className="ios-d3-goals mx-auto flex max-w-5xl flex-col gap-4 pb-8">
       <div>
         <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
@@ -261,8 +262,10 @@ export default function GoalsAlerts() {
       {isIOS() ? <>
         <Button type="button" variant="outline" className="order-last min-h-11" onClick={() => setManualOpen(true)}>{t("goals.mobile.add")}</Button>
         {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
+          <div className="ios-d3-goal-editor">
           <Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button>
           {editor}
+          </div>
         </ModalPage>}
       </> : <details
         open={manualOpen}
@@ -287,7 +290,7 @@ export default function GoalsAlerts() {
                     : measurement.value <= rule.threshold ? 100 : rule.threshold / measurement.value * 100)) : 0;
                 const eta = rule.kind === "total_value_target" && rule.comparator === "gte"
                   ? goalEtaDays(portfolioValues, rule.threshold) : null;
-                return <div key={rule.id} className="rounded-md border p-3 space-y-2">
+                return <div key={rule.id} className="ios-d3-goal-rule rounded-md p-3 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex min-w-0 items-start gap-2">
                       <RuleIcon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -296,18 +299,20 @@ export default function GoalsAlerts() {
                       <div className="text-xs text-muted-foreground">
                         {measurement.status === "data-stale" ? t("goals.dataStale") :
                           measurement.status === "unavailable" ? t("goals.unavailable") :
-                            `${t("goals.current")}: ${measurement.value?.toFixed(2)}`}
+                            `${t("goals.current")}: ${measurement.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] ${rule.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {!isIOS() && <span className={`rounded-full px-2 py-0.5 text-[11px] ${rule.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                         {t(rule.enabled ? "goals.enabled" : "finance.paused")}
-                      </span>
+                      </span>}
                       <label className="flex items-center gap-1 text-xs">
-                        <input type="checkbox" checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
-                          onChange={(e) => void mutate(() => setAlertRuleEnabled(rule.id, e.target.checked))} />
-                        {t("goals.enabled")}
+                        {isIOS() ? <Switch checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
+                          onCheckedChange={(checked) => void mutate(() => setAlertRuleEnabled(rule.id, checked))} />
+                          : <input type="checkbox" checked={rule.enabled} aria-label={t("goals.enableRule").replace("{kind}", t(`goals.kind.${rule.kind}`))}
+                            onChange={(e) => void mutate(() => setAlertRuleEnabled(rule.id, e.target.checked))} />}
+                        {t(isIOS() && !rule.enabled ? "finance.paused" : "goals.enabled")}
                       </label>
                       <Button size="sm" variant="outline" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
                       <ConfirmDeleteDialog

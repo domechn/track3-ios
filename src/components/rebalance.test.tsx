@@ -101,8 +101,10 @@ describe("Rebalance page", () => {
     });
     render(<Rebalance currency={currency} />);
     const slider = await screen.findByRole("slider", { name: "Target percentage for BTC" });
+    expect(screen.getByRole("progressbar", { name: "Target percentage for BTC" })).toHaveAttribute("aria-valuenow", "100");
     fireEvent.change(slider, { target: { value: "75" } });
     expect(screen.getByRole("spinbutton", { name: "Target percentage for BTC" })).toHaveValue(75);
+    expect(screen.getByRole("progressbar", { name: "Target percentage for BTC" })).toHaveAttribute("aria-valuenow", "75");
   });
 
   it("offers 44 point stepper controls and a full-height percentage field in a narrow touch window", async () => {

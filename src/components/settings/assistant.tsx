@@ -218,7 +218,7 @@ const App = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="ios-d3-settings-content space-y-6">
       <div>
         <h3 className="text-lg font-medium tracking-tight">
           {t("settings.assistant.title")}

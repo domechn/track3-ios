@@ -1,5 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 import axe from "axe-core";
 import { GeneralSettings } from "./general-settings";
 
@@ -47,6 +51,14 @@ describe("GeneralSettings", () => {
       name: /Hide inactive/i,
     });
     expect(checkbox).toBeInTheDocument();
+  });
+
+  it("uses native style switches for source preferences on iPhone", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<GeneralSettings {...baseProps} />);
+    expect(screen.getByRole("switch", { name: /Group stable coins/i })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /Hide inactive/i })).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
   });
 
   it("shows skeleton when preferCurrencyLoading", () => {

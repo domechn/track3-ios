@@ -41,3 +41,20 @@ The Overview P&L chart has a fixed 172 px phone height so responsive chart resiz
 ## Motion and access
 
 Interactive transitions use `--ios-motion` at 150–350 ms. Press states scale to 0.97; all motion is disabled under `prefers-reduced-motion`. `MobileSkeleton` reserves the flat hero and grouped sections while loading; `ui/Skeleton` retains the desktop pulse. Portal sheets, dialogs, and toasts inherit the phone system font from `body`. A chart scrub must also have a visible value chip and an accessible chart summary. Charts use at least 11 px tick labels and at most four vertical ticks. Keep a visible focus ring, 44 pt controls, and color independent gain/loss text with a sign. The Overview movers' positive and negative filters apply only to phone rows; desktop keeps its prior ranking selection.
+
+## D3 feature screens
+
+`src/components/ios-d3.css` styles the More hub and pushed feature screens inside the same coarse-pointer media query as the D1 primitives. It uses the D1 `--primary`, grouped `--background`/`--card`, `--ios-separator`, gain/loss, and motion tokens. Do not add a second palette or font. Feature cards have no shadow or outline; 14–16 px rounded tone steps separate them. Keep text fields at 16 px to avoid iOS keyboard zoom and tap targets at least 44 px.
+
+| Screen | Pattern |
+| --- | --- |
+| More | Two inset groups, Plan and Manage, with the shared 24 px navigation icons. The Settings hub alone puts icons in colored 30 px rounded squares. |
+| Pushed Settings | One 34 px large title and grouped cards. Rows use an inset separator and trailing disclosure. Appearance uses grouped radio rows with a checkmark; currency preferences use native-style switches. |
+| Data sources | Grouped source rows show an avatar, alias, masked identity, enabled switch, and action sheet. Add starts with provider selection, then a credentials page. Secret fields can be seen only while the reveal control is held; inline errors stay beside the fields. An empty configuration shows three short setup cards. |
+| Goals and alerts | Rules use the inset surface. Current value and target use tabular digits, with a progress ring and bar when data is current. Enabled state is a switch on iPhone. The full-screen editor and its controls preserve the alert validators. |
+| Rebalance | Target fields, touch sliders, and allocation bars share one target group. Suggested buy and sell rows show signed action color and prominent values. Charts keep the D1 restrained palette. |
+| Assistant | A compact chat header leaves room for messages. The empty state has an accent SVG and short suggestion chips; tapping a chip still submits its full prompt. Bubbles have separate user and assistant surfaces, streaming text gets a caret, tool activity collapses into a chip, and the composer sits above the keyboard and tab bar. |
+| Refresh and status | A sheet grabber, grouped per-source status rows, and retry controls keep refresh feedback in one place. Toasts are hidden while the status sheet is open. Sync and automatic backup indicators use compact, blurred surfaces above the tab bar. |
+| Protected startup | The fallback lock screen uses an accent lock illustration and one retry action. The initial startup check reserves a skeleton. Native Face ID, Touch ID, and the app-switcher cover are outside browser screenshots. |
+
+Add D3 copy to both flat locale catalogs. Run `tests/e2e/ios-d3-visual.spec.ts` after visual changes: it captures each D3 route, editors, source actions, goals, target and trade views, chat, refresh states, first launch, onboarding, and the protected-startup fallback in light and dark at SE and iPhone 14 sizes. Its rich fixture includes seven holdings, a current 60-day history, gain and loss trades, and an active target profile. The iPhone CI job includes this suite and uploads its review PNGs from `test-results/mobile/`.

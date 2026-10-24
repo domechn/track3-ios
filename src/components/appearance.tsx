@@ -77,7 +77,7 @@ const App = ({
   const showLanguage = !section || section === "language";
 
   return (
-    <div className="space-y-6">
+    <div className="ios-d3-settings-content ios-d3-appearance space-y-6">
       {!section && <div>
         <h3 className="text-lg font-medium tracking-tight">{t("appearance.title")}</h3>
         <p className="text-sm text-muted-foreground">

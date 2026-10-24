@@ -63,6 +63,15 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
 });
 
+it("uses a switch to toggle a saved alert on iPhone", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  vi.mocked(listAlertRules).mockResolvedValue([savedRule]);
+  render(<GoalsAlerts />);
+  const toggle = await screen.findByRole("switch", { name: "Enable Portfolio value goal" });
+  await userEvent.click(toggle);
+  expect(setAlertRuleEnabled).toHaveBeenCalledWith(7, false);
+});
+
 it("keeps the iPhone rule editor open when the initial rule query finishes", async () => {
   vi.mocked(isIOS).mockReturnValue(true);
   let finishRules!: (rules: AlertRule[]) => void;

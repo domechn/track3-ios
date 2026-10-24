@@ -1,0 +1,143 @@
+import { expect, test, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
+import { installTauriBridge } from "./tauri-bridge";
+
+test.use({
+  isMobile: true,
+  hasTouch: true,
+  reducedMotion: "reduce",
+  userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+});
+
+const phones = [
+  { name: "se", width: 375, height: 667 },
+  { name: "14", width: 390, height: 844 },
+];
+const settings = [
+  ["settings", "/settings", "Settings"],
+  ["sources", "/settings/configuration?section=sources", "Data sources"],
+  ["currency", "/settings/configuration?section=currency", "Currency"],
+  ["appearance", "/settings/appearance?section=theme", "Appearance"],
+  ["language", "/settings/appearance?section=language", "Language"],
+  ["blacklist", "/settings/data?section=blacklist", "Blacklist"],
+  ["security", "/settings/data?section=security", "Security"],
+  ["backup", "/settings/data?section=backup", "Backup"],
+  ["pro", "/settings/systemInfo?section=pro", "Pro and license"],
+  ["about", "/settings/systemInfo?section=about", "About"],
+  ["assistant-settings", "/settings/assistant", "AI assistant"],
+  ["sync-settings", "/settings/sync", "Backup and sync"],
+] as const;
+
+async function capture(page: Page, phone: string, theme: string, name: string) {
+  await expect(page.locator("#app-main-content")).not.toContainText("Loading page");
+  await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+  const image = await page.screenshot({ path: `test-results/mobile/d3-${phone}-${theme}-${name}.png` });
+  const width = page.viewportSize()!.width;
+  expect(image.readUInt32BE(16)).toBe(width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+}
+
+for (const phone of phones) for (const theme of ["light", "dark"] as const) {
+  test(`D3 screens are reachable and captured on iPhone ${phone.name} in ${theme}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+    await installTauriBridge(page, undefined, false, true, false, false, true, false, false, true);
+    mkdirSync("test-results/mobile", { recursive: true });
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+
+    for (const [name, route, title] of settings) {
+      await page.goto(`/#${route}`);
+      await expect(page.locator("#app-main-content h1")).toHaveText(title);
+      await capture(page, phone.name, theme, name);
+    }
+    await page.goto("/#/settings/configuration?section=sources");
+    await expect(page.getByRole("button", { name: "More actions for Main exchange" })).toBeVisible();
+    await page.getByRole("button", { name: "More actions for Main exchange" }).click();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-actions.png` });
+    await page.getByRole("button", { name: "Close" }).click();
+    await page.getByRole("button", { name: "Add exchange" }).click();
+    await expect(page.getByRole("dialog", { name: "Edit data source" })).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-provider.png` });
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-credentials.png` });
+    await page.getByRole("dialog", { name: "Edit data source" }).getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "Add Symbol" }).click();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-custom-asset-editor.png` });
+    await page.getByRole("dialog", { name: "Edit custom asset" }).getByRole("button", { name: "Cancel" }).click();
+
+    await page.goto("/#/more");
+    await capture(page, phone.name, theme, "more");
+    await page.goto("/#/goals");
+    await page.getByRole("button", { name: "Add alert" }).click();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-goal-editor.png` });
+    await page.getByRole("dialog", { name: "Add alert" }).getByRole("spinbutton", { name: "Threshold" }).fill("90000");
+    await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).click();
+    await expect(page.getByRole("dialog", { name: "Add alert" })).not.toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await capture(page, phone.name, theme, "goals");
+    await expect(page.getByRole("progressbar", { name: /Portfolio value goal/i })).toBeVisible();
+    await page.locator(".ios-d3-goal-rule").first().scrollIntoViewIfNeeded();
+    await capture(page, phone.name, theme, "goal-progress");
+
+    await page.goto("/#/rebalance");
+    await expect(page.getByRole("heading", { level: 1, name: "Rebalance" })).toBeVisible();
+    await capture(page, phone.name, theme, "rebalance");
+    await page.getByText("Manual setup", { exact: true }).click();
+    await page.locator(".ios-d3-target").first().scrollIntoViewIfNeeded();
+    await capture(page, phone.name, theme, "rebalance-targets");
+    await page.locator(".ios-d3-trade").first().scrollIntoViewIfNeeded();
+    await capture(page, phone.name, theme, "rebalance-trades");
+    await page.goto("/#/assistant");
+    await expect(page.getByRole("textbox", { name: "Ask the assistant..." })).toBeVisible();
+    await capture(page, phone.name, theme, "assistant-empty");
+    const chatHeader = await page.locator(".ios-d3-chat-header").boundingBox();
+    const firstSuggestion = await page.getByTestId("chat-example-summary").boundingBox();
+    const composer = await page.locator(".ios-d3-chat-composer").boundingBox();
+    expect(chatHeader!.height).toBeLessThanOrEqual(70);
+    expect(firstSuggestion!.y + firstSuggestion!.height).toBeLessThanOrEqual(composer!.y);
+    await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.getByText("Hello from SSE")).toBeVisible();
+    await capture(page, phone.name, theme, "assistant-chat");
+
+    await page.goto("/#/overview");
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh.png` });
+    await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
+    await expect(page.locator(".ios-d3-toast-viewport")).toHaveCount(1);
+    await expect(page.locator(".ios-d3-toast-viewport")).toBeHidden();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh-results.png` });
+    expect(errors).toEqual([]);
+  });
+
+  test(`D3 first launch and startup lock are captured on iPhone ${phone.name} in ${theme}`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+    await installTauriBridge(page, undefined, false, false, true);
+    mkdirSync("test-results/mobile", { recursive: true });
+    await page.goto("/#/overview");
+    await expect(page.getByRole("button", { name: "Add your first source" })).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-first-launch.png` });
+    await page.getByRole("button", { name: "Add your first source" }).click();
+    await expect(page.getByRole("list", { name: "Getting started" })).toBeVisible();
+    await capture(page, phone.name, theme, "onboarding");
+  });
+
+  test(`D3 protected startup is captured on iPhone ${phone.name} in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: phone.width, height: phone.height });
+    await page.emulateMedia({ colorScheme: theme });
+    await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+    await installTauriBridge(page, undefined, false, false, false, false, false, false, true);
+    mkdirSync("test-results/mobile", { recursive: true });
+    await page.goto("/#/overview");
+    await expect(page.getByRole("alert")).toContainText("Track3 is locked");
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-startup-lock.png` });
+  });
+}

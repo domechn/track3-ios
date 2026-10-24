@@ -279,7 +279,7 @@ const App = ({
       )}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent className={isIOS()
-          ? "bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+          ? "ios-d3-refresh-sheet bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
           : "sm:max-w-md"}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("refresh.sourceStatus")}</AlertDialogTitle>
@@ -310,7 +310,7 @@ const App = ({
               const StatusIcon = statusIcon[source.status];
               return (
               <div key={source.sourceId} role="group" aria-label={displayIdentity(source)}
-                data-source-status-row className="flex items-center justify-between gap-3 rounded-md border px-4 py-3">
+                data-source-status-row className="ios-d3-refresh-row flex items-center justify-between gap-3 rounded-md px-4 py-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold break-all">{sourceLabel(source)}</div>
                   {source.provider && <div className="text-xs text-muted-foreground">
