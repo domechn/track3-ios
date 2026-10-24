@@ -9,7 +9,7 @@ it("edits custom holdings on a phone and offers their source attachment", () => 
   fireEvent.click(screen.getByRole("button", { name: "Edit GOLD" }));
   expect(screen.getByRole("dialog", { name: "Edit custom asset" })).toBeInTheDocument();
   fireEvent.change(screen.getByRole("textbox", { name: "Amount" }), { target: { value: "3" } });
-  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(save).toHaveBeenCalledWith(0, { symbol: "GOLD", amount: 3, alias: "" });
   fireEvent.click(screen.getByRole("button", { name: "More actions for GOLD" }));
   fireEvent.click(screen.getByRole("button", { name: "Attach to" }));

@@ -24,7 +24,9 @@ it("uses the allocation wallet name and omits the desktop page-size select on a 
       dateRange={{ start: new Date("2024-01-01"), end: new Date("2024-01-02") }}
       quoteColor="green-up-red-down"
     />);
-    expect(await screen.findByText("BTC-Cold storage")).toBeInTheDocument();
+    expect(await screen.findByText("Cold storage")).toBeInTheDocument();
+    expect(screen.queryByText("BTC-Cold storage")).toBeNull();
+    expect(screen.queryByText("0 down")).toBeNull();
     expect(screen.queryByRole("combobox", { name: /rows/i })).toBeNull();
   } finally {
     window.matchMedia = previousMatchMedia;

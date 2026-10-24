@@ -26,8 +26,6 @@ import { AnimatedPage } from "../motion";
 import PageLoadingOverlay from "../page-loading-overlay";
 import AutoBackupIndicator from "../auto-backup-indicator";
 import SyncStatusIndicator from "../sync-status-indicator";
-import "./index.css";
-import "@/components/ios-d3.css";
 import { Route, Routes, HashRouter, Outlet, Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
@@ -66,12 +64,11 @@ import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
-import { BottomSheet, InsetGroup, ListRow, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
+import { BottomSheet, Button as MobileButton, InsetGroup, ListRow, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
 import TopCoinsRank from "../top-coins-rank";
 import ProfitSummary from "../profit-summary";
 import LatestAssetsPercentage from "../latest-assets-percentage";
 import AssetsPercentageChange from "../assets-percentage-change";
-import "./data-screens.css";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
 import { MobileIcon, type MobileIconName } from "@/components/mobile/icons";
 import { useAlertBadge } from "@/components/use-alert-badge";
@@ -259,6 +256,8 @@ type LayoutProps = {
   sidebarCollapsed: boolean;
   onSidebarToggle: () => void;
   initializing: boolean;
+  loadFailed: boolean;
+  onRetryDataLoad: () => void;
   isProUser: boolean;
   quoteColor: QuoteColor;
   currentCurrency: CurrencyRateDetail;
@@ -276,6 +275,8 @@ function Layout({
   sidebarCollapsed,
   onSidebarToggle,
   initializing,
+  loadFailed,
+  onRetryDataLoad,
   isProUser,
   quoteColor,
   currentCurrency,
@@ -396,11 +397,22 @@ function Layout({
             <MobilePage title={routeTitle(location.pathname, t)} />
           </div>}
           <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
+            {mobile && loadFailed ? <div className="mobile-card mobile-empty-state mobile-data-error" role="alert">
+              <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
+                <circle cx="56" cy="56" r="48" fill="currentColor" opacity=".08" />
+                <circle cx="56" cy="56" r="33" stroke="currentColor" strokeWidth="2.5" />
+                <path d="M56 36v27M56 76h.1" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+              </svg>
+              <h2>{t("app.dataLoadFailed")}</h2>
+              <p>{t("app.dataLoadFailedDescription")}</p>
+              <MobileButton onClick={onRetryDataLoad}>{t("app.retryDataLoad")}</MobileButton>
+            </div> : <>
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
             >
               <Outlet context={unread} />
             </React.Suspense>
+            </>}
             {initializing && (
               <PageLoadingOverlay
                 title={t("loading.portfolio")}
@@ -498,6 +510,8 @@ type AppRoutesProps = {
   sidebarCollapsed: boolean;
   onSidebarToggle: () => void;
   initializing: boolean;
+  loadFailed: boolean;
+  onRetryDataLoad: () => void;
   isProUser: boolean;
   setIsProUser: React.Dispatch<React.SetStateAction<boolean>>;
   quoteColor: QuoteColor;
@@ -523,6 +537,8 @@ function AppRoutes({
   sidebarCollapsed,
   onSidebarToggle,
   initializing,
+  loadFailed,
+  onRetryDataLoad,
   isProUser,
   setIsProUser,
   quoteColor,
@@ -557,6 +573,8 @@ function AppRoutes({
             sidebarCollapsed={sidebarCollapsed}
             onSidebarToggle={onSidebarToggle}
             initializing={initializing}
+            loadFailed={loadFailed}
+            onRetryDataLoad={onRetryDataLoad}
             isProUser={isProUser}
             quoteColor={quoteColor}
             currentCurrency={currentCurrency}
@@ -756,6 +774,8 @@ const App = () => {
   const [hasData, setHasData] = useState(true);
   const [retainHistory, setRetainHistory] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const retryLoad = useRef<(() => void) | null>(null);
   const [dataChangedVersion, setDataChangedVersion] = useState(0);
   const [autoBackupStatus, setAutoBackupStatus] = useState<
     "idle" | "running"
@@ -786,6 +806,7 @@ const App = () => {
 
     const start = () => {
       if (!active) return;
+      setLoadFailed(false);
       setInitializing(true);
       void loadStartupData()
         .then(() => {
@@ -799,8 +820,9 @@ const App = () => {
         })
         .catch(() => {
           if (!active) return;
+          setLoadFailed(true);
           console.warn("startup data loading failed");
-          toast({
+          if (!window.matchMedia("(max-width: 950px) and (pointer: coarse)").matches) toast({
             title: t("app.dataLoadFailed"),
             duration: 86_400_000,
             action: <ToastAction altText={t("app.retryDataLoad")} onClick={start} className="touch:min-h-11">
@@ -822,10 +844,12 @@ const App = () => {
           }
         });
     };
+    retryLoad.current = start;
     start();
 
     return () => {
       active = false;
+      retryLoad.current = null;
     };
   }, []);
 
@@ -1121,6 +1145,8 @@ const App = () => {
           sidebarCollapsed={sidebarCollapsed}
           onSidebarToggle={handleSidebarToggle}
           initializing={initializing}
+          loadFailed={loadFailed}
+          onRetryDataLoad={() => retryLoad.current?.()}
           isProUser={isProUser}
           setIsProUser={setIsProUser}
           quoteColor={quoteColor}

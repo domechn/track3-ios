@@ -137,9 +137,9 @@ const App = ({
         walletAliasText: getWalletDisplayName({
           ...item,
           wallet: !item.wallet || item.wallet === "null" ? t("common.unknown") : item.wallet,
-        }),
+        }, isMobile),
       })),
-    [walletAssetsChange],
+    [walletAssetsChange, isMobile],
   );
 
   const filteredRows = useMemo(() => {
@@ -217,8 +217,8 @@ const App = ({
           </CardTitle>
           {isMobile ? <div className="wallet-change-summary">
             <span>{t("walletValueChanges.count").replace("{n}", String(rows.length))}</span>
-            <span data-tone="gain">{t("walletValueChanges.upCount").replace("{n}", String(summary.up))}</span>
-            <span data-tone="loss">{t("walletValueChanges.downCount").replace("{n}", String(summary.down))}</span>
+            {summary.up > 0 && <span data-tone="gain">{t("walletValueChanges.upCount").replace("{n}", String(summary.up))}</span>}
+            {summary.down > 0 && <span data-tone="loss">{t("walletValueChanges.downCount").replace("{n}", String(summary.down))}</span>}
           </div> : <div className="text-xs text-muted-foreground">
             {t("walletValueChanges.totalLabel")
               .replace("{n}", String(rows.length))

@@ -174,7 +174,7 @@ for (const phone of phones) {
     const form = page.getByRole("dialog", { name: "Add custom asset" });
     await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");
     await form.getByRole("textbox", { name: "Amount" }).fill("2");
-    await form.getByRole("button", { name: "Add custom asset" }).click();
+    await form.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("button", { name: "Edit ETH" })).toBeVisible();
     await page.getByRole("navigation", { name: "Tabs" }).getByRole("link", { name: "Overview" }).click();
     await page.getByRole("button", { name: "Refresh", exact: true }).click();

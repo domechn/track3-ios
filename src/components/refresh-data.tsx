@@ -327,7 +327,7 @@ const App = ({
               const StatusIcon = completed?.status === "stale" || completed?.status === "partial" ? ExclamationTriangleIcon
                   : completed ? CheckIcon : UpdateIcon;
               const label = sourceLabel(pending);
-              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center gap-3 px-4 py-3">
+              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row px-4 py-3">
                 <div className="ios-d3-refresh-row-main">
                   <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" || completed.status === "partial" ? "text-amber-600" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
                   <div className="ios-d3-refresh-row-content">
@@ -347,36 +347,14 @@ const App = ({
               const StatusIcon = statusIcon[source.status];
               return (
               <div key={source.sourceId} role="group" aria-label={displayIdentity(source)}
-                data-source-status-row className="ios-d3-refresh-row flex items-start justify-between gap-3 px-4 py-3">
+                data-source-status-row className="ios-d3-refresh-row px-4 py-3">
                 <div className="ios-d3-refresh-row-main">
                   {isIOS() && <StatusIcon aria-hidden="true" className={`mt-1 h-5 w-5 shrink-0 ${source.status === "ok" ? "text-green-600 dark:text-green-400" : source.status === "failed" ? "text-destructive" : "text-amber-600"}`} />}
                   <div className="ios-d3-refresh-row-content">
-                  <div className="ios-d3-refresh-row-title break-all">{sourceLabel(source)}</div>
-                  {source.provider && <div className="text-xs text-muted-foreground">
+                  <div className="ios-d3-refresh-row-title" title={sourceLabel(source)}>{sourceLabel(source)}</div>
+                  {source.provider && <div className="ios-d3-refresh-identity text-xs text-muted-foreground">
                     <Icon aria-hidden="true" className="mr-1 inline-block h-3.5 w-3.5" />
                     {source.provider}{source.hint && ` · ${displayHint(source)}`}
-                  </div>}
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                    {isIOS() ? <span className="text-muted-foreground">{t(`refresh.status.${source.status}`)}</span>
-                      : <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusStyle[source.status]}`}>
-                        <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                        {t(`refresh.status.${source.status}`)}
-                      </span>}
-                    {source.status !== "ok" && source.status !== "partial" && <span className="text-muted-foreground">
-                      {t(`refresh.reason.${source.category ?? "other"}`)}
-                    </span>}
-                  </div>
-                  {source.status === "partial" && <div className="mt-1 text-xs text-amber-900 dark:text-amber-300">
-                    {partialMessage(source)}
-                  </div>}
-                  {source.status !== "ok" && source.detail && <details className="mt-1 text-xs text-muted-foreground">
-                    <summary>{t("refresh.details")}</summary>
-                    <span>{redactSecrets(t(detailKey[source.detail]))}</span>
-                  </details>}
-                  {(source.status === "stale" || source.status === "failed") && source.lastSuccessAt && <div className="mt-1 text-xs text-muted-foreground">
-                    {t("refresh.lastData").replace("{time}", new Intl.DateTimeFormat("sv-SE", {
-                      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-                    }).format(new Date(source.lastSuccessAt)))}
                   </div>}
                   </div>
                 </div>
@@ -394,6 +372,28 @@ const App = ({
                     {t("refresh.retryButton")}
                   </Button>
                 )}
+                <div className="ios-d3-refresh-condition flex flex-wrap items-center gap-1.5 text-xs">
+                    {isIOS() ? <span className="text-muted-foreground">{t(`refresh.status.${source.status}`)}</span>
+                      : <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusStyle[source.status]}`}>
+                        <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(`refresh.status.${source.status}`)}
+                      </span>}
+                    {source.status !== "ok" && source.status !== "partial" && <span className="text-muted-foreground">
+                      · {t(`refresh.reason.${source.category ?? "other"}`)}
+                    </span>}
+                  </div>
+                  {source.status === "partial" && <div className="ios-d3-refresh-extra mt-1 text-xs text-amber-900 dark:text-amber-300">
+                    {partialMessage(source)}
+                  </div>}
+                  {source.status !== "ok" && source.detail && <details className="ios-d3-refresh-extra mt-1 text-xs text-muted-foreground">
+                    <summary>{t("refresh.details")}</summary>
+                    <span>{redactSecrets(t(detailKey[source.detail]))}</span>
+                  </details>}
+                {(source.status === "stale" || source.status === "failed") && source.lastSuccessAt && <div className="ios-d3-refresh-last-data text-xs text-muted-foreground">
+                  {t("refresh.lastData").replace("{time}", new Intl.DateTimeFormat(isIOS() ? locale === "zh" ? "zh-CN" : "en-US" : "sv-SE", isIOS()
+                    ? { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }
+                    : { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(source.lastSuccessAt)))}
+                </div>}
               </div>
             ); })}
           </div>

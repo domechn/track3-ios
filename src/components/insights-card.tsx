@@ -11,6 +11,7 @@ import type { InsightSeverity } from "@/middlelayers/insights";
 import type { CurrencyRateDetail } from "@/middlelayers/types";
 import { storePendingAssistantQuestion } from "@/middlelayers/ai/pending-question";
 import { IconButton, SectionHeader } from "./mobile";
+import { useIsMobile } from "./mobile";
 
 function SeverityIcon({ severity }: { severity: InsightSeverity }) {
   return severity === "info"
@@ -22,6 +23,7 @@ function SeverityIcon({ severity }: { severity: InsightSeverity }) {
 
 export default function InsightsCard({ currency, overview = false }: { currency?: CurrencyRateDetail; overview?: boolean }) {
   const { t, locale } = useTranslation();
+  const mobile = useIsMobile();
   const [card, setCard] = useState<StoredInsightCard>();
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
@@ -49,9 +51,9 @@ export default function InsightsCard({ currency, overview = false }: { currency?
   const visible = card?.insights.filter((insight) =>
     !card.dismissedIds.includes(insight.id) && !card.repeatedIds?.includes(insight.id)) ?? [];
   const displayInsight = (insight: StoredInsightCard["insights"][number]) =>
-    formatInsight(insight, (key) => overview && insight.messageKey === "insights.newAsset" && key === "insights.newAsset"
+    formatInsight(insight, (key) => (mobile || overview) && insight.messageKey === "insights.newAsset" && key === "insights.newAsset"
       ? t("insights.newAssetSymbol") : t(key), locale,
-    overview && insight.messageKey === "insights.newAsset" && currency
+    currency && (mobile || overview && insight.messageKey === "insights.newAsset")
       ? { ...currency, currency: currency.symbol } : currency);
   const summaryRepeatsInsight = visible.some((insight) =>
     card?.summary?.includes(displayInsight(insight)) ||
@@ -76,7 +78,7 @@ export default function InsightsCard({ currency, overview = false }: { currency?
       onClick={() => void regenerate()} disabled={regenerating}>
       <ReloadIcon aria-hidden="true" className={regenerating ? "animate-spin" : undefined} />
     </IconButton>}>{t("insights.title")}</SectionHeader>}
-    <Card className={`min-h-[104px]${overview ? " overview-insights-card" : ""}`} role="region" aria-label={t("insights.title")}>
+    <Card className={`assistant-insights-card min-h-[104px]${overview ? " overview-insights-card" : ""}`} role="region" aria-label={t("insights.title")}>
       {!overview && <>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-4 pb-2 pt-4 sm:px-6">
         <CardTitle className="text-base">{t("insights.title")}</CardTitle>

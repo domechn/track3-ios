@@ -491,11 +491,11 @@ const App = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="profit-summary-stats flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>{t("profitSummary.periods").replace("{n}", String(visibleSummaryStats.total))}</span>
           <span>{t("profitSummary.up").replace("{n}", String(visibleSummaryStats.up))}</span>
           <span>{t("profitSummary.down").replace("{n}", String(visibleSummaryStats.down))}</span>
-          <span>{t("profitSummary.flat").replace("{n}", String(visibleSummaryStats.flat))}</span>
+          {(!isMobile || visibleSummaryStats.flat > 0) && <span>{t("profitSummary.flat").replace("{n}", String(visibleSummaryStats.flat))}</span>}
           {visibleSummaryStats.empty > 0 && <span>{t("profitSummary.empty").replace("{n}", String(visibleSummaryStats.empty))}</span>}
         </div>
         {summaryType === "month" ? renderMonthSummary() : renderYearSummary()}

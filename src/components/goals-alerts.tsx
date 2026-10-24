@@ -14,6 +14,7 @@ import type { RebalanceProfile } from "@/middlelayers/rebalance";
 import type { AssetType } from "@/middlelayers/datafetch/types";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { Button } from "./ui/button";
+import { formatPhoneMoney } from "@/utils/currency";
 import AISetupCard from "./common/ai-setup-card";
 import { FinanceChartSkeleton, GoalChart } from "./finance-charts";
 import { alertSentence, goalEtaDays } from "./finance-visuals";
@@ -305,11 +306,11 @@ export default function GoalsAlerts() {
                       <div className="text-xs text-muted-foreground">
                         {measurement.status === "data-stale" ? t("goals.dataStale") :
                           measurement.status === "unavailable" ? t("goals.unavailable") :
-                            `${t("goals.current")}: ${measurement.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            `${t("goals.current")}${isIOS() ? "" : ":"} ${measurement.value === undefined ? "—" : isIOS() ? formatPhoneMoney(measurement.value, "$") : measurement.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="ios-d3-goal-rule-actions flex items-center gap-2">
                       {!isIOS() && <span className={`rounded-full px-2 py-0.5 text-[11px] ${rule.enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                         {t(rule.enabled ? "goals.enabled" : "finance.paused")}
                       </span>}
@@ -338,7 +339,9 @@ export default function GoalsAlerts() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <Progress value={progress} aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`))} />
-                      <p className="pt-1 text-xs text-muted-foreground">{measurement.value?.toLocaleString()} / {rule.threshold.toLocaleString()} USD · {eta === null
+                      <p className="pt-1 text-xs text-muted-foreground">{isIOS()
+                        ? `${formatPhoneMoney(measurement.value ?? 0, "$")} / ${formatPhoneMoney(rule.threshold, "$")}`
+                        : `${measurement.value?.toLocaleString()} / ${rule.threshold.toLocaleString()} USD`} · {eta === null
                         ? t("finance.etaUnavailable")
                         : eta === 0 ? t("finance.goalReached")
                           : t("finance.etaDays").replace("{days}", String(eta))}</p>

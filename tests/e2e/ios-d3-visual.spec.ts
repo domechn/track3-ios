@@ -95,6 +95,8 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Add symbol" }).click();
     const cancel = await page.getByRole("dialog", { name: "Add custom asset" }).getByRole("button", { name: "Cancel" }).boundingBox();
     expect(cancel!.x).toBeLessThan(60);
+    const customEditor = page.getByRole("dialog", { name: "Add custom asset" });
+    await expect(customEditor.locator(".ios-d3-editor-nav").getByRole("button", { name: "Save" })).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-custom-asset-editor.png` });
     await page.getByRole("dialog", { name: "Add custom asset" }).getByRole("button", { name: "Cancel" }).click();
 
@@ -117,12 +119,15 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("dialog", { name: "Add alert" })).not.toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
     await capture(page, phone.name, theme, "goals");
+    await expect(page.locator(".ios-d3-goals-add")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     for (const chip of await page.locator(".ios-d3-goals [data-ai-setup-suggestion]").all()) {
       const bounds = await chip.boundingBox();
       const card = await chip.locator("xpath=ancestor::*[@data-ai-setup-card]").boundingBox();
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(card!.x + card!.width);
     }
     await expect(page.getByRole("progressbar", { name: /Portfolio value goal/i })).toBeVisible();
+    await expect(page.locator(".ios-d3-goal-rule").first()).toContainText("$90,000.00");
+    await expect(page.locator(".ios-d3-goal-rule").first()).not.toContainText("USD");
     await page.locator(".ios-d3-goal-rule").first().evaluate((element) => element.scrollIntoView({ block: "start" }));
     const goalProgress = await page.locator(".ios-d3-goal-rule").first().getByRole("progressbar").boundingBox();
     const goalTabBar = await page.locator(".mobile-tab-bar").boundingBox();
@@ -145,8 +150,11 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.locator(".ios-d3-trade").first().scrollIntoViewIfNeeded();
     const buy = page.locator(".ios-d3-buy .ios-d3-trade-value").first();
     const sell = page.locator(".ios-d3-sell .ios-d3-trade-value").first();
-    await expect(buy).toContainText(/^\+[0-9]/);
-    await expect(sell).toContainText(/^−[0-9]/);
+    await expect(buy).toContainText(/^\+\$[0-9]/);
+    await expect(sell).toContainText(/^−\$[0-9]/);
+    await expect(buy).toContainText("$");
+    expect(await buy.evaluate((node) => node.getClientRects().length === 1 &&
+      node.getBoundingClientRect().height < Number.parseFloat(getComputedStyle(node).lineHeight) * 1.5)).toBe(true);
     expect(await buy.evaluate((element) => getComputedStyle(element).color)).not.toBe(await sell.evaluate((element) => getComputedStyle(element).color));
     const tradeSymbol = page.locator(".ios-d3-trade .ios-d3-trade-symbol").first();
     const symbolBounds = await tradeSymbol.boundingBox();
@@ -156,6 +164,14 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.goto("/#/assistant");
     await expect(page.getByRole("textbox", { name: "Ask the assistant..." })).toBeVisible();
     await expect(page.locator(".ios-d3-chat-header")).toContainText("Assistant");
+    await expect(page.locator(".assistant-insights-card")).toHaveCSS("border-radius", "16px");
+    await expect(page.locator(".assistant-insights-card")).toContainText("$7,298.27");
+    for (const action of await page.locator(".assistant-insights-card button, .assistant-insights-card a").all()) {
+      const bounds = await action.boundingBox();
+      expect(bounds!.height).toBeGreaterThanOrEqual(44);
+    }
+    const insightFill = await page.locator(".assistant-insights-card").evaluate((node) => getComputedStyle(node).backgroundColor);
+    await expect(page.locator(".ios-d3-chat-composer")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await capture(page, phone.name, theme, "assistant-empty");
     const chatHeader = await page.locator(".ios-d3-chat-header").boundingBox();
     const backAction = await page.locator("#app-top-bar .mobile-header-back").boundingBox();
@@ -165,6 +181,10 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(chatTitle!.x - (sessionsAction!.x + sessionsAction!.width)).toBeGreaterThanOrEqual(8);
     const firstSuggestion = await page.getByTestId("chat-example-summary").boundingBox();
     const composer = await page.locator(".ios-d3-chat-composer").boundingBox();
+    if (phone.width >= 390) {
+      const insights = await page.locator(".assistant-insights-card").boundingBox();
+      expect(insights!.y + insights!.height).toBeLessThanOrEqual(composer!.y);
+    }
     expect(chatHeader!.height).toBeLessThanOrEqual(56);
     expect(firstSuggestion!.y + firstSuggestion!.height).toBeLessThanOrEqual(composer!.y);
     await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
@@ -182,6 +202,12 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(composerAfterReply!.y + composerAfterReply!.height).toBeLessThanOrEqual(tabBar!.y);
     await expect(page.locator('.ios-d3-chat-bubble[data-streaming="true"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
+    const quickActions = page.locator(".ios-d3-quick-actions");
+    const quickBounds = (await quickActions.boundingBox())!;
+    expect(quickBounds.x).toBe(0);
+    expect(quickBounds.width).toBe(phone.width);
+    expect(await page.getByTestId("quick-action-analysis").evaluate((node) => getComputedStyle(node).backgroundColor))
+      .toBe(insightFill);
     const chatHeaderAfterReply = await page.locator(".ios-d3-chat-header").boundingBox();
     expect(chatHeaderAfterReply!.height).toBeLessThanOrEqual(56);
     const topBar = await page.locator("#app-top-bar").boundingBox();
@@ -208,6 +234,28 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await expect(page.locator(".ios-d3-refresh-sheet p.sr-only")).toHaveCount(0);
     await expect(page.locator(".ios-d3-toast-viewport")).toHaveCount(1);
     await expect(page.locator(".ios-d3-toast-viewport")).toBeHidden();
+    const sourceLayout = await page.locator(".ios-d3-refresh-sheet [data-source-status-row]").evaluateAll((rows) =>
+      rows.map((row) => {
+        const identity = row.querySelector(".ios-d3-refresh-row-title");
+        const date = [...row.querySelectorAll("div")].find((node) => node.textContent?.startsWith("Last data "));
+        return {
+          rowWidth: row.getBoundingClientRect().width,
+          columns: getComputedStyle(row).gridTemplateColumns,
+          mainWidth: row.querySelector(".ios-d3-refresh-row-main")?.getBoundingClientRect().width ?? 0,
+          contentWidth: row.querySelector(".ios-d3-refresh-row-content")?.getBoundingClientRect().width ?? 0,
+          identityWidth: identity?.getBoundingClientRect().width ?? 0,
+          identityText: identity?.textContent ?? "",
+          dateRight: date?.getBoundingClientRect().right ?? 0,
+          rowRight: row.getBoundingClientRect().right,
+          identityHeight: identity?.getBoundingClientRect().height ?? 0,
+          identityLine: identity ? Number.parseFloat(getComputedStyle(identity).lineHeight) : 0,
+          date: date?.textContent ?? "",
+        };
+      }));
+    expect(sourceLayout.every((row) => row.identityWidth >= 70 &&
+      row.identityHeight <= row.identityLine + 1 &&
+      row.dateRight <= row.rowRight + 1), JSON.stringify(sourceLayout)).toBe(true);
+    expect(sourceLayout.map((row) => row.date).join(" ")).not.toContain("2026-");
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh-results.png` });
     expect(errors).toEqual([]);
   });

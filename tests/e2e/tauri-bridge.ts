@@ -10,7 +10,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false, lockedStartup = false, freshReviewData = false, slowAssistant = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false, lockedStartup = false, freshReviewData = false, slowAssistant = false, failDataQueries = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -202,6 +202,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
     }
     if (cmd === "plugin:sql|load") return args.db;
     if (cmd === "plugin:sql|select") {
+      if (failDataQueries && /\bassets_v2\b/i.test(args.query)) throw new Error("Demo database unavailable");
       if (slowOverview && /assets_v2/i.test(args.query)) await new Promise((resolve) => setTimeout(resolve, 1000));
       return select(args.query, args.values);
     }

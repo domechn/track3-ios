@@ -28,6 +28,8 @@ test("data screens expose grouped history and analytics destinations", async ({ 
     await page.goto("/#/summary");
     await expect(page.locator(".mobile-analytics-hub")).toBeVisible();
     await expect(page.locator(".analytics-tile")).toHaveCount(7);
+    await expect(page.locator(".ath-card")).toContainText("Peak date");
+    await expect(page.locator(".ath-card")).not.toContainText("2026-");
     expect(await page.locator(".analytics-tile-grid").evaluate((node) =>
       node.scrollWidth <= node.clientWidth && node.getBoundingClientRect().height > 250)).toBe(true);
     const tileTitleTops = await page.locator(".analytics-tile strong").evaluateAll((titles) =>
@@ -61,6 +63,8 @@ test("data screens expose grouped history and analytics destinations", async ({ 
     const hero = (await page.locator(".d2-summary .ath-current-value").boundingBox())!;
     const tab = (await page.locator(".mobile-tab-bar").boundingBox())!;
     expect(hero.y + hero.height).toBeLessThan(tab.y);
+    await page.goto("/#/wallets");
+    await expect(page.getByText("Wallet allocation", { exact: true })).toBeVisible();
     await page.goto("/#/cost-basis");
     await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
     await expect(page.getByText("Gain/loss", { exact: true }).locator("..")).not.toContainText("0 USD");
@@ -80,6 +84,7 @@ test("data screens expose grouped history and analytics destinations", async ({ 
     await expect(page.locator("#app-main-content h1")).toHaveText("BTC");
     await expect(page.locator(".coin-detail-hero img")).toBeVisible();
     await expect(page.locator(".coin-detail-hero")).toContainText("$");
+    await expect(page.locator(".coin-metric-card").filter({ hasText: "Profit" }).first()).toContainText("+$");
   } finally {
     await context.close();
   }
@@ -163,11 +168,11 @@ test("SE data cards keep equal side margins and coin history labels clear their 
   }
 });
 
-for (const width of [375, 390]) {
+for (const width of [320, 375, 390, 430]) {
   for (const theme of ["light", "dark"] as const) {
     test(`D2 detail captures at ${width}px in ${theme}`, async ({ browser }) => {
       const context = await browser.newContext({
-        viewport: { width, height: width === 375 ? 667 : 844 },
+        viewport: { width, height: sizes.find((size) => size.width === width)!.height },
         isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce",
       });
       const page = watchPage(await context.newPage());
@@ -181,7 +186,7 @@ for (const width of [375, 390]) {
         await page.goto("/#/history");
         await expect(page.locator(".history-mobile-snapshot")).toHaveCount(20);
         await page.locator(".history-mobile-snapshot-button").first().click();
-        const detail = page.getByRole("dialog", { name: /historical data detail/i });
+        const detail = page.getByRole("dialog", { name: /snapshot details/i });
         await expect(detail.locator(".history-mobile-asset")).toHaveCount(7);
         const assetIndent = await detail.locator(".history-mobile-asset").first().evaluate((row) => ({
           symbol: row.querySelector(".history-mobile-asset-content > div:first-child > span:first-child > span:last-child")!.getBoundingClientRect().left,
@@ -257,7 +262,7 @@ for (const width of [375, 390]) {
 
         await page.goto("/#/comparison");
         await expect(page.locator(".comparison-total-grid")).toBeVisible();
-        expect((await page.locator(".comparison-quick-segments").boundingBox())!.width).toBeGreaterThan(300);
+        expect((await page.locator(".comparison-quick-segments").boundingBox())!.width).toBeGreaterThan(width - 48);
         await page.locator(".comparison-metric-row").first().scrollIntoViewIfNeeded();
         await capture("comparison-rows");
 
@@ -510,6 +515,89 @@ test("Overview skeleton reserves the first paint", async ({ browser }) => {
   }
 });
 
+test("a failed portfolio query shows a reviewable error state", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true, false, false, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.getByRole("alert")).toContainText("Could not load portfolio data");
+  } finally {
+    await context.close();
+  }
+});
+
+const reviewDataRoutes = ["overview", "history", "summary", "wallets", "comparison", "cost-basis", "coins/BTC", "goals", "rebalance"];
+for (const theme of ["light", "dark"] as const) {
+  test(`data destinations capture empty and error states in ${theme}`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    mkdirSync("test-results/mobile", { recursive: true });
+    for (const state of ["empty", "error"] as const) {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce",
+        colorScheme: theme,
+      });
+      const page = await context.newPage();
+      try {
+        await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+        await installTauriBridge(page, undefined, false, false, state === "empty", false,
+          false, false, false, false, false, state === "error");
+        for (const route of reviewDataRoutes) {
+          await page.goto(`/#/${route}`);
+          if (state === "error") await expect(page.getByRole("alert", { name: "" })).toContainText("Could not load portfolio data");
+          else await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
+          await page.evaluate(() => document.fonts.ready);
+          await page.screenshot({ path: `test-results/mobile/390x844-${route.replace("/", "-")}-${state}-${theme}.png` });
+        }
+      } finally {
+        await context.close();
+      }
+    }
+  });
+
+  test(`Overview loading skeleton is captured in ${theme}`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce",
+      colorScheme: theme,
+    });
+    const page = await context.newPage();
+    try {
+      await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+      await installTauriBridge(page, undefined, false, false, false, false, true, true);
+      await page.goto("/#/overview");
+      await expect(page.locator(".overview-skeleton")).toBeVisible();
+      mkdirSync("test-results/mobile", { recursive: true });
+      await page.screenshot({ path: `test-results/mobile/390x844-overview-loading-${theme}.png` });
+    } finally {
+      await context.close();
+    }
+  });
+
+  test(`data destinations capture loading in ${theme}`, async ({ browser }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce",
+      colorScheme: theme,
+    });
+    const page = await context.newPage();
+    try {
+      await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+      await installTauriBridge(page, undefined, false, false, false, false, true, true);
+      mkdirSync("test-results/mobile", { recursive: true });
+      for (const route of reviewDataRoutes) {
+        await page.goto(`/#/${route}`);
+        await page.reload();
+        await expect(page.locator("#app-main-content [aria-busy='true']")).toBeVisible();
+        await expect(page.locator("#app-main-content [role='status']")).toBeVisible();
+        await expect(page.locator(".mobile-loading-layout .mobile-skeleton")).toHaveCount(5);
+        await page.screenshot({ path: `test-results/mobile/390x844-${route.replace("/", "-")}-loading-${theme}.png` });
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 for (const size of sizes) {
   test(`data routes fit an iPhone viewport at ${size.width}x${size.height}`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: size, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
@@ -712,7 +800,7 @@ test("history snapshots use touch rows and a detail sheet", async ({ browser }) 
     await expect(row).toBeVisible();
     await expect(row.locator(".image-stack img")).not.toHaveCount(0);
     await row.click();
-    const detail = page.getByRole("dialog", { name: /historical data detail/i });
+    const detail = page.getByRole("dialog", { name: /snapshot details/i });
     await expect(detail).toBeVisible();
     await expect.poll(async () => (await detail.boundingBox())?.x).toBe(0);
     await expect(detail.locator(".mobile-sheet-handle")).toBeVisible();
@@ -1044,7 +1132,7 @@ test("large route titles collapse into the sticky header while scrolling", async
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = watchPage(await context.newPage());
   try {
-    await installTauriBridge(page);
+    await installTauriBridge(page, undefined, false, false, false, false, true);
     await page.goto("/#/overview");
     await expect(page.getByRole("button", { name: "Show More" })).toBeVisible();
     await expect(page.locator("#app-top-bar .mr-4")).toHaveCount(0);
@@ -1052,6 +1140,14 @@ test("large route titles collapse into the sticky header while scrolling", async
     await page.evaluate(() => scrollTo(0, 180));
     await expect(page.locator("#app-top-bar .mobile-compact-title")).toBeVisible();
     await expect(page.locator("#app-top-bar")).toContainText("Overview");
+    await page.goto("/#/history");
+    await expect(page.locator(".history-mobile-list")).toBeVisible();
+    await expect(page.locator(".history-mobile-snapshot")).toHaveCount(20);
+    await page.evaluate(() => scrollTo(0, 180));
+    const historyTitle = page.locator("#app-top-bar .mobile-compact-title");
+    await expect(historyTitle).toBeVisible();
+    const historyTitleBounds = (await historyTitle.boundingBox())!;
+    expect(Math.abs(historyTitleBounds.x + historyTitleBounds.width / 2 - 195)).toBeLessThanOrEqual(2);
   } finally {
     await context.close();
   }
@@ -1154,7 +1250,7 @@ test("the latest history snapshot has a visible delete action in its detail", as
     await installTauriBridge(page);
     await page.goto("/#/history");
     await page.getByTestId("history-mobile-row").first().click();
-    const detail = page.getByRole("dialog", { name: /historical data detail/i });
+    const detail = page.getByRole("dialog", { name: /snapshot details/i });
     await expect(detail.getByRole("button", { name: "Delete snapshot" })).toBeVisible();
     await detail.getByRole("button", { name: "Delete snapshot" }).click();
     await expect(page.getByRole("alertdialog", { name: /delete/i })).toBeVisible();

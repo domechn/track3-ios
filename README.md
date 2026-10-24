@@ -33,9 +33,10 @@ iPhone control.
 
 ## Screenshots
 
-These 390 px browser captures use the seven-holding demo portfolio. The
-[full review set](docs/ios/DESIGN.md#review-captures) covers every phone route
-in light and dark at 320, 375, 390, and 430 px and is uploaded by CI as
+These refreshed 390 px browser captures use the seven-holding demo portfolio.
+The [full review set](docs/ios/DESIGN.md#review-captures) covers phone routes
+and sheets in light and dark at 320, 375, 390, and 430 px, plus loading,
+empty, and error states for data routes. CI uploads it as
 `ios-browser-screenshots`.
 
 | Screen | Light | Dark |

@@ -25,6 +25,7 @@ import {
   currencyWrapper,
   prettyNumberKeepNDigitsAfterDecimalPoint,
   prettyNumberToLocaleString,
+  formatPhoneMoney,
   prettyPriceNumberToLocaleString,
 } from "@/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -1168,8 +1169,9 @@ const App = ({
                   </svg>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis">
-                    {profitStr}
+                  <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis"
+                    data-tone={profit > 0 ? "gain" : profit < 0 ? "loss" : "neutral"}>
+                    {isMobile ? formatPhoneMoney(currencyWrapper(currency)(profit), currency.symbol, true) : profitStr}
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
                     <div>{t("coin.profitRate")}</div>

@@ -172,7 +172,7 @@ export default function ChatComposer({
   }, [attachments, onSend]);
 
   return (
-    <div className="ios-d3-chat-composer shrink-0 border-t border-[var(--glass-border)] bg-card/70 p-3 backdrop-blur-sm shadow-[0_-6px_18px_-10px_rgba(0,0,0,0.18)]">
+    <div className="ios-d3-chat-composer shrink-0 border-t border-[var(--glass-border)] p-3">
       <div className="rounded-xl border border-[var(--glass-border)] bg-background/60 shadow-sm transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 px-2 pt-2">

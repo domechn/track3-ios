@@ -52,9 +52,9 @@ export function getWalletDisplayName(item: {
   wallet: string;
   walletType?: string;
   walletAlias?: string;
-}) {
+}, compact = false) {
   if (item.walletAlias) {
-    return item.walletType
+    return item.walletType && !compact
       ? `${item.walletType}-${item.walletAlias}`
       : item.walletAlias;
   }
@@ -534,11 +534,11 @@ const App = ({
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground">
           <div>
-            {t("walletAllocation.wallets")}:{" "}
+            {t("walletAllocation.wallets")}{isMobile ? " " : ": "}
             <span className="text-foreground mono">{sortedWallets.length}</span>
           </div>
           <div data-testid="stat-top">
-            {t("walletAllocation.top")}:{" "}
+            {t("walletAllocation.top")}{isMobile ? " " : ": "}
             <span className="text-foreground mono">
               {topWallet
                 ? `${topWallet.percentage.toFixed(2)}%`
@@ -546,13 +546,13 @@ const App = ({
             </span>
           </div>
           <div data-testid="stat-top3">
-            {t("walletAllocation.top3")}:{" "}
+            {t("walletAllocation.top3")}{isMobile ? " " : ": "}
             <span className="text-foreground mono">
               {top3Percentage.toFixed(2)}%
             </span>
           </div>
           <div data-testid="stat-total-value">
-            {t("walletAllocation.totalValue")}:{" "}
+            {t("walletAllocation.totalValue")}{isMobile ? " " : ": "}
             <span className="text-foreground mono">
               {currency.symbol}
               {prettyNumberToLocaleString(
@@ -592,7 +592,7 @@ const App = ({
                     item.wallet.wallet === OTHERS_AGGREGATED_KEY;
                   const name = isAggregatedTile
                     ? `${t("walletAllocation.type.aggregated")} ${item.wallet.walletAlias ?? ""}`
-                    : getWalletDisplayName(item.wallet);
+                    : getWalletDisplayName(item.wallet, isMobile);
                   const detailUrlFn = item.wallet.walletType
                     ? WALLET_DETAIL_URLS[item.wallet.walletType]
                     : undefined;
@@ -746,7 +746,7 @@ const App = ({
             const detailUrl = wallet.walletType ? WALLET_DETAIL_URLS[wallet.walletType]?.(wallet.wallet) : undefined;
             return {
               id: `${wallet.wallet}-${wallet.walletType ?? "none"}`,
-              title: getWalletDisplayName(wallet),
+              title: getWalletDisplayName(wallet, true),
               subtitle: `${wallet.percentage.toFixed(2)}%`,
               fields: [
                 { label: t("walletValueChanges.col.type"), value: t(WALLET_CATEGORY_BASE_COLORS[classifyWalletType(wallet.walletType)].labelKey) },
@@ -769,7 +769,7 @@ const App = ({
             data-testid="type-summary"
           >
             <span className="text-muted-foreground">
-              {t("walletAllocation.typeSummary")}:
+              {t("walletAllocation.typeSummary")}{isMobile ? "" : ":"}
             </span>
             {categorySummary
               .filter((s) => s.value > 0)

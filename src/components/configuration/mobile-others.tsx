@@ -59,13 +59,15 @@ export function MobileOthers(props: {
     ]} />}
     {editor && <ModalPage title={t(editor.index === null ? "mobile.others.add" : "mobile.others.edit")} onDismiss={() => setEditor(undefined)}>
       <div className="ios-d3-other-editor mx-auto max-w-xl space-y-5">
-        <div className="ios-d3-editor-nav"><Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button></div>
-        <h2 className="text-3xl font-bold">{t(editor.index === null ? "mobile.others.add" : "mobile.others.edit")}</h2>
+        <div className="ios-d3-editor-nav">
+          <Button variant="ghost" className="min-h-11" onClick={() => setEditor(undefined)}>{t("common.cancel")}</Button>
+          <h2>{t(editor.index === null ? "mobile.others.add" : "mobile.others.edit")}</h2>
+          <Button variant="ghost" className="min-h-11" onClick={save}>{t("common.save")}</Button>
+        </div>
         <div className="space-y-2"><Label htmlFor="other-alias">{t("config.formAlias")}</Label><Input id="other-alias" className="min-h-12 text-base" autoComplete="off" value={editor.value.alias ?? ""} onChange={(event) => setEditor({ ...editor, value: { ...editor.value, alias: event.target.value } })} /></div>
         <div className="space-y-2"><Label htmlFor="other-symbol">{t("config.formSymbol")}</Label><Input id="other-symbol" className="min-h-12 text-base" autoComplete="off" autoCapitalize="characters" value={editor.value.symbol} onChange={(event) => setEditor({ ...editor, value: { ...editor.value, symbol: event.target.value } })} /></div>
         <div className="space-y-2"><Label htmlFor="other-amount">{t("config.formAmount")}</Label><Input id="other-amount" className="min-h-12 text-base" inputMode="decimal" value={editor.amount} onChange={(event) => setEditor({ ...editor, amount: event.target.value })} /></div>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <Button className="min-h-12 w-full" onClick={save}>{t(editor.index === null ? "mobile.others.add" : "config.saveChanges")}</Button>
       </div>
     </ModalPage>}
     {removal !== null && <ConfirmSheet title={t("config.removeDialogTitle")} onDismiss={() => setRemoval(null)}>

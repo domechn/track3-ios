@@ -588,7 +588,7 @@ const App = ({
           onOpenChange={closeDetail}
         >
           <DetailWrapper open={isModalOpen} onOpenChange={closeDetail}
-            title={t("history.detailTitle")} className="history-detail-sheet" detents={["large"]} initialDetent="large">
+            title={t("history.snapshotDetails")} className="history-detail-sheet" detents={["large"]} initialDetent="large">
           <DetailSurface className="history-detail-dialog min-w-[80%] touch:min-w-0 touch:w-[calc(100vw-1rem)] touch:max-w-[1200px] touch:max-h-[calc(100dvh-1rem)]">
             <DetailHeader className="history-detail-meta">
               {!isMobile && <DialogTitle>{t("history.detailTitle")}</DialogTitle>}
@@ -662,8 +662,8 @@ const App = ({
                   <span className="history-asset-value font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
                 </div>
                 <div className="history-mobile-asset-meta mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                  <span>{t("common.amountLabel")}: {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
-                  <span>{t("common.priceLabel")}: {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
+                  <span>{t("common.amountLabel")} {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
+                  <span>{t("common.priceLabel")} {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
                 </div>
                 </div>
               </SwipeableRow>)}

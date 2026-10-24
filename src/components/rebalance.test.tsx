@@ -160,8 +160,8 @@ describe("Rebalance page", () => {
       tolerancePercent: 0,
     });
     render(<Rebalance currency={currency} />);
-    const trades = await screen.findAllByText(/^[+−][0-9]/);
-    expect(trades.map((trade) => trade.textContent)).toEqual(["−20 USD", "+20 USD"]);
+    const trades = await screen.findAllByText(/^[+−]\$[0-9]/);
+    expect(trades.map((trade) => trade.textContent)).toEqual(["−$20.00", "+$20.00"]);
     expect(trades[0]).toHaveClass("ios-d3-trade-value");
     expect(trades[0].closest(".ios-d3-sell")).toBeInTheDocument();
     expect(trades[1].closest(".ios-d3-buy")).toBeInTheDocument();

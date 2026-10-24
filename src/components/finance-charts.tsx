@@ -30,8 +30,8 @@ function useChartOptions() {
     animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
-      x: { ticks: { color: text, font: { size: 11 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
-      y: { ticks: { color: text, font: { size: 11 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      x: { ticks: { color: text, font: { size: 12 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      y: { ticks: { color: text, font: { size: 12 }, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
     },
   };
 }
@@ -213,13 +213,13 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
         data={{ labels: visual.labels, datasets: [
           { label: t("rebalance.current"), data: visual.current, backgroundColor: palette[0] },
           { label: t("rebalance.target"), data: visual.target, backgroundColor: palette[2] },
-        ] }} options={{ ...labeledOptions, plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: chartOptions.scales.y.ticks.color } } } }} />
+        ] }} options={{ ...labeledOptions, plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: chartOptions.scales.y.ticks.color, font: { size: 12 } } } } }} />
     </ChartPanel>
     <ChartPanel title={t("rebalance.deviations")} empty={!visual.labels.length} height={rowHeight}>
       <Bar role="img" aria-label={`${visual.labels.map((label, index) => `${label}: ${visual.deviations[index].toFixed(1)} ${t("rebalance.percentagePoints")}`).join("; ")}; ${t("finance.toleranceBand")} ±${tolerancePercent}%`}
         data={{ labels: visual.labels, datasets: [{
           data: visual.deviations,
-          backgroundColor: visual.deviations.map((value) => `${tone(value >= 0, quoteColor)}88`),
+          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor)),
         }] }} options={labeledOptions}
         plugins={[{
           id: "tolerance-band",

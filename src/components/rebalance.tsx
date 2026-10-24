@@ -34,6 +34,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import { useIsMobile } from "./mobile";
+import { formatPhoneMoney } from "@/utils/currency";
 
 type TargetDraft = RebalanceTarget & { id: number; previousAsset?: { assetType: AssetType; symbol: string } };
 
@@ -414,13 +415,15 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                         {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: mobile ? 4 : 8 })} `}
                         {!mobile && row.symbol}</span>
                       </p>
-                      <span className="ios-d3-trade-value tabular-nums text-muted-foreground">{mobile ? row.tradeValue > 0 ? "+" : "−" : "~"}{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
+                      <span className="ios-d3-trade-value tabular-nums text-muted-foreground">{mobile
+                        ? formatPhoneMoney(row.tradeValue, currency.symbol, true)
+                        : `~${Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency.currency}`}</span>
                     </div>
                   )) : <p className="text-sm text-muted-foreground">{t("rebalance.noTrade")}</p>}
                   <div className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
-                    <span>{t("rebalance.buy")}: {visual?.buyTotal.toFixed(2)} {currency.currency}</span>
-                    <span>{t("rebalance.sell")}: {visual?.sellTotal.toFixed(2)} {currency.currency}</span>
-                    <span>{t("rebalance.cashReserve")}: {(visual?.cash?.tradeValue ?? 0).toFixed(2)} {currency.currency}</span>
+                    <span>{t("rebalance.buy")}: {mobile ? formatPhoneMoney(visual?.buyTotal ?? 0, currency.symbol) : `${visual?.buyTotal.toFixed(2)} ${currency.currency}`}</span>
+                    <span>{t("rebalance.sell")}: {mobile ? formatPhoneMoney(visual?.sellTotal ?? 0, currency.symbol) : `${visual?.sellTotal.toFixed(2)} ${currency.currency}`}</span>
+                    <span>{t("rebalance.cashReserve")}: {mobile ? formatPhoneMoney(visual?.cash?.tradeValue ?? 0, currency.symbol) : `${(visual?.cash?.tradeValue ?? 0).toFixed(2)} ${currency.currency}`}</span>
                   </div>
                 </CardContent>
               </Card>
