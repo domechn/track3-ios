@@ -55,6 +55,8 @@ describe("Settings shell", () => {
     expect(screen.getByRole("link", { name: "Data sources" })).toHaveAttribute("href", "#/settings/configuration?section=sources");
     expect(screen.getByRole("link", { name: "Security" })).toHaveAttribute("href", "#/settings/data?section=security");
     expect(screen.getByRole("link", { name: "Backup" })).toHaveAttribute("href", "#/settings/data?section=backup");
+    expect(screen.getByRole("link", { name: "Data sources" }).querySelector(".ios-d3-settings-icon")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "About" }).querySelector(".ios-d3-settings-icon")).toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);
   });
 });

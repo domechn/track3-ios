@@ -1,8 +1,9 @@
-import { TDateRange, TopCoinsRankData } from "@/middlelayers/types";
+import { CurrencyRateDetail, LatestAssetsPercentageData, TDateRange, TopCoinsRankData } from "@/middlelayers/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Table, TableBody, TableCell, TableRow } from "./ui/table";
-import { queryTopCoinsRank } from "@/middlelayers/charts";
+import { queryLatestAssetsPercentage, queryTopCoinsRank } from "@/middlelayers/charts";
+import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
 import { appCacheDir as getAppCacheDir } from "@tauri-apps/api/path";
 import { getImageApiPath } from "@/utils/app";
 import { downloadCoinLogos } from "@/middlelayers/data";
@@ -24,7 +25,7 @@ import { ListRow, useIsMobile } from "./mobile";
 
 const PAGE_SIZE = 20;
 
-const App = ({ dateRange }: { dateRange: TDateRange }) => {
+const App = ({ dateRange, currency }: { dateRange: TDateRange; currency?: CurrencyRateDetail }) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [topCoinsRankData, setTopCoinsRankData] = useState({
@@ -32,6 +33,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
     coins: [],
   } as TopCoinsRankData);
   const [logoMap, setLogoMap] = useState<{ [x: string]: string }>({});
+  const [latest, setLatest] = useState<LatestAssetsPercentageData>([]);
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
 
@@ -48,11 +50,14 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
   }, [rangeKey, dataChangedVersion]);
 
   async function loadData(dr: TDateRange, gen: number) {
-    const tcr = await queryTopCoinsRank(dr);
+    const [tcr, holdings] = await Promise.all([
+      queryTopCoinsRank(dr), queryLatestAssetsPercentage(dr).catch(() => [] as LatestAssetsPercentageData),
+    ]);
     if (gen !== loadGenRef.current) {
       return;
     }
     setTopCoinsRankData(tcr);
+    setLatest(holdings);
   }
 
   useEffect(() => {
@@ -109,6 +114,8 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
       change: number;
     }[];
   }, [topCoinsRankData]);
+  const latestByAsset = useMemo(() => new Map(latest.map((asset) =>
+    [getAssetLogoKey({ symbol: asset.coin, assetType: asset.assetType }), asset])), [latest]);
 
   const maxPage = useMemo(
     () => Math.max(Math.ceil(rankRows.length / PAGE_SIZE) - 1, 0),
@@ -152,19 +159,23 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
 
   return (
     <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Card className="top-coins-rank-card">
+        <CardHeader className="top-coins-rank-header flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("topCoinsRank.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="top-coins-rank-content">
           {isMobile && <div className="top-coins-rank-mobile mobile-record-list">
             {pagedRows.map((row) => {
               const asset = { symbol: row.coin, assetType: row.assetType };
               const logoKey = getAssetLogoKey(asset);
+              const holding = latestByAsset.get(logoKey);
               return <ListRow key={logoKey} href={`#${buildAssetDetailsPath(asset)}`}
-                value={renderChangeBadge(row.change)}>
+                value={<span className="top-coins-rank-value">
+                  <strong>{holding ? `${currency?.symbol ?? "$"}${prettyNumberToLocaleString(currency ? currencyWrapper(currency)(holding.value) : holding.value)}` : "—"}</strong>
+                  <small>{holding ? `${holding.percentage.toFixed(1)}%` : "—"} · {renderChangeBadge(row.change)}</small>
+                </span>}>
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="w-8 shrink-0 font-mono text-xs text-muted-foreground">#{row.rank}</span>
                   <img className="h-6 w-6 shrink-0 rounded-full"

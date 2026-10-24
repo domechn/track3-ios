@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import CostBasisPage from "./cost-basis";
 import { getCostBasisMethod, saveCostBasisMethod } from "@/middlelayers/configuration";
 import { exportCostBasisReport, loadCostBasisReport } from "@/middlelayers/cost-basis-data";
@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.mocked(loadCostBasisReport).mockResolvedValue(report as never);
   vi.mocked(exportCostBasisReport).mockResolvedValue(true);
 });
+afterEach(() => vi.restoreAllMocks());
 
 it("shows realized totals and data gaps from the loaded report", async () => {
   render(<CostBasisPage />);
@@ -44,6 +45,51 @@ it("shows realized totals and data gaps from the loaded report", async () => {
   expect(screen.getByRole("button", { name: "Export CSV" })).toBeInTheDocument();
   expect(screen.getByText(/Proceeds:/)).toHaveTextContent("200 USD");
   expect(screen.getByText(/Cost basis:/)).toHaveTextContent("100 USD");
+});
+
+it("shows an empty row for each phone cost basis section without records", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  vi.mocked(loadCostBasisReport).mockResolvedValue({
+    ...report, assets: [], disposals: [], unrealized: [],
+  } as never);
+  render(<CostBasisPage />);
+  expect(await screen.findByText(/Proceeds:/)).toHaveTextContent("$200.00");
+  expect(screen.getByText(/Proceeds:/)).not.toHaveTextContent("USD");
+  fireEvent.click(await screen.findByText("Details"));
+  const lists = document.querySelectorAll(".d2-cost .mobile-record-list");
+  expect(lists).toHaveLength(3);
+  lists.forEach((list) => expect(list).toHaveTextContent("No Data"));
+});
+
+it("expands phone cost lots inline with their signed gain", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  render(<CostBasisPage />);
+  fireEvent.click(await screen.findByText("Details"));
+  const realized = screen.getByRole("heading", { name: "Realized disposals" }).closest("section")!;
+  fireEvent.click(within(realized).getByRole("button", { name: /BTC/ }));
+  expect(within(realized).getByRole("button", { name: /BTC/ })).toHaveAttribute("aria-expanded", "true");
+  expect(within(realized).getByText("Acquired")).toBeVisible();
+  expect(within(realized).getByText("Jan 1, 2024")).toBeVisible();
+  expect(within(realized).getByText("$200.00")).toBeVisible();
+  expect(within(realized).getAllByText("+$100.00")).toHaveLength(2);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("uses the same signed two-decimal gain in phone asset rows", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  vi.mocked(loadCostBasisReport).mockResolvedValue({
+    ...report, assets: [{ ...report.assets[0], gainLoss: 1891.2 }],
+  } as never);
+  render(<CostBasisPage />);
+  fireEvent.click(await screen.findByText("Details"));
+  const assets = screen.getByRole("heading", { name: "By asset" }).closest("section")!;
+  expect(within(assets).getByText("+$1,891.20")).toBeInTheDocument();
 });
 it("keeps manual setup open after a filter reload", async () => {
   render(<CostBasisPage />);

@@ -10,17 +10,20 @@ import {
 import type { InsightSeverity } from "@/middlelayers/insights";
 import type { CurrencyRateDetail } from "@/middlelayers/types";
 import { storePendingAssistantQuestion } from "@/middlelayers/ai/pending-question";
+import { IconButton, SectionHeader } from "./mobile";
+import { useIsMobile } from "./mobile";
 
 function SeverityIcon({ severity }: { severity: InsightSeverity }) {
   return severity === "info"
-    ? <InfoCircledIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+    ? <InfoCircledIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
     : <ExclamationTriangleIcon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${
       severity === "critical" ? "text-destructive" : "text-amber-600 dark:text-amber-400"
     }`} />;
 }
 
-export default function InsightsCard({ currency }: { currency?: CurrencyRateDetail }) {
+export default function InsightsCard({ currency, overview = false }: { currency?: CurrencyRateDetail; overview?: boolean }) {
   const { t, locale } = useTranslation();
+  const mobile = useIsMobile();
   const [card, setCard] = useState<StoredInsightCard>();
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
@@ -47,8 +50,13 @@ export default function InsightsCard({ currency }: { currency?: CurrencyRateDeta
 
   const visible = card?.insights.filter((insight) =>
     !card.dismissedIds.includes(insight.id) && !card.repeatedIds?.includes(insight.id)) ?? [];
+  const displayInsight = (insight: StoredInsightCard["insights"][number]) =>
+    formatInsight(insight, (key) => (mobile || overview) && insight.messageKey === "insights.newAsset" && key === "insights.newAsset"
+      ? t("insights.newAssetSymbol") : t(key), locale,
+    currency && (mobile || overview && insight.messageKey === "insights.newAsset")
+      ? { ...currency, currency: currency.symbol } : currency);
   const summaryRepeatsInsight = visible.some((insight) =>
-    card?.summary?.includes(formatInsight(insight, t, locale, currency)) ||
+    card?.summary?.includes(displayInsight(insight)) ||
     card?.summary?.includes(formatInsight(insight, t, locale)));
   const regenerate = async () => {
     setRegenerating(true);
@@ -65,7 +73,13 @@ export default function InsightsCard({ currency }: { currency?: CurrencyRateDeta
   };
 
   return (
-    <Card className="min-h-[104px]" role="region" aria-label={t("insights.title")}>
+    <div className={overview ? "overview-insights" : undefined}>
+    {overview && <SectionHeader action={<IconButton label={t("insights.regenerate")}
+      onClick={() => void regenerate()} disabled={regenerating}>
+      <ReloadIcon aria-hidden="true" className={regenerating ? "animate-spin" : undefined} />
+    </IconButton>}>{t("insights.title")}</SectionHeader>}
+    <Card className={`assistant-insights-card min-h-[104px]${overview ? " overview-insights-card" : ""}`} role="region" aria-label={t("insights.title")}>
+      {!overview && <>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-4 pb-2 pt-4 sm:px-6">
         <CardTitle className="text-base">{t("insights.title")}</CardTitle>
         <Button size="sm" variant="ghost" onClick={() => void regenerate()} disabled={regenerating}
@@ -74,6 +88,7 @@ export default function InsightsCard({ currency }: { currency?: CurrencyRateDeta
           {t("insights.regenerate")}
         </Button>
       </CardHeader>
+      </>}
       <CardContent className="space-y-2 px-4 pb-4 sm:px-6">
         {error && <p role="alert" className="text-sm text-destructive">{t("insights.error")}</p>}
         {summaryError && <p role="alert" className="text-sm text-destructive">{t("insights.summaryError")}</p>}
@@ -86,7 +101,7 @@ export default function InsightsCard({ currency }: { currency?: CurrencyRateDeta
         {card && visible.length > 0 && (card.summaryNeedsRefresh || (card.summary && card.summaryLocale !== locale)) &&
           <p className="text-xs text-muted-foreground">{t("insights.summaryNeedsRefresh")}</p>}
         {visible.map((insight) => {
-          const text = formatInsight(insight, t, locale, currency);
+          const text = displayInsight(insight);
           return (
             <div key={insight.id} className="flex min-w-0 flex-wrap items-start gap-2 border-t border-border/50 pt-2 first:border-t-0 first:pt-0">
               <SeverityIcon severity={insight.severity} />
@@ -117,5 +132,6 @@ export default function InsightsCard({ currency }: { currency?: CurrencyRateDeta
         })}
       </CardContent>
     </Card>
+    </div>
   );
 }

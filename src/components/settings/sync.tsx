@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { isIOS } from "@/utils/platform";
 import ConfirmDeleteDialog from "@/components/common/confirm-delete-dialog";
 import { useTranslation } from "@/i18n";
 import { syncRuntime } from "@/middlelayers/sync/runtime";
@@ -165,7 +166,7 @@ export default function SyncSettingsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${isIOS() ? "ios-d3-sync-settings" : ""}`}>
       <Card>
         <CardHeader>
           <CardTitle>{t("sync.title")}</CardTitle>
@@ -181,6 +182,7 @@ export default function SyncSettingsPage() {
                 <Label htmlFor={`sync-${field}`}>{t(`sync.field.${field}`)}</Label>
                 <Input
                   id={`sync-${field}`}
+                  placeholder={t(`sync.placeholder.${field}`)}
                   type={field === "secretAccessKey" || field === "accessKeyId" ? "password" : "text"}
                   autoComplete="off"
                   aria-invalid={configurationInvalid.has(field)}

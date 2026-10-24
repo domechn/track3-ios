@@ -28,17 +28,21 @@ test("More opens every iPhone settings section through the Settings hub", async 
   await expect(page).toHaveURL(/#\/settings$/);
   await expect(page.locator("#app-main-content h1")).toHaveCount(1);
   const sections = page.getByRole("navigation", { name: "Settings sections" });
+  const sectionLink = (title: string) => sections.getByRole("link").filter({
+    has: page.locator(".mobile-list-label", { hasText: new RegExp(`^${title}$`) }),
+  });
   for (const title of [
     "Data sources", "Currency", "Appearance", "Language", "Blacklist",
     "Pro and license", "AI assistant", "Security", "Backup", "Backup and sync", "About",
   ]) {
-    const link = sections.getByRole("link", { name: title, exact: true });
+    const link = sectionLink(title);
     await expect(link).toBeVisible();
     await expect(link).toHaveClass(/mobile-list-row/);
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }
-  await sections.getByRole("link", { name: "Language" }).click();
+  await sectionLink("Language").click();
   await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
+  await expect(page.locator("#app-top-bar .mobile-compact-title")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(1);
   await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();
@@ -75,6 +79,7 @@ test("an edge swipe inside a source editor leaves the form open", async ({ page,
   await page.setViewportSize({ width: 390, height: 844 });
   await installTauriBridge(page);
   await page.goto("/#/settings/configuration?section=sources");
+  await page.getByRole("button", { name: "Add source" }).click();
   await page.getByRole("button", { name: "Add exchange" }).click();
   const editor = page.getByRole("dialog", { name: "Edit data source" });
   await expect(editor).toBeVisible();
@@ -119,6 +124,19 @@ test("switching iPhone tabs uses the native haptic bridge", async ({ page }) => 
   await expect.poll(bridge.haptics).toBe(1);
 });
 
+test("More and source selections use the native haptic bridge", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bridge = await installTauriBridge(page);
+  await page.goto("/#/more");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect.poll(bridge.haptics).toBe(1);
+  await page.getByRole("link", { name: "Data sources" }).click();
+  await expect.poll(bridge.haptics).toBe(2);
+  await page.getByRole("button", { name: "Add source" }).click();
+  await page.getByRole("button", { name: "Add exchange" }).click();
+  await expect.poll(bridge.haptics).toBe(3);
+});
+
 test("the chat composer stays above the tab bar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installTauriBridge(page);
@@ -138,9 +156,10 @@ for (const width of [375, 390, 430]) {
     await expect(page.getByRole("link", { name: "Data sources" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole("link", { name: "Data sources" }).click();
+    await page.getByRole("button", { name: "Add source" }).click();
     await expect(page.getByRole("button", { name: "Add exchange" })).toBeVisible();
     await page.getByRole("button", { name: "Add exchange" }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Binance" }).click();
     await expect(page.getByRole("textbox", { name: "Api Key" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole("button", { name: "Cancel" }).click();
@@ -156,10 +175,10 @@ for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 812 });
     await installTauriBridge(page);
     for (const [path, title, content] of [
-      ["/settings/configuration?section=currency", "Currency", "Base Currency"],
+      ["/settings/configuration?section=currency", "Currency", "Base currency"],
       ["/settings/appearance?section=theme", "Appearance", "Follow system"],
       ["/settings/data?section=blacklist", "Blacklist", "Token Blacklist"],
-      ["/settings/systemInfo?section=pro", "Pro and license", "Pro Status"],
+      ["/settings/systemInfo?section=pro", "Pro and license", "Pro status"],
       ["/settings/assistant", "AI assistant", "Endpoint"],
       ["/settings/data?section=security", "Security", "App lock"],
       ["/settings/sync", "Backup and sync", "S3 endpoint"],
@@ -182,7 +201,7 @@ for (const width of [375, 390, 430]) {
     await page.goto("/#/goals");
     await expect(page.getByRole("heading", { level: 1, name: "Goals & Alerts" })).toBeVisible();
     await expect(page.locator("#app-main-content h1")).toHaveCount(1);
-    await page.getByText("Add alert", { exact: true }).click();
+    await page.getByRole("button", { name: "Add alert" }).click();
     await expect(page.getByRole("dialog", { name: "Add alert" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto("/#/rebalance");
@@ -205,7 +224,8 @@ test("custom asset source picker opens from the bottom of the iPhone screen", as
   await page.setViewportSize({ width: 390, height: 812 });
   await installTauriBridge(page);
   await page.goto("/#/settings/configuration?section=sources");
-  await page.getByRole("button", { name: "Attach to BTC" }).click();
+  await page.getByRole("button", { name: "More actions for BTC" }).click();
+  await page.getByRole("button", { name: "Attach to" }).click();
   const picker = page.getByRole("dialog", { name: "Attach to" });
   await expect(picker).toBeVisible();
   const box = await picker.boundingBox();
@@ -237,7 +257,7 @@ test("collapsed rebalance header shows its full title at 375px", async ({ page }
   await expect(page.getByText("Trade options", { exact: true })).toBeAttached();
   await page.evaluate(() => window.scrollTo(0, 180));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(64);
-  const title = page.locator("#app-top-bar .mobile-compact-title");
+  const title = page.locator("#app-top-bar .ios-d3-pushed-title");
   await expect(title).toBeVisible();
   expect(await title.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });

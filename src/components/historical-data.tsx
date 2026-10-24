@@ -66,7 +66,12 @@ import { StaggerContainer, FadeUp } from "./motion";
 import PageLoadingOverlay from "./page-loading-overlay";
 import { useTranslation } from "@/i18n";
 import { ScrollArea } from "./ui/scroll-area";
-import { SwipeableRow, useIsMobile } from "./mobile";
+import { BottomSheet, SwipeableRow, useIsMobile } from "./mobile";
+import { groupHistoryMonths } from "./history-months";
+
+function DesktopDetailPassthrough({ children }: React.ComponentProps<typeof BottomSheet>) {
+  return <>{children}</>;
+}
 
 type RankData = {
   id: number;
@@ -96,7 +101,7 @@ const App = ({
   currency: CurrencyRateDetail;
   quoteColor: QuoteColor;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
 
   const [data, setData] = useState<HistoricalPageRow[]>([]);
@@ -114,6 +119,7 @@ const App = ({
   const [pageLoading, setPageLoading] = useState(true);
   const [logoMap, setLogoMap] = useState<{ [x: string]: string }>({});
   const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
+  const [deleteAssetCandidate, setDeleteAssetCandidate] = useState<{ id: number; symbol: string } | null>(null);
 
   const { run: runDelete, isDeleting: deleting } = useOptimisticDelete(setData);
   const { run: runDetailDelete, isDeleting: deletingDetail } = useOptimisticDelete(setSelectedData);
@@ -551,9 +557,19 @@ const App = ({
   const loadedRangeStart = totalCount ? dataPage * pageSize + 1 : 0;
   const loadedRangeEnd = Math.min((dataPage + 1) * pageSize, totalCount);
   const totalPages = maxDataPage + 1;
+  const DetailSurface = isMobile ? "div" : DialogContent;
+  const DetailHeader = isMobile ? "div" : DialogHeader;
+  const DetailWrapper = isMobile ? BottomSheet : DesktopDetailPassthrough;
+  const closeDetail = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      setSelectedDataId(null);
+      setSelectedData(null);
+    }
+  };
 
   return (
-    <div aria-busy={pageLoading} data-testid="history-content">
+    <div className="d2-history" aria-busy={pageLoading} data-testid="history-content">
       {!isMobile && <h1 className="sr-only">{t("history.h1")}</h1>}
       <StaggerContainer className="space-y-4">
         {isMobile && <ConfirmDeleteDialog
@@ -568,27 +584,23 @@ const App = ({
           } }]}
         />}
         <Dialog
-          open={isModalOpen}
-          onOpenChange={(open) => {
-            setIsModalOpen(open);
-            if (!open) {
-              setSelectedDataId(null);
-              setSelectedData(null);
-            }
-          }}
+          open={!isMobile && isModalOpen}
+          onOpenChange={closeDetail}
         >
-          <DialogContent className="history-detail-dialog min-w-[80%] touch:min-w-0 touch:w-[calc(100vw-1rem)] touch:max-w-[1200px] touch:max-h-[calc(100dvh-1rem)]">
-            <DialogHeader>
-              <DialogTitle>{t("history.detailTitle")}</DialogTitle>
-              <DialogDescription className="sr-only">
+          <DetailWrapper open={isModalOpen} onOpenChange={closeDetail}
+            title={t("history.snapshotDetails")} className="history-detail-sheet" detents={["large"]} initialDetent="large">
+          <DetailSurface className="history-detail-dialog min-w-[80%] touch:min-w-0 touch:w-[calc(100vw-1rem)] touch:max-w-[1200px] touch:max-h-[calc(100dvh-1rem)]">
+            <DetailHeader className="history-detail-meta">
+              {!isMobile && <DialogTitle>{t("history.detailTitle")}</DialogTitle>}
+              {!isMobile && <DialogDescription className="sr-only">
                 {t("history.detailDescription")}
-              </DialogDescription>
+              </DialogDescription>}
               {selectedData ? (
                 <p className="text-xs text-muted-foreground">
-                  {timeToDateStr(
-                    new Date(selectedData.createdAt).getTime(),
-                    true,
-                  )}
+                  {isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                    { year: "numeric", month: "short", day: "numeric" }).format(new Date(selectedData.createdAt)) : timeToDateStr(
+                      new Date(selectedData.createdAt).getTime(), true,
+                    )}
                   {" · "}
                   {currency.symbol}
                   {prettyNumberToLocaleString(
@@ -596,21 +608,11 @@ const App = ({
                   )}
                 </p>
               ) : null}
-              {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
-                <button type="button" className="history-mobile-delete self-start"
-                  disabled={deleting}
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setDeleteCandidate(selectedDataId);
-                  }}>
-                  {t("history.deleteSnapshot")}
-                </button>
-              )}
-            </DialogHeader>
+              </DetailHeader>
             {detailLoading ? <p role="status" className="text-sm text-muted-foreground">{t("common.loading")}</p> : null}
             {detailError ? <p role="alert" className="text-sm text-destructive">{t("history.detailLoadFailed")}</p> : null}
-            <div className="grid gap-2 md:grid-cols-3">
-              <div className="rounded-lg border border-border/40 bg-background/30 p-3">
+            <div className="history-detail-tools grid gap-2 md:grid-cols-3">
+              <div className="history-detail-assets rounded-lg border border-border/40 bg-background/30 p-3">
                 <p className="text-sm font-medium text-muted-foreground">
                   {t("history.assets")}
                 </p>
@@ -619,7 +621,7 @@ const App = ({
                   {t("history.assetsNote")}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/40 bg-background/30 p-3">
+              {!isMobile && <div className="rounded-lg border border-border/40 bg-background/30 p-3">
                 <p className="text-sm font-medium text-muted-foreground">
                   {t("history.visibleRows")}
                 </p>
@@ -630,7 +632,7 @@ const App = ({
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("history.incrementBy").replace("{n}", String(DETAIL_PAGE_SIZE))}
                 </p>
-              </div>
+              </div>}
               <div className="rounded-lg border border-border/40 bg-background/30 p-3">
                 <p className="text-sm font-medium text-muted-foreground">
                   {t("history.filter")}
@@ -647,27 +649,54 @@ const App = ({
               </div>
             </div>
             {isMobile && <div className="history-mobile-detail-list">
-              {visibleRankData.map((item) => <div key={item.assetId} className="history-mobile-asset">
+              {visibleRankData.map((item) => <SwipeableRow key={item.assetId} className="history-mobile-asset" allowImmediateAction
+                actions={[{ label: t("common.delete"), destructive: true, disabled: deletingDetail,
+                  onClick: () => setDeleteAssetCandidate({ id: item.assetId, symbol: item.symbol }) }]}>
+                <div className="history-mobile-asset-content">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <span className="min-w-0 font-medium break-words">#{item.rank} {item.symbol}</span>
-                  <span className="font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
+                  <span className="flex min-w-0 items-center gap-2 font-medium">
+                    <span className="history-mobile-rank">{item.rank}</span>
+                    <img className="h-7 w-7 shrink-0 rounded-full" src={resolveAssetLogoSrc(item, logoMap[item.symbol])} alt="" />
+                    <span className="min-w-0 break-words">{item.symbol}</span>
+                  </span>
+                  <span className="history-asset-value font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
                 </div>
-                <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
-                  <span>{t("common.amountLabel")}: {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
-                  <span>{t("common.priceLabel")}: {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
+                <div className="history-mobile-asset-meta mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                  <span>{t("common.amountLabel")} {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
+                  <span>{t("common.priceLabel")} {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
                 </div>
-                <ConfirmDeleteDialog
-                  trigger={<button type="button" className="history-mobile-delete" disabled={deletingDetail}>{t("common.delete")}</button>}
-                  title={t("history.deleteDialogTitle")}
-                  description={t("history.deleteDialogDesc")}
-                  cancelLabel={t("common.cancel")}
-                  actions={[
-                    { label: t("history.deleteBlacklist"), onClick: () => onHistoricalDataDetailDeleteAndBlacklistClick(item.assetId, item.symbol) },
-                    { label: t("common.delete"), onClick: () => onHistoricalDataDetailDeleteClick(item.assetId) },
-                  ]}
-                />
-              </div>)}
+                </div>
+              </SwipeableRow>)}
             </div>}
+            {isMobile && selectedDataId && latestRow?.id === selectedDataId && (
+              <button type="button" className="history-mobile-delete"
+                disabled={deleting}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setDeleteCandidate(selectedDataId);
+                }}>
+                {t("history.deleteSnapshot")}
+              </button>
+            )}
+            {isMobile && <ConfirmDeleteDialog
+              open={deleteAssetCandidate !== null}
+              onOpenChange={(open) => { if (!open) setDeleteAssetCandidate(null); }}
+              title={t("history.deleteDialogTitle")}
+              description={t("history.deleteDialogDesc")}
+              cancelLabel={t("common.cancel")}
+              contentClassName="history-asset-confirm"
+              overlayClassName="history-asset-confirm-overlay"
+              actions={[
+                { label: t("history.deleteBlacklist"), onClick: () => {
+                  if (deleteAssetCandidate) onHistoricalDataDetailDeleteAndBlacklistClick(deleteAssetCandidate.id, deleteAssetCandidate.symbol);
+                  setDeleteAssetCandidate(null);
+                } },
+                { label: t("common.delete"), onClick: () => {
+                  if (deleteAssetCandidate) onHistoricalDataDetailDeleteClick(deleteAssetCandidate.id);
+                  setDeleteAssetCandidate(null);
+                } },
+              ]}
+            />}
             {!isMobile && <div
               ref={detailRegionRef}
               className="history-desktop-detail-table w-full max-h-[70vh] overflow-auto"
@@ -810,10 +839,11 @@ const App = ({
                       )))}
               </Button>
             ) : null}
-          </DialogContent>
+          </DetailSurface>
+          </DetailWrapper>
         </Dialog>
 
-        <FadeUp>
+        {!isMobile && <FadeUp>
           <div className="grid gap-3 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
@@ -870,10 +900,10 @@ const App = ({
               </CardContent>
             </Card>
           </div>
-        </FadeUp>
+        </FadeUp>}
 
         <FadeUp>
-          <Card>
+          <Card className={isMobile ? "history-records-card" : undefined}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {t("history.recordsCardTitle")}
@@ -883,7 +913,7 @@ const App = ({
               </p>
             </CardHeader>
             <CardContent className="space-y-3 touch:min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+              <div className="history-page-controls flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
                 <div>
                   {pageLoading
                     ? t("common.loading")
@@ -901,7 +931,7 @@ const App = ({
                       setDataPage(0);
                     }}
                   >
-                    <SelectTrigger aria-label={`${t("history.rowsLabel")} ${pageSize}`} className="h-8 w-[84px] text-sm">
+                    <SelectTrigger aria-label={`${t("history.rowsLabel")} ${pageSize}`} className="history-rows-trigger h-8 w-[84px] text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -947,7 +977,7 @@ const App = ({
                       value={String(dataPage)}
                       onValueChange={(v) => setDataPage(Number(v))}
                     >
-                      <SelectTrigger aria-label={`${t("history.selectPage")} ${dataPage + 1} / ${maxDataPage + 1}`} className="h-8 w-[120px] text-sm">
+                      <SelectTrigger aria-label={`${t("history.selectPage")} ${dataPage + 1} / ${maxDataPage + 1}`} className="history-page-trigger h-8 w-[120px] text-sm">
                         <SelectValue placeholder={t("history.selectPage")} />
                       </SelectTrigger>
                       <SelectContent className="overflow-y-auto max-h-[20rem]">
@@ -980,34 +1010,48 @@ const App = ({
                 </div>
               </div>
 
-              <div className="relative">
+              <div className="history-record-region relative">
                 {isMobile && <div className="history-mobile-list">
-                  {data.map((row, idx) => {
-                    const isLatest = dataPage === 0 && idx === 0;
+                  {groupHistoryMonths(data).map((group) => <section key={group.key} className="history-month-section">
+                    <h2 className="history-month-heading">
+                      <span>{new Intl.DateTimeFormat(
+                        locale === "zh" ? "zh-CN" : "en-US",
+                        { month: "long", year: "numeric" },
+                      ).format(new Date(`${group.key}-01T12:00:00`))}</span>
+                      <strong className="ios-money">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(group.rows[0].total))}</strong>
+                    </h2>
+                    <div className="history-month-rows">
+                  {group.rows.map((row) => {
+                    const isLatest = dataPage === 0 && data[0]?.id === row.id;
                     return <SwipeableRow key={row.id} className="history-mobile-snapshot"
                       actions={isLatest ? [{ label: t("common.delete"), destructive: true, disabled: deleting,
                         onClick: () => setDeleteCandidate(row.id) }] : []}>
                       <button type="button" data-testid="history-mobile-row"
                         className="history-mobile-snapshot-button" onClick={() => onRowClick(row.id)}>
                         <span className="sr-only">{t("history.viewSnapshot").replace("{date}", timeToDateStr(new Date(row.createdAt).getTime(), true))}</span>
-                        <span className="flex min-w-0 justify-between gap-3">
-                          <span className="min-w-0 break-words text-left font-medium">{timeToDateStr(new Date(row.createdAt).getTime(), true)}</span>
-                          <span className="shrink-0 font-mono font-semibold">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
+                        <span className="history-mobile-snapshot-primary">
+                          <span className="history-mobile-snapshot-date">{new Intl.DateTimeFormat(
+                            locale === "zh" ? "zh-CN" : "en-US",
+                            { month: "short", day: "numeric" },
+                          ).format(new Date(row.createdAt))}</span>
+                          <span className="history-mobile-snapshot-total ios-money">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(row.total))}</span>
                         </span>
-                        <span className="flex justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="history-mobile-snapshot-secondary">
                           <span className="flex items-center gap-2">
-                            <ImageStack imageSrcs={row.topAssets.map((asset) =>
+                            <ImageStack imageSrcs={row.topAssets.slice(0, 3).map((asset) =>
                               resolveAssetLogoSrc(asset, logoMap[asset.symbol]))}
                               imageWidth={18} imageHeight={18} />
                             {t("history.assetCount").replace("{n}", String(row.assetCount))}
                           </span>
-                          <span style={{ color: positiveNegativeColor(row.change ?? 0, quoteColor) }}>
+                          <span className="history-mobile-snapshot-delta ios-money" data-tone={row.change === null ? "neutral" : positiveNegativeColor(row.change, quoteColor) === "green" ? "gain" : "loss"}>
                             {row.change === null ? "—" : `${row.change > 0 ? "+" : row.change < 0 ? "-" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.change)))}`}
                           </span>
                         </span>
                       </button>
                     </SwipeableRow>;
                   })}
+                    </div>
+                  </section>)}
                 </div>}
                 {!isMobile && <ScrollArea className="history-desktop-table w-full touch:min-w-0 touch:max-w-full rounded-lg border border-border/40 bg-background/20">
                   <Table className="touch:min-w-[600px]">

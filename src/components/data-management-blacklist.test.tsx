@@ -132,10 +132,10 @@ describe("Data Management", () => {
     mocks.getAutoBackupDirectory.mockResolvedValue("/Documents/Track3");
     try {
       render(<DataManagement />);
-      await waitFor(() => expect(screen.getByText(/Last Backup At:/)).toBeVisible());
-      expect(screen.getByText(/Last Import At:/)).toBeVisible();
-      expect(screen.getByText(/Last Backup At:/).parentElement).toHaveTextContent("2024-4-16");
-      expect(screen.getByText(/Last Import At:/).parentElement).toHaveTextContent("2024-4-15");
+      await waitFor(() => expect(screen.getByText("Last backup")).toBeVisible());
+      expect(screen.getByText("Last import")).toBeVisible();
+      expect(screen.getByText("Last backup").parentElement).toHaveTextContent("2024-4-16");
+      expect(screen.getByText("Last import").parentElement).toHaveTextContent("2024-4-15");
     } finally {
       vi.mocked(isIOS).mockReturnValue(false);
       window.location.hash = "";
@@ -147,12 +147,29 @@ describe("Data Management", () => {
     vi.mocked(appLockEnabled).mockResolvedValue(false);
     window.location.hash = "#/settings/data?section=security";
     render(<DataManagement />);
-    const lock = await screen.findByRole("button", { name: "Enable app lock" });
+    const lock = await screen.findByRole("switch", { name: "App lock" });
     fireEvent.click(lock);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Disable app lock" })).toBeInTheDocument());
+    await waitFor(() => expect(lock).toHaveAttribute("aria-checked", "true"));
     expect(setAppLockEnabled).toHaveBeenCalledWith(true);
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
+  });
+
+  it("uses a switch to include configuration in an iPhone export", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/data?section=backup";
+    try {
+      render(<DataManagement />);
+      const include = screen.getByRole("switch", { name: "Include configuration" });
+      expect(include).toHaveAttribute("aria-checked", "false");
+      fireEvent.click(include);
+      expect(include).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      await waitFor(() => expect(mocks.exportHistoricalData).toHaveBeenCalledWith(true));
+    } finally {
+      vi.mocked(isIOS).mockReturnValue(false);
+      window.location.hash = "";
+    }
   });
 
   it("loads blacklisted tokens and removes one from the list", async () => {
@@ -266,7 +283,7 @@ describe("Data Management", () => {
       { target: { value: confirmation } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -291,7 +308,7 @@ describe("Data Management", () => {
         { target: { value: key } },
       );
       fireEvent.click(
-        screen.getByRole("button", { name: "Update Encryption Key" }),
+        screen.getByRole("button", { name: "Update encryption key" }),
       );
 
       await waitFor(() => {
@@ -354,7 +371,7 @@ describe("Data Management", () => {
       target: { value: "new-key-123" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -395,7 +412,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     const lateWriter = vi.fn();
@@ -435,7 +452,7 @@ describe("Data Management", () => {
       target: { value: "new-key-123" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -464,7 +481,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     await waitFor(() => {
@@ -495,7 +512,7 @@ describe("Data Management", () => {
       { target: { value: "new-key-123" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Update Encryption Key" }),
+      screen.getByRole("button", { name: "Update encryption key" }),
     );
 
     const savingButton = await screen.findByRole("button", {
@@ -508,7 +525,7 @@ describe("Data Management", () => {
     resolveRotation?.();
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "Update Encryption Key" }),
+        screen.getByRole("button", { name: "Update encryption key" }),
       ).toBeEnabled();
     });
   });

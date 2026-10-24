@@ -116,9 +116,38 @@ describe("Profit loading", () => {
         dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
         quoteColor="green-up-red-down"
       /></MemoryRouter>);
-      await waitFor(() => expect(container.querySelectorAll(".profit-mobile-list .mobile-list-row")).toHaveLength(4));
+      await waitFor(() => expect(container.querySelectorAll(".profit-mobile-list .mobile-list-row")).toHaveLength(2));
       expect(container.querySelector("table")).toBeNull();
       expect(container.querySelector(".profit-mobile-list .mobile-list-row")?.getAttribute("href")).toMatch(/^#\/coins\/BTC/);
+      expect(container.querySelectorAll(".profit-mobile-list")).toHaveLength(1);
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
+  it("changes the phone profit query when a hero range is selected", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(),
+    });
+    try {
+      render(<MemoryRouter><Profit
+        currency={usdCurrency}
+        dateRange={{ start: new Date(2024, 0, 1), end: new Date(2024, 3, 30, 23, 59, 59) }}
+        showRangeControl
+        quoteColor="green-up-red-down"
+      /></MemoryRouter>);
+      expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(screen.getByRole("radio", { name: "7D" }));
+      await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
+        start: new Date(2024, 3, 24), end: new Date(2024, 3, 30, 23, 59, 59),
+      }));
+      fireEvent.click(screen.getByRole("radio", { name: "All" }));
+      await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
+        start: new Date(2024, 0, 1), end: new Date(2024, 3, 30, 23, 59, 59),
+      }));
     } finally {
       window.matchMedia = oldMatchMedia;
     }

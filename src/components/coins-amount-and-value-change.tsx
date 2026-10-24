@@ -18,7 +18,7 @@ import {
 import { ChartResizeContext } from "@/App";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import {
-  chartColors,
+  getChartPalette,
   createGradientFill,
   glassScaleOptions,
   glassTooltip,
@@ -28,6 +28,8 @@ import { formatAssetLabel } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
+import { useTheme } from "@/components/common/theme";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "Trend of Coin";
 
@@ -42,7 +44,10 @@ const App = ({
   symbol: string;
   assetType?: AssetType;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
+  const chartColors = getChartPalette(isMobile, resolvedTheme);
   const wsize = useWindowSize();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
@@ -153,6 +158,7 @@ const App = ({
         },
         ticks: {
           ...glassScaleOptions.ticks,
+          ...(isMobile ? { minRotation: 0, maxRotation: 0, maxTicksLimit: 4, font: { size: 11 } } : {}),
         },
         grid: {
           display: false,
@@ -166,6 +172,7 @@ const App = ({
         position: "left",
         ticks: {
           ...glassScaleOptions.ticks,
+          ...(isMobile ? { maxTicksLimit: 4, font: { size: 11 } } : {}),
           precision: 4,
           callback: (value: any) => {
             return simplifyNumber(value);
@@ -176,6 +183,7 @@ const App = ({
         },
       },
       y2: {
+        display: !isMobile,
         title: {
           display: false,
         },
@@ -203,7 +211,10 @@ const App = ({
       };
     }
     return {
-      labels: current.timestamps.map((x) => timeToDateStr(x)),
+      labels: current.timestamps.map((x) => isMobile
+        ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { month: "short", day: "numeric" }).format(new Date(x))
+        : timeToDateStr(x)),
       datasets: [
         {
           label: t("common.valueLabel"),
@@ -216,7 +227,7 @@ const App = ({
           fill: true,
           yAxisID: "y1",
         },
-        {
+        ...(!isMobile ? [{
           label: t("common.amountLabel"),
           data: current.amounts,
           borderColor: chartColors[5].main,
@@ -226,7 +237,7 @@ const App = ({
           pointRadius: 0,
           fill: true,
           yAxisID: "y2",
-        },
+        }] : []),
       ],
     };
   }
@@ -244,7 +255,7 @@ const App = ({
           <div
             className="flex items-center justify-center"
             style={{
-              height: Math.max((wsize.height || 100) / 2, 350),
+              height: isMobile ? 220 : Math.max((wsize.height || 100) / 2, 350),
             }}
           >
             {chartHasData ? (

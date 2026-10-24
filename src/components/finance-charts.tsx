@@ -11,27 +11,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import { useTheme } from "./common/theme";
 import { useEffect, useRef } from "react";
+import { useIsMobile } from "./mobile";
+import { phoneChartFontFamily } from "@/utils/chart-theme";
 
-const palette = ["#6366f1", "#06b6d4", "#f59e0b", "#8b5cf6", "#14b8a6", "#f97316", "#ec4899", "#94a3b8"];
-const tone = (positive: boolean, quoteColor: QuoteColor) =>
-  (positive === (quoteColor === "green-up-red-down")) ? "#10b981" : "#f43f5e";
+const chartPalette = () => document.documentElement.classList.contains("dark")
+  ? ["#6d97fa", "#85ade0", "#79b6ac", "#b9a3cb", "#bda887", "#929bb1"]
+  : ["#315cbe", "#5f8cce", "#79aaa5", "#b39ac4", "#c4aa89", "#8e94a8"];
+const tone = (positive: boolean, quoteColor: QuoteColor, mobile: boolean) => {
+  const gain = positive === (quoteColor === "green-up-red-down");
+  if (!mobile) return gain
+    ? document.documentElement.classList.contains("dark") ? "#30d158" : "#248a3d"
+    : document.documentElement.classList.contains("dark") ? "#ff453a" : "#d70015";
+  return getComputedStyle(document.documentElement).getPropertyValue(gain ? "--ios-gain" : "--ios-loss").trim();
+};
 function useChartOptions() {
-  const { theme } = useTheme();
-  const dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const text = dark ? "#cbd5e1" : "#475569";
+  const { resolvedTheme } = useTheme();
+  const isMobile = useIsMobile();
+  const dark = resolvedTheme === "dark";
+  const text = dark ? "#aeaeb2" : "#636366";
+  const tickFont = { size: 12, family: isMobile ? phoneChartFontFamily : undefined };
   return {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: "index" as const, intersect: false },
     animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false as const : undefined,
     plugins: { legend: { display: false, labels: { color: text } }, datalabels: { display: false } },
     scales: {
-      x: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
-      y: { ticks: { color: text }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
+      x: { ticks: { color: text, font: tickFont, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012", display: true } },
+      y: { ticks: { color: text, font: tickFont, maxTicksLimit: 4 }, grid: { color: dark ? "#ffffff1a" : "#00000012" } },
     },
   };
 }
 
-function ChartPanel({ title, children, empty }: { title: string; children?: React.ReactNode; empty?: boolean }) {
+function ChartPanel({ title, children, empty, height }: { title: string; children?: React.ReactNode; empty?: boolean; height?: number }) {
   const { t } = useTranslation();
   const press = useRef<number>();
   const inspecting = useRef(false);
@@ -40,7 +51,7 @@ function ChartPanel({ title, children, empty }: { title: string; children?: Reac
     <CardHeader className="px-4 pb-1 pt-3"><CardTitle className="text-sm font-medium">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-4">
       {empty ? <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t("finance.noChartData")}</p>
-        : <div className="relative h-44 mobile-chart-touch"
+        : <div className="relative h-44 mobile-chart-touch" style={height ? { height } : undefined}
           onTouchStartCapture={() => {
             window.clearTimeout(press.current);
             inspecting.current = false;
@@ -78,10 +89,12 @@ export function FinanceChartSkeleton() {
 
 export function CostCharts({ report, quoteColor }: { report: CostBasisReport; quoteColor: QuoteColor }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = costBasisVisuals(report, 8, t("finance.other"));
   return <>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="cost-metric-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {[
         { key: "cost.gainLoss", value: report.totals.gainLoss, rate: visual.rates.realized, rateKey: "finance.realizedReturn" },
         { key: "cost.shortTerm", value: report.totals.shortTerm, rate: visual.rates.shortTerm, rateKey: "finance.realizedShare" },
@@ -89,9 +102,11 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
         { key: "finance.unrealizedPnl", value: visual.unrealized, rate: visual.rates.unrealized, rateKey: "finance.openReturn" },
       ].map(({ key, value, rate, rateKey }) => <Card key={key} className="min-w-0">
         <CardContent className="space-y-1 p-3">
-          <p className="text-xs text-muted-foreground">{t(key)}</p>
-          <p className="truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor) }}>
-            {value > 0 ? "+" : ""}{value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+          <p className="cost-metric-label text-xs text-muted-foreground">{t(key)}</p>
+          <p className="cost-metric-value truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor, isMobile) }}>
+            {isMobile
+              ? `${value > 0 ? "+" : value < 0 ? "−" : ""}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : `${value > 0 ? "+" : ""}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD`}
           </p>
           <p className="text-[11px] text-muted-foreground tabular-nums">{rate === null ? "—" : `${rate > 0 ? "+" : ""}${rate.toFixed(1)}%`} {t(rateKey)}</p>
         </CardContent>
@@ -102,15 +117,15 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
         <Bar aria-label={visual.gains.map((row) => `${row.label}: ${row.value.toFixed(2)} USD`).join("; ")}
           role="img" data={{ labels: visual.gains.map((row) => row.label), datasets: [{
             data: visual.gains.map((row) => row.value),
-            backgroundColor: visual.gains.map((row) => tone(row.value >= 0, quoteColor)),
+            backgroundColor: visual.gains.map((row) => tone(row.value >= 0, quoteColor, isMobile)),
             borderRadius: 3,
           }] }} options={{ ...chartOptions, indexAxis: "y" as const }} />
       </ChartPanel>
       <ChartPanel title={t("finance.cumulativeGains")} empty={!visual.cumulative.length}>
         <Line aria-label={visual.cumulative.map((row) => `${row.date}: ${row.value.toFixed(2)} USD`).join("; ")}
           role="img" data={{ labels: visual.cumulative.map((row) => row.date), datasets: [{
-            data: visual.cumulative.map((row) => row.value), borderColor: tone(true, quoteColor),
-            backgroundColor: `${tone(true, quoteColor)}20`, fill: true, tension: 0.2, pointRadius: 2,
+            data: visual.cumulative.map((row) => row.value), borderColor: tone(true, quoteColor, isMobile),
+            backgroundColor: `${tone(true, quoteColor, isMobile)}20`, fill: true, tension: 0.2, pointRadius: 2,
           }] }} options={chartOptions} plugins={[{
             id: "tax-year-markers",
             afterDraw(chart: ChartJS<"line">) {
@@ -161,19 +176,34 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
 export function GoalChart({ rules, snapshots, portfolioValues = [] }: {
   rules: AlertRule[]; snapshots: AlertSnapshot[]; portfolioValues?: Array<{ date: string; value: number }>;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = goalVisuals(rules, snapshots);
   const values = portfolioValues.length ? portfolioValues : visual.values;
+  const dateFormatter = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const valueFormatter = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en-US", { notation: "compact", maximumFractionDigits: 0 });
   return <ChartPanel title={t("finance.portfolioAndGoals")} empty={!values.length}>
     <Line role="img" aria-label={values.map((row) => `${row.date}: ${row.value.toFixed(2)}`).join("; ")}
-      data={{ labels: values.map((row) => row.date), datasets: [
-        { label: t("finance.portfolioValue"), data: values.map((row) => row.value), borderColor: palette[0], backgroundColor: "#6366f120", fill: true, tension: 0.2, pointRadius: 1 },
+      data={{ labels: values.map((row) => {
+        const date = new Date(`${row.date}T00:00:00Z`);
+        return Number.isNaN(date.getTime()) ? row.date : dateFormatter.format(date);
+      }), datasets: [
+        { label: t("finance.portfolioValue"), data: values.map((row) => row.value), borderColor: palette[0], backgroundColor: `${palette[0]}18`, fill: true, tension: 0.2, pointRadius: 1 },
         ...visual.goals.filter((goal) => goal.kind === "total_value_target").map((goal) => ({
           label: t("finance.goalThreshold"), data: values.map(() => goal.target),
           borderColor: palette[2], borderDash: [5, 4], pointRadius: 0,
         })),
-      ] }} options={chartOptions} />
+      ] }} options={{ ...chartOptions, scales: {
+        ...chartOptions.scales, x: { ...chartOptions.scales.x, grid: { ...chartOptions.scales.x.grid, display: false } },
+        y: { ...chartOptions.scales.y, ticks: {
+          ...chartOptions.scales.y.ticks, callback: (value: string | number) => {
+            const label = valueFormatter.format(Number(value));
+            return isMobile ? label.toLowerCase() : label;
+          },
+        } },
+      } }} />
   </ChartPanel>;
 }
 
@@ -181,22 +211,28 @@ export function RebalanceCharts({ result, quoteColor, tolerancePercent }: {
   result: RebalanceResult; quoteColor: QuoteColor; tolerancePercent: number;
 }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const palette = chartPalette();
   const chartOptions = useChartOptions();
   const visual = rebalanceVisuals(result);
+  const rowHeight = Math.max(176, visual.labels.length * 32 + 48);
+  const labeledOptions = { ...chartOptions, indexAxis: "y" as const, scales: {
+    ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: { ...chartOptions.scales.y.ticks, autoSkip: false } },
+  } };
   return <div className="grid gap-3 lg:grid-cols-2">
-    <ChartPanel title={t("finance.currentVsTarget")} empty={!visual.labels.length}>
+    <ChartPanel title={t("finance.currentVsTarget")} empty={!visual.labels.length} height={rowHeight}>
       <Bar role="img" aria-label={visual.labels.map((label, index) => `${label}: ${visual.current[index].toFixed(1)}% ${t("rebalance.current")}, ${visual.target[index].toFixed(1)}% ${t("rebalance.target")}`).join("; ")}
         data={{ labels: visual.labels, datasets: [
           { label: t("rebalance.current"), data: visual.current, backgroundColor: palette[0] },
-          { label: t("rebalance.target"), data: visual.target, backgroundColor: palette[1] },
-        ] }} options={{ ...chartOptions, indexAxis: "y" as const, plugins: { ...chartOptions.plugins, legend: { display: true } } }} />
+          { label: t("rebalance.target"), data: visual.target, backgroundColor: palette[2] },
+        ] }} options={{ ...labeledOptions, plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: chartOptions.scales.y.ticks.color, font: { size: 12 } } } } }} />
     </ChartPanel>
-    <ChartPanel title={t("rebalance.deviations")} empty={!visual.labels.length}>
+    <ChartPanel title={t("rebalance.deviations")} empty={!visual.labels.length} height={rowHeight}>
       <Bar role="img" aria-label={`${visual.labels.map((label, index) => `${label}: ${visual.deviations[index].toFixed(1)} ${t("rebalance.percentagePoints")}`).join("; ")}; ${t("finance.toleranceBand")} ±${tolerancePercent}%`}
         data={{ labels: visual.labels, datasets: [{
           data: visual.deviations,
-          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor)),
-        }] }} options={{ ...chartOptions, indexAxis: "y" as const }}
+          backgroundColor: visual.deviations.map((value) => tone(value >= 0, quoteColor, isMobile)),
+        }] }} options={labeledOptions}
         plugins={[{
           id: "tolerance-band",
           beforeDatasetsDraw(chart: ChartJS<"bar">) {

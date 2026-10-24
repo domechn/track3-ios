@@ -27,7 +27,7 @@ export function Toaster() {
           </Toast>
         )
       })}
-      <ToastViewport />
+      <ToastViewport className="ios-d3-toast-viewport" />
     </ToastProvider>
   )
 }

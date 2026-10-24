@@ -1683,6 +1683,7 @@ describe("partial source snapshots", () => {
     vi.mocked(fetchPortfolios).mockResolvedValue({
       coins: [partialCoin],
       sourceResults: [{ sourceId: "cex:0", label: "Gate", walletIdentities: ["wallet-a"], status: "partial",
+        startedAt: "2026-07-13T01:02:00.000Z", finishedAt: "2026-07-13T01:02:01.000Z",
         partial: { category: "network", endpoints: ["Dual investment"] }, coins: [partialCoin] }],
       failedSources: [],
     } as never);
@@ -1691,7 +1692,8 @@ describe("partial source snapshots", () => {
     expect(result.persisted).toBe(true);
     expect(result.usedLastKnownData).toBe(false);
     expect(result.sourceStatuses).toEqual([expect.objectContaining({
-      status: "partial", partial: { category: "network", endpoints: ["Dual investment"], lowerThanPrevious: true },
+      status: "partial", startedAt: "2026-07-13T01:02:00.000Z", finishedAt: "2026-07-13T01:02:01.000Z",
+      partial: { category: "network", endpoints: ["Dual investment"], lowerThanPrevious: true },
     })]);
     expect(payload.assets).toEqual(expect.arrayContaining([
       expect.objectContaining({ symbol: "BTC", amount: 2, value: 200 }),

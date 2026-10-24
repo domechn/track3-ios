@@ -33,13 +33,23 @@ iPhone control.
 
 ## Screenshots
 
-The Playwright iPhone suite saves viewport images in `test-results/mobile/`,
-including `ios-se-overview.png`, `ios-14-history.png`,
-`ios-pro-max-summary.png`, `ios-pro-max-profit.png`, `ios-se-first-launch.png`,
-`ios-14-added-sources.png`, `ios-14-created-goal.png`, and
-`ios-pro-max-assistant.png`. These are generated test
-artifacts, so run the browser suite to create them locally. The macOS CI
-simulator job saves `artifacts/iphone-initial.png` and
+These 390 pt browser captures render at 2× resolution and use the seven-holding demo portfolio. The Assistant capture shows a completed portfolio review with mixed gains and losses.
+The [full review set](docs/ios/DESIGN.md#review-captures) covers phone routes
+and sheets in light and dark at 320, 375, 390, and 430 px, plus loading,
+empty, and error states for data routes. CI uploads it as
+`ios-browser-screenshots`.
+
+| Screen | Light | Dark |
+| --- | --- | --- |
+| Overview | <img src="docs/ios/screens/overview-light.png" width="180" alt="Overview in light mode"> | <img src="docs/ios/screens/overview-dark.png" width="180" alt="Overview in dark mode"> |
+| History | <img src="docs/ios/screens/history-light.png" width="180" alt="History in light mode"> | <img src="docs/ios/screens/history-dark.png" width="180" alt="History in dark mode"> |
+| Analytics | <img src="docs/ios/screens/analytics-light.png" width="180" alt="Analytics in light mode"> | <img src="docs/ios/screens/analytics-dark.png" width="180" alt="Analytics in dark mode"> |
+| Wallets | <img src="docs/ios/screens/wallets-light.png" width="180" alt="Wallets in light mode"> | <img src="docs/ios/screens/wallets-dark.png" width="180" alt="Wallets in dark mode"> |
+| Data sources | <img src="docs/ios/screens/sources-light.png" width="180" alt="Data sources in light mode"> | <img src="docs/ios/screens/sources-dark.png" width="180" alt="Data sources in dark mode"> |
+| Goals | <img src="docs/ios/screens/goals-light.png" width="180" alt="Goals in light mode"> | <img src="docs/ios/screens/goals-dark.png" width="180" alt="Goals in dark mode"> |
+| Assistant | <img src="docs/ios/screens/assistant-light.png" width="180" alt="Assistant in light mode"> | <img src="docs/ios/screens/assistant-dark.png" width="180" alt="Assistant in dark mode"> |
+
+The macOS CI simulator job also saves `artifacts/iphone-initial.png` and
 `artifacts/iphone-launch.png` and attempts to upload them with its run.
 
 ## Build and run
@@ -54,7 +64,7 @@ corepack yarn install --immutable
 corepack yarn tsc --noEmit
 corepack yarn vitest run
 corepack yarn playwright install chromium
-corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts
+corepack yarn playwright test tests/e2e/mobile.spec.ts tests/e2e/ios-settings.spec.ts tests/e2e/ios-parity.spec.ts tests/e2e/ios-d3-visual.spec.ts
 corepack yarn build
 cd src-tauri && cargo test --locked -p track3-pure-tests --lib
 ```

@@ -1,7 +1,164 @@
 # iOS port progress
 
-The earlier S1–S4 sections record their handoff results. The current state
-for this worktree is S5 below.
+## D4 reviewer follow-up after b9a2fc3
+
+- The 320 pt treemap keeps labels intact inside tiles. Wallet Value Changes uses a short phone search prompt and single-line Value, %, and Volatility segments. The three Wallets share metrics align in one row, and allocation percentages use the primary label colour. English and Chinese catalogs have matching keys.
+- Overview Percent and BTC base now render the shared 51×31 pt green Radix switch with a 44 pt tall target. Goals and Overview canvas ticks use the same phone system font, and Goals omits vertical gridlines. Pushed compact titles and the goal editor actions sit on centered or 16 pt aligned headers. Monthly P&L has clearer heading line spacing and an All months return action.
+- Portfolio query errors stay on the seven data routes; Settings, Backup, More, Goals, and Rebalance remain accessible. The Source status sheet describes failed or stale sources by count and lists their names once below. The rich Assistant screenshot fixture answers a portfolio question with holdings, a gain, and a loss, without a lingering Thinking label.
+- The b9a2fc3 baseline passed CI run 40113141596. This follow-up has no CI run yet because the driver handles commits and pushes. Local app and browser TypeScript checks pass, Vitest passes 1,883 tests in 228 files, the full iPhone browser suite passes 142/142, and the desktop browser suite passes 93/93. The first full iPhone pass had one outdated assertion for the former Overview buttons; it was updated and the full suite passed on rerun. The browser run regenerated 591 PNGs, with primary, feature, loading, empty, and data-error captures checked across the documented light and dark matrix. The Assistant fixture was then corrected to match the seeded AAPL gain, and its eight light and dark phone captures passed again. After matching Overview canvas tick fonts to Goals, all four primary-route capture tests passed again at 320, 375, 390, and 430 pt. The 14 curated 2× PNGs were regenerated and losslessly compressed to about 1.75 MB. I inspected the 320 pt Wallets and P&L, goal editor, Goal chart, dark Source status, Overview, and Assistant captures. A physical iPhone was not tested.
+
+## D4 visual QA on b9a2fc3
+
+- The rich dark Analytics fixture now checks the actual `% from ATH` text against its card background at the WCAG AA 4.5:1 threshold. The 700 gain and loss classes use the semantic phone colours. Desktop Source status rows have their horizontal flex layout again, with the phone grid kept inside the phone media query.
+- Large titles use `ios-large-title` and the same 16 pt page inset on Settings, Data sources, Goals, Rebalance, and the data routes. Card headings use quiet 13 pt secondary text, including Goals, Rebalance, setup prompts, and Assistant insights. The Rules heading stays outside its grouped surface when empty and populated. At 320 pt, performance uses two centered metric stacks and a full-width centered stack with no text overflow; at 390 pt, all three columns align their labels and values within 1 pt.
+- Cost basis gain and loss charts use the shared semantic colours. Goals ticks use lowercase compact units on phone; negative Overview chart ticks use the true minus sign. Overview and Comparison ranges read 7D through All in English, and Profit metrics uses sentence case. The Assistant usage line has quieter copy and scrollable chips keep an end inset. Custom BTC source rows use the existing BTC logo. Illustrated load errors and empty states share the grouped background.
+- The D3 screenshot test now captures at 2× device resolution like the primary route test. The new D4 browser regression suite is included in the iPhone CI screenshot job. Local checks passed: app and browser-test TypeScript, the production frontend build, Vitest (1,879 tests in 227 files), desktop browser and accessibility (93/93), and the iPhone browser suite (138/138). The phone suite regenerated 595 PNGs; an inventory check found the primary routes, D3 features, and data loading/empty/error states in both themes at their expected scales. I opened the 320 pt performance, dark Analytics, dark Data sources, Goals, Assistant, and empty/error captures. The 14 optimized README images are all 780×1688 and total about 1.6 MB. `git diff --check` passed. Rust was untouched. CI run 40113141596 on b9a2fc3 passed both jobs: 138 iPhone browser tests, 93 desktop tests, 61 pure Rust tests, and the simulator build and launch. The reviewer then identified the visual issues recorded in the follow-up above.
+
+## D4 previous follow-up (6caf1ff)
+
+- Consolidated the phone shell, data-screen, and feature-screen rules into `src/components/mobile/mobile.css` and removed the three superseded CSS files. The semantic light/dark tokens remain in `src/style.css`. Scrolled navigation bars now use an opaque card tone to prevent the background decoration showing through.
+- Rebalance trades use one-line signed symbol amounts; source status rows keep one-line identities, aligned durations, inline Retry, separated error text, and short localized timestamps. Phone Goals, Rebalance, Coin Profit, Wallets, History detail, Comparison, and Assistant labels and amounts now follow the phone currency and sentence-case conventions. Wallet aliases no longer include asset prefixes, and zero loss counts are hidden.
+- The assistant card uses the same rounded surface as other phone cards. Its composer has a transparent wrapper, quick actions reach the screen edge, and its six empty-state suggestions use a two-column layout so the complete Insights card fits at 390 px. The Goals header action now matches the bare shell icon buttons. A failed startup data query shows an illustrated retry state; loading routes show skeletons.
+- The review matrix adds 320 and 430 px D2 sheets and 390 px light/dark loading, empty, and error captures for nine data destinations. The screenshot fixture still has seven holdings, 60 days of history, and mixed gains and losses. The README's 14 curated screenshots are regenerated and compressed from the final phone browser pass.
+- Final local checks passed: app and browser-test TypeScript, 1,879 Vitest tests in 227 files, the production frontend build, 133/133 phone Playwright checks, and 93/93 desktop browser and accessibility checks. The phone run wrote 595 PNGs. An inventory check found no missing primary-route, D2-sheet, D3-screen, or data-state capture across the documented theme and width matrix. Fourteen optimized 390 px PNGs under `docs/ios/screens/` total about 477 KB. One Vitest attempt was interrupted by SIGTERM without a result; the completed rerun passed. `git diff --check` passed. Rust was untouched and was not rerun here. No new CI run, simulator build, or physical-device run has been made from this uncommitted worktree; the last pushed CI run, 40103460114 on b3d2da8, passed before these changes.
+
+## D4 original visual QA pass (b3d2da8)
+
+- Extended the browser review matrix to all four requested widths (320, 375, 390, and 430 px) in light and dark. Primary routes retain the existing overflow, clipped-text, safe-area, and chart checks; feature routes capture settings, editors, goals, rebalance, assistant, refresh, first launch, and startup states. The CI workflow already uploads `test-results/mobile/*.png` as `ios-browser-screenshots` before the desktop Playwright run clears that directory.
+- The new 320 px capture found Backup's folder actions extending about 6 px beyond their card. A constrained phone grid column keeps the buttons inside the card; the light and dark tests now pass. The screenshots also exposed two header overlaps at 320 px: Save crossed into “New rule,” and the assistant's sessions button crossed into its title. The alert editor now uses a three-column header, and the assistant title and actions have measured 8 px gaps. A new dark WCAG AA route sweep found 1.67:1 text contrast on the Sync passphrase warning. The phone dark destructive token now uses the iOS loss red with a black label on filled controls; the Sync check passes.
+- `docs/ios/DESIGN.md` records the final shared tokens, components, and review matrix. The README shows 14 compressed light and dark screenshots from the rich browser fixture.
+- Local checks passed: frontend build and TypeScript, browser-test TypeScript, 1,879 Vitest tests in 227 files, 93 desktop Playwright tests (including the 16 new dark route checks), 122 phone Playwright tests, the final 25-test D3 visual sweep after the header fixes, 61 pure Rust tests, and `cargo check --locked --lib`. The browser runs left 485 PNGs in `test-results/mobile/`, with no missing light/dark primary or feature route capture at 320, 375, 390, or 430 px. Fourteen optimized 390×844 PNGs under `docs/ios/screens/` total about 1 MiB. The initial Rust check stopped before app compilation because this container lacked the GTK/WebKit development packages installed by CI; the check passed after installing that same package set. No new CI run, iOS simulator build, or signed-device check has been made from this uncommitted worktree.
+
+## D2 comparison and data-screen review fixes
+
+- Comparison leaves quick ranges unselected until one is applied. The Analytics tiles, cost values, history asset details, and sheet headings now align at phone widths. Position changes fills its sheet and uses the system font for legend percentages.
+- Analytics labels and sheet titles now agree for Top coins and Returns; the monthly drill-down uses “Daily P&L.” The Analytics Net P&L section has a local 7D/1M/1Y/All control. The shared Overview section keeps its existing range behavior.
+- Profit metrics use a true minus sign for drawdown, count one-day streaks as one day, and show a dash for a zero-day streak. Desktop attribution previews remain limited to five gainers and five detractors.
+- Wallet Value Changes uses the same wallet names as allocation and keeps paging without a phone row-size select. The browser demo includes a September trade so that month no longer appears flat beside September best and worst days.
+- Verification in this worktree: app and browser-test TypeScript passed; `corepack yarn test` passed 1,851 tests in 227 files; the mobile, iOS parity, and accessibility Playwright suites passed 135/135. They regenerated 196 PNGs under `test-results/mobile/`. I inspected 320 px route captures and 375/390 px light and dark detail captures. No new CI, simulator, or physical-device run was performed here.
+
+## D2 reviewer follow-up
+
+- Fixed the browser-test TypeScript error from the unsupported scroll behavior. Added a browser check for SE card margins and coin History row separation; updated assertions for the History delete position, coin detail title, and comparison pill.
+- Moved History's destructive action below the asset list. Coin History uses compact dates with full timestamps in details, and its one-page pager is hidden. The phone trend now has one value axis, short horizontal dates, and four ticks. The Breakeven subtitle fits the 320 pt tile.
+- Flattened Profit Metrics into a two-column tile grid with short labels, compact date ranges, and day units. Profit and Attribution cards use the same 16 pt inner gutter. Attribution rows include logos; AAPL uses the stock glyph in Allocation and Gainers. Wallet rows align with their card content and on-chain wallets have distinct tile colors. Comparison aligns Hide values to the page gutter and uses a delta pill.
+- Cost basis phone values use `$` and localized lot dates. Data-screen CSS now targets semantic component classes and an additive card marker in the shared primitive.
+- Final local checks passed: app and browser-test TypeScript, 1,846 Vitest tests in 226 files, and all 96 tests across the three mobile Playwright suites. The suite regenerated 196 PNGs under `test-results/mobile/`, including 56 D2 detail captures in both themes at 375 and 390 px. I inspected the refreshed coin, wallet, comparison, Profit Metrics, P&L, Attribution, History detail, and cost basis captures. CI, a simulator build, and a physical-device run have not been performed for this follow-up. The prior D2 verification figures below refer to the earlier state.
+
+## D2 data screen redesign (this worktree)
+
+- The Analytics hub now wraps its seven destinations into two phone columns, with no clipped tile labels. The compact live total is hidden on Analytics while its snapshot total is visible. Profit Metrics uses two-column tiles with short dates on separate lines. The History month header includes its latest total; the detail sheet has a grouped asset list, a tighter row height, and a grouped delete action.
+- Coin detail puts the selector in its header and aligns its metric cards. Its 24-hour price comparison uses a nearby prior snapshot, measured from the latest stored snapshot time; wider gaps show a dash. Comparison and Wallet changes use full-width phone range controls; Wallet changes labels its row count selector. Desktop currency spacing and treemap category size are restored.
+- Monthly Returns counts periods without data separately from flat periods. Attribution keeps every group reachable on phone, including quantity-only changes. Cost basis asset gains use the signed two-decimal display. The P&L axis uses evenly spaced ticks and a tap reveals its value chip. Position changes finishes chart animation immediately under reduced motion and uses short phone axis dates.
+- The browser-only demo fixture still provides seven assets, two months of history, mixed gains and losses, and sale/repurchase pairs. The mobile route sweep now waits for the dark Coin and Analytics overlays to clear and for History logos to load. Captures for the six primary D2 routes exist in light and dark at 320×568 and 390×844. Fourteen D2 detail captures, including Allocation, Position changes, and Profit Metrics, exist in both themes at 375 and 390 px. I inspected the dark Coin and Analytics roots, History detail, Profit Metrics, Wallet changes, Comparison, P&L, Allocation, and Position changes captures.
+- Local verification: `corepack yarn tsc --noEmit` passed; `corepack yarn vitest run` passed 1,844 tests in 226 files; the three mobile Playwright suites passed 95 checks, with affected captures rechecked after the final chart and coin fixes. No new CI, Rust, simulator, or physical-device run is available for this follow-up. Physical-device haptics remain unverified.
+
+The earlier S1–S5 and D1 sections record their handoff results. This worktree
+combines the D2 data screens and D3 feature-screen pass.
+
+## D3 More and feature screens
+
+- More and the pushed Settings sections use inset groups. Currency and result count open full-page pickers; Appearance applies theme and quote color on tap. The sync credential form uses full-width fields with labels above. Pushed pages show their own centered compact title after scrolling.
+- Data sources use provider logos or monograms, the shared switch, a searchable provider picker, one grouped credentials form with filled inputs and field-level validation. Selecting a provider advances to credentials. The empty source screen has three setup cards and one primary Add source action; its picker includes custom assets so a first-launch owner can still add a holding.
+- Goals show a progress ring and bar on iPhone, with Add alert in the top bar and matching editor actions visible on SE. Rebalance presets wrap, target fields remain visibly editable, and buy and sell values have distinct signs and colors. The assistant header aligns with Back; the completed reply is above the composer on SE and iPhone 14. Refresh shows pending and completed source rows with aligned durations, a visible result summary, and Retry actions.
+- The D3 browser suite captures 34 screen states in each light/dark and SE/iPhone 14 combination, producing 136 PNGs in `test-results/mobile/`. Its current-dated 60-day review fixture shows seven assets, positive and negative trades, and a current goal value. It also captures the assistant's streaming caret and tool activity while those states are visible, plus completed refresh rows. Browser capture cannot validate native biometric prompts, the app-switcher privacy cover, hardware haptics, the real iOS keyboard, or background suspension.
+- Each source result now records its own fetch start and finish time; the status normalizer accepts only valid timestamp pairs. Rows without source timing omit the duration. Pending rows use the same source IDs and labels as the fetcher, including the Pro gate. The first-launch Overview illustration remains D1-owned; the three-card onboarding appears after its primary action opens Data sources.
+- Earlier D3 baseline verification passed 1,830 Vitest tests and the combined iPhone suite. Current review checks are recorded below after rerunning them.
+
+### D3 reviewer fixes verification
+
+- The reviewer fixes passed `corepack yarn tsc --noEmit` and `corepack yarn vitest run`: 1,852 tests across 224 files. The first full Vitest run found two assertions tied to the revised phone copy and onboarding flow; both were updated to preserve their original checks, then the full suite passed.
+- The four mobile browser suites passed 102/102 checks. The D3 suite wrote 136 light and dark PNGs at SE and iPhone 14 sizes in `test-results/mobile/`. The first browser pass exposed the first-launch custom-asset path hidden with the stray link; the Add source picker now includes that action, and the full browser run passed.
+- Inspected SE light and dark screenshots of onboarding, sync, backup, goals, rebalance, assistant, and refresh, plus the source provider and credential editors. The native-only behaviors above remain unverified.
+
+## D1 third reviewer pass
+
+- Fixed the phone P&L card overflow and restored even section spacing. The chart now draws to the 18 px card gutter, with localized dates below the canvas. Phone metric values use the system font.
+- Applied the phone font to portal overlays. Source rows show a one-line alias above the source type; at 320 px they omit row chevrons to preserve alias width. The source teaser hides when its query is empty or fails.
+- Restored the original eight-color desktop chart palette and desktop P&L bar colors. Phone charts use the muted palette, with a distinct sixth color; phone P&L bars update on a live theme change. The Overview CSS targets component classes rather than Tailwind classes or child positions.
+- Replaced the blank loading area with a flat hero skeleton and grouped section skeletons. Percent and BTC controls now show switch tracks, and the movers badge uses the same gain/loss pill as the hero.
+- Final local checks: frontend and browser-test TypeScript passed, Vitest passed 1,824 tests in 224 files, and the four phone Playwright suites passed 148/148. The browser run regenerated 123 PNGs in `test-results/mobile/`; the 320 px dark P&L and source screenshots were inspected. No iOS simulator or physical device run was performed in this pass.
+
+## D1 second reviewer pass
+
+- Corrected the Overview range cutoff to milliseconds and added a phone browser check that switches to 1W and verifies the chart start and hero change.
+- Raised the compact and tab bar fills for readable overlap even when browser blur is unavailable. The loading skeleton now aligns with loaded content; the browser backup indicator clears the tab bar.
+- The P&L axis uses Chart.js grace, the scrub chip measures its width before clamping, source rows show type, alias, and logo, and the review fixture uses distinct Bitcoin, Solana, Coinbase, and IBKR sources. Long treemap labels wrap on the narrow phone.
+- Pushed page titles appear in the compact bar only after scrolling. Mobile exports now include `Button`, `Switch`, and `MobileNavigation`; More rows have icons. The desktop skeleton pulse and desktop mover selection are restored.
+- A broader 62 test phone run initially found one clipped wallet label at 320 px; the wrap fix passed the targeted check. Final local checks passed: frontend and browser TypeScript checks, 1,817 Vitest tests in 221 files, and all 87 tests across the iPhone browser suites. The suite wrote 123 PNGs under `test-results/mobile/`, including light and dark route captures. Browser captures were reviewed at 320 and 390 px. Simulator blur remains unverified.
+
+## D1 reviewer closeout
+
+- CI run `40073503815` on `43e6b9f` passed the iPhone flows but failed 35
+  desktop browser checks, mainly from shared accent contrast and the enlarged
+  Switch. Its Rust pure tests were skipped. This worktree scopes the iOS
+  palette, fonts, Card and Switch to the phone layout and restores the desktop
+  defaults. The local desktop browser command passed 77/77 checks,
+  including accessibility and density. Later CI run `40076457752` on
+  `b9f40ec` passed web and iOS jobs before the second reviewer pass.
+- Final local checks for this reviewer pass: frontend and browser test
+  TypeScript checks passed; Vitest passed 1,815 tests in 221 files; the
+  iPhone Playwright command passed 85/85. These runs do not validate a signed
+  physical device.
+- Overview review fixes remove the empty chart tick lane, align the plot to
+  the content gutter, place date labels closer to the chart, and move the
+  touch value chip with a crosshair and point marker. Root tabs no longer have
+  a second Track3 bar. First launch hides date and refresh controls until a
+  source is configured; More never shows them. Source balances and shares now
+  preview the largest three sources.
+  P&L copy uses one spelling, signed movers, and grouped allocation quantities.
+  The phone screenshots now include touch scrub and loading states. The local
+  phone browser command passes 85/85 checks.
+- CI run `40070631313` failed two phone viewport checks because the responsive
+  P&L chart grew its unbounded flex container. The phone chart now has a fixed
+  172 px height. A browser check verifies that the canvas stays that height
+  after resize and that the allocation card can be scrolled into view.
+- The hero value now outranks the title. The light and dark segmented controls
+  have a distinct track and selected thumb. Allocation rows match donut
+  colors; the donut shows its total. Movers exclude opposite-sign and duplicate
+  rows, use the same stock mark as allocation, and place the view control
+  above the net value. Insights use a section header and a currency symbol.
+  The extra analytics cards open from a phone inset row.
+- The screenshot fixture now follows a varied 60-day trend. The parity suite
+  uses it for iPhone SE and iPhone 14 captures and adds dark Overview captures.
+  The viewport suite adds light and dark performance and mover captures.
+  The completed phone run writes 123 PNGs under `test-results/mobile/`.
+  The 320 and 390 px scroll checks passed locally before the second reviewer pass.
+- Local checks in this closeout: `tsc --noEmit` passed, 1,815 Vitest tests in
+  221 files passed, and all 84 phone Playwright tests passed. Browser captures
+  were inspected at 320 and 390 px. These checks do not verify signed-device
+  behavior.
+
+## D1 visual foundation, shell, and Overview
+
+- Added [DESIGN.md](DESIGN.md) with the phone color, type, spacing, motion,
+  chart, and component rules. Shared phone primitives now expose grouped
+  cards and rows, a delta pill, icon button, number animation, skeleton,
+  and an illustrated empty state. Phone typography uses system fonts; light
+  and dark tokens use grouped white and true-black surfaces with one blue
+  accent.
+- The phone shell has a blurred tab bar and compact bar, unified navigation
+  icons, safe-area spacing, and a compact portfolio total while scrolled.
+  The first-launch action opens source setup. System theme changes update
+  the theme class without an app restart; the existing manual theme choice
+  still takes precedence.
+- Overview now presents a large value, a range-filtered trend with touch
+  value chip, restrained allocation chart and asset rows, P&L, movers,
+  insight, and source balances. Loading uses a reserved skeleton layout.
+  The mock screenshot portfolio has seven assets, 60 daily snapshots across
+  two months, both positive and negative movers, and a saved insight.
+  The 7D and 30D P&L labels replace the old 7T and 30T wording; their
+  existing calculations still use historical snapshot offsets.
+- Browser screenshots for the Overview and shell are generated in
+  `test-results/mobile/` at the compact 320×568 viewport and iPhone 14
+  (390×844) in
+  light and dark, including scrolled Overview captures. First launch also has
+  a light and dark capture at 390 px. The route sweep captures other primary
+  routes. Screens owned by the later D2/D3 redesign
+  steps still use their existing content styling. Browser screenshots do
+  not validate signed-device behavior listed below.
+- The original D1 local checks passed before CI run `40070631313`; that run
+  exposed the P&L resizing failure described above.
 
 ## S5 reviewer closeout
 

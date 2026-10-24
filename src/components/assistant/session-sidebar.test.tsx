@@ -82,7 +82,7 @@ describe("SessionSidebar", () => {
         onPin={onPin}
       />,
     );
-    const skeletons = container.querySelectorAll(".animate-pulse");
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThanOrEqual(4);
   });
 

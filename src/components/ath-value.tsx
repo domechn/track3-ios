@@ -14,6 +14,7 @@ import { positiveNegativeTextClass } from "@/utils/color";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { useIsMobile } from "./mobile";
 
 const App = ({
   dateRange,
@@ -24,7 +25,8 @@ const App = ({
   currency: CurrencyRateDetail;
   quoteColor: QuoteColor;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
   const [maxTotalValueData, setMaxTotalValueData] = useState<MaxTotalValueData>(
     {
       uuid: "",
@@ -95,7 +97,7 @@ const App = ({
   );
 
   return (
-    <Card>
+    <Card className="ath-card">
       <CardHeader className="space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {t("ath.title")}
@@ -103,13 +105,13 @@ const App = ({
       </CardHeader>
       <CardContent>
         <div className="mt-2">
-          <div className="space-y-3">
-            <div className="space-y-1 pb-2 border-b border-border/40">
+          <div className="ath-metrics space-y-3">
+            <div className="ath-current-metric space-y-1 pb-2 border-b border-border/40">
               <div className="text-[11px] text-muted-foreground">
                 {t("ath.currentValue")}
               </div>
               <div
-                className="text-sm md:text-base font-semibold tabular-nums whitespace-nowrap overflow-x-auto leading-snug"
+                className="ath-current-value text-sm md:text-base font-semibold tabular-nums whitespace-nowrap overflow-x-auto leading-snug"
                 title={currentTotalValueText}
               >
                 {currentTotalValueText}
@@ -131,7 +133,9 @@ const App = ({
                 {t("ath.athDate")}
               </div>
               <div className="text-sm md:text-base font-semibold whitespace-nowrap overflow-x-auto">
-                {timeToDateStr(maxTotalValueData.date)}
+                {isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                  { month: "short", day: "numeric" }).format(new Date(maxTotalValueData.date))
+                  : timeToDateStr(maxTotalValueData.date)}
               </div>
             </div>
             <div className="space-y-1">

@@ -3,6 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import ChatThread from "./chat-thread";
 import type { ChatMessage } from "./use-chat";
+import { isIOS } from "@/utils/platform";
+
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 
 vi.mock("@/components/insights-card", () => ({ default: () => <div data-testid="insights-card" /> }));
 
@@ -26,6 +31,12 @@ vi.mock("@/i18n", () => ({
         "assistant.chat.examples.activity": "What happened recently in my portfolio?",
         "assistant.chat.examples.btc": "What is the current price of BTC?",
         "assistant.chat.examples.altcoin": "Show me my ETH history",
+        "assistant.chat.examples.short.summary": "Portfolio summary",
+        "assistant.chat.examples.short.health": "Risk and diversification",
+        "assistant.chat.examples.short.compare": "30-day changes",
+        "assistant.chat.examples.short.activity": "Recent transactions",
+        "assistant.chat.examples.short.btc": "Bitcoin position",
+        "assistant.chat.examples.short.altcoin": "Ethereum history",
       };
       return map[key] ?? key;
     },
@@ -82,19 +93,30 @@ describe("ChatThread", () => {
     expect(screen.getAllByText("Health score").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders example prompts in welcome panel", () => {
+  it("renders short example labels on iPhone", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
     render(<ChatThread messages={[]} isStreaming={false} />);
-    expect(screen.getByText("How is my portfolio doing?")).toBeTruthy();
-    expect(screen.getByText("What is the current price of BTC?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Portfolio summary" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bitcoin position" })).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
   });
 
   it("calls onPickPrompt when an example is clicked", async () => {
     const onPickPrompt = vi.fn();
+    vi.mocked(isIOS).mockReturnValue(true);
     render(<ChatThread messages={[]} isStreaming={false} onPickPrompt={onPickPrompt} />);
     const exampleBtn = screen.getByTestId("chat-example-summary");
     await userEvent.click(exampleBtn);
     expect(onPickPrompt).toHaveBeenCalled();
     expect(onPickPrompt.mock.calls[0]?.[0]).toBe("How is my portfolio doing?");
+    vi.mocked(isIOS).mockReturnValue(false);
+  });
+  it("keeps desktop welcome prompts clickable with their full question", async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    const onPickPrompt = vi.fn();
+    render(<ChatThread messages={[]} isStreaming={false} onPickPrompt={onPickPrompt} />);
+    await userEvent.click(screen.getByRole("button", { name: /How is my portfolio doing/ }));
+    expect(onPickPrompt).toHaveBeenCalledWith("How is my portfolio doing?");
   });
 
   it("renders the streaming indicator when streaming and no assistant block present", () => {

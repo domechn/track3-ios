@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import TotalValue from "@/components/total-value-and-change";
@@ -8,11 +8,12 @@ import LatestAssetsPercentage from "@/components/latest-assets-percentage";
 import { ChartResizeContext } from "@/App";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { I18nProvider, localeLocalStorageKey } from "@/i18n";
+import { Line } from "react-chartjs-2";
 
 vi.mock("react-chartjs-2", async () => {
   const React = await import("react");
   return {
-    Line: () => <div data-testid="line-chart" />,
+    Line: vi.fn(() => <div data-testid="line-chart" />),
     Bar: () => <div data-testid="bar-chart" />,
     Doughnut: React.forwardRef<HTMLDivElement>((_props, _ref) => (
       <div data-testid="doughnut-chart" />
@@ -230,6 +231,46 @@ describe("Overview semantic controls", () => {
     ).toBeInTheDocument();
   });
 
+  it("lets a phone reader choose a chart range", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      renderWithProviders(<TotalValue currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
+        quoteColor="green-up-red-down" />);
+      const month = await screen.findByRole("radio", { name: "1M" });
+      fireEvent.click(month);
+      expect(month).toHaveAttribute("aria-checked", "true");
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
+  it("uses the shared phone chart font for Overview value ticks", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      renderWithProviders(<TotalValue currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }}
+        quoteColor="green-up-red-down" />);
+      await screen.findByTestId("line-chart");
+      const chart = vi.mocked(Line).mock.calls.at(-1)?.[0];
+      expect(chart?.options?.scales?.y?.ticks).toEqual(expect.objectContaining({
+        font: expect.objectContaining({ family: expect.stringContaining("-apple-system") }),
+      }));
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
   it("renders profit coin entries as detail links", async () => {
     renderWithProviders(
       <Profit
@@ -263,6 +304,23 @@ describe("Overview semantic controls", () => {
       name: /open btc details/i,
     });
     expect(btcLink).toHaveAttribute("href", "/coins/BTC?assetType=crypto");
+  });
+
+  it("shows allocation share and value together on phone asset rows", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("pointer: coarse"),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }));
+    try {
+      renderWithProviders(<LatestAssetsPercentage currency={usdCurrency}
+        dateRange={{ start: new Date("2024-04-15"), end: new Date("2024-04-16") }} />);
+      const link = await screen.findByRole("link", { name: /open btc details/i });
+      expect(link).toHaveTextContent("55.0%");
+      expect(link).toHaveTextContent("$825.00");
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
   });
 
   it("localizes profit copy and asset detail links with the Chinese provider", async () => {

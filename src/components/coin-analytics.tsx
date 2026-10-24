@@ -2,6 +2,7 @@ import {
   calculateTotalProfit,
   listAllowedSymbols,
   queryAssetMaxAmountBySymbol,
+  queryAllDataDates,
   queryLastAssetsBySymbol,
   queryTransactionsBySymbolAndDateRange,
   updateTransactionPrice,
@@ -24,6 +25,7 @@ import {
   currencyWrapper,
   prettyNumberKeepNDigitsAfterDecimalPoint,
   prettyNumberToLocaleString,
+  formatPhoneMoney,
   prettyPriceNumberToLocaleString,
 } from "@/utils/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -87,7 +89,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { useTranslation } from "@/i18n";
-import { BottomSheet, MobileRecordList, useIsMobile } from "./mobile";
+import { BottomSheet, DeltaPill, MobileRecordList, useIsMobile } from "./mobile";
 
 function formatEditablePrice(value: number): string {
   if (!Number.isFinite(value)) {
@@ -214,7 +216,7 @@ const App = ({
   const { symbol } = useParams() as { symbol: string };
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const pageSize = 20;
   const LOAD_COUNT = 3; // loadSymbolData, CoinsAmountAndValueChange, WalletAssetsPercentage
@@ -241,6 +243,7 @@ const App = ({
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [lastAsset, setLastAsset] = useState<Asset | undefined>();
+  const [previousPrice, setPreviousPrice] = useState<number>();
 
   const [buyAmount, setBuyAmount] = useState<number>(0);
   const [sellAmount, setSellAmount] = useState<number>(0);
@@ -443,6 +446,8 @@ const App = ({
   );
   const buyAmountStr = useMemo(() => prettyAmount(buyAmount), [buyAmount]);
   const lastPrice = useMemo(() => lastAsset?.price || 0, [lastAsset]);
+  const change24h = previousPrice && lastPrice
+    ? (lastPrice - previousPrice) / previousPrice * 100 : undefined;
   const lastPriceStr = useMemo(
     () =>
       currency.symbol +
@@ -526,7 +531,7 @@ const App = ({
     const gen = loadGenRef.current;
 
     // fetch all data before setting any state to avoid multiple re-renders
-    const [txns, tp, la, ama, lp] = await Promise.all([
+    const [txns, tp, la, ama, lp, snapshotDates] = await Promise.all([
       queryTransactionsBySymbolAndDateRange(
         s,
         selectedRange,
@@ -536,13 +541,33 @@ const App = ({
       queryLastAssetsBySymbol(s, selectedRange, selectedAssetType),
       queryAssetMaxAmountBySymbol(s, selectedRange, selectedAssetType),
       getLogoPath(s, selectedAssetType),
+      queryAllDataDates(),
     ]);
+    const latestSnapshotTime = snapshotDates.reduce((latest, item) => {
+      const time = new Date(item.createdAt).getTime();
+      return time >= selectedRange.start.getTime() && time <= selectedRange.end.getTime() && time > latest
+        ? time : latest;
+    }, 0);
+    const previousDay = latestSnapshotTime - 24 * 60 * 60 * 1000;
+    const previousSnapshotTime = latestSnapshotTime ? snapshotDates.reduce<number | undefined>((closest, item) => {
+      const time = new Date(item.createdAt).getTime();
+      const distance = Math.abs(time - previousDay);
+      return time < latestSnapshotTime && distance <= 6 * 60 * 60 * 1000 &&
+        (closest === undefined || distance < Math.abs(closest - previousDay)) ? time : closest;
+    }, undefined) : undefined;
+    const previous = previousSnapshotTime !== undefined
+      ? await queryLastAssetsBySymbol(s, {
+        start: new Date(0),
+        end: new Date(previousSnapshotTime),
+      }, selectedAssetType)
+      : undefined;
 
     // ignore stale results if symbol/dateRange changed while loading
     if (gen !== loadGenRef.current) return;
 
     setTransactions(txns);
     setLastAsset(la);
+    setPreviousPrice(previous?.price);
     setMaxPosition(ama);
     setLogo(lp);
 
@@ -756,7 +781,7 @@ const App = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex space-x-2 py-1 items-center">
+          {maxDataPage > 0 && <div className="flex space-x-2 py-1 items-center">
             <Button
               variant="outline"
               size="sm"
@@ -778,10 +803,11 @@ const App = ({
             >
               <ChevronRightIcon />
             </Button>
-          </div>
+          </div>}
           {isMobile && <MobileRecordList className="coin-mobile-transactions"
             records={historicalData.slice(dataPage * pageSize, (dataPage + 1) * pageSize).map((act) => ({
-              id: String(act.id), title: `${symbol} · ${timeToDateStr(new Date(act.txnCreatedAt).getTime(), true)}`,
+              id: String(act.id), title: new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(act.txnCreatedAt)),
               subtitle: getValueStr(act),
               fields: [
                 { label: t("coin.col.amount"), value: getAmountStr(act) },
@@ -884,8 +910,37 @@ const App = ({
 
   return (
     <OverviewLoadingContext.Provider value={{ reportLoaded }}>
-      <div className="relative min-h-[400px]">
+      <div className="d2-coin relative min-h-[400px]">
         {!isMobile && <h1 className="sr-only">{formatAssetLabel({ symbol, assetType })}</h1>}
+        {isMobile && <div className="coin-detail-hero">
+          <div className="coin-detail-identity">
+            <img src={resolveAssetLogoSrc({ symbol, assetType }, logo)} alt="" />
+            <button type="button" role="combobox" aria-label={`${t("coin.symbol")} ${formatAssetLabel({ symbol, assetType })}`}
+              aria-expanded={coinSelectOpen} onClick={() => setCoinSelectOpen(true)}>
+              {symbol}<CaretSortIcon aria-hidden="true" />
+            </button>
+          </div>
+          <BottomSheet open={coinSelectOpen} onOpenChange={setCoinSelectOpen} title={t("coin.symbol")}>
+            <Input value={coinKeyword} onChange={(event) => { setCoinKeyword(event.target.value); setCoinListLimit(200); }}
+              placeholder={t("coin.searchPlaceholder")} className="mb-3 min-h-11" />
+            <div className="mobile-coin-options">
+              {visibleAllowSymbols.map((item) => <button type="button" key={getAssetLogoKey(item)}
+                className="mobile-coin-option" onClick={() => {
+                  setCoinSelectOpen(false);
+                  navigate(buildAssetDetailsPath(item));
+                }}>{formatAssetLabel(item)}</button>)}
+              {filteredAllowSymbols.length > coinListLimit && <button type="button"
+                className="mobile-coin-option" onClick={() => setCoinListLimit((prev) => prev + 200)}>
+                {t("coin.showMoreN").replace("{n}", String(filteredAllowSymbols.length - coinListLimit))}
+              </button>}
+            </div>
+          </BottomSheet>
+          <p className="coin-detail-price ios-money">{lastPriceStr}</p>
+          <div className="coin-detail-change">
+            <DeltaPill value={change24h ?? 0}>{change24h === undefined ? "—" : `${change24h > 0 ? "+" : ""}${change24h.toFixed(2)}%`}</DeltaPill>
+            <span>{t("coin.change24h")}</span>
+          </div>
+        </div>}
         <StaggerContainer className="space-y-4">
           <UpdatePriceDialog
             open={updatePriceDialogOpen}
@@ -911,8 +966,8 @@ const App = ({
               transactionMutationKey(updateTxnId, "type"),
             )}
           />
-          <div className="grid gap-4 grid-cols-6">
-            <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
+          <div className="coin-metric-grid grid gap-4 grid-cols-6">
+            {!isMobile && <FadeUp className="coin-symbol-metric col-span-6 md:col-span-2 sm:col-span-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -945,30 +1000,6 @@ const App = ({
                       alt={formatAssetLabel({ symbol, assetType })}
                     />
                     <div className="w-[100%] min-w-0 h-[32px] mobile-coin-selector">
-                      {isMobile ? <>
-                        <Button variant="outline" role="combobox"
-                          aria-label={`${t("coin.symbol")} ${formatAssetLabel({ symbol, assetType })}`}
-                          aria-expanded={coinSelectOpen} className="h-11 w-full justify-between"
-                          onClick={() => setCoinSelectOpen(true)}>
-                          <span className="truncate">{formatAssetLabel({ symbol, assetType })}</span>
-                          <CaretSortIcon aria-hidden="true" className="ml-2 h-4 w-4 shrink-0" />
-                        </Button>
-                        <BottomSheet open={coinSelectOpen} onOpenChange={setCoinSelectOpen} title={t("coin.symbol")}>
-                          <Input value={coinKeyword} onChange={(event) => { setCoinKeyword(event.target.value); setCoinListLimit(200); }}
-                            placeholder={t("coin.searchPlaceholder")} className="mb-3 min-h-11" />
-                          <div className="mobile-coin-options">
-                            {visibleAllowSymbols.map((item) => <button type="button" key={getAssetLogoKey(item)}
-                              className="mobile-coin-option" onClick={() => {
-                                setCoinSelectOpen(false);
-                                navigate(buildAssetDetailsPath(item));
-                              }}>{formatAssetLabel(item)}</button>)}
-                            {filteredAllowSymbols.length > coinListLimit && <button type="button"
-                              className="mobile-coin-option" onClick={() => setCoinListLimit((prev) => prev + 200)}>
-                              {t("coin.showMoreN").replace("{n}", String(filteredAllowSymbols.length - coinListLimit))}
-                            </button>}
-                          </div>
-                        </BottomSheet>
-                      </> : <>
                       <Popover
                         open={coinSelectOpen}
                         onOpenChange={setCoinSelectOpen}
@@ -1045,7 +1076,6 @@ const App = ({
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      </>}
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
@@ -1054,9 +1084,9 @@ const App = ({
                   </div>
                 </CardContent>
               </Card>
-            </FadeUp>
+            </FadeUp>}
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card coin-breakeven-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis">
                     {t("coin.breakeven")}
@@ -1078,15 +1108,15 @@ const App = ({
                   <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis">
                     {breakEvenPriceStr}
                   </div>
-                  <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
-                    <div>{t("coin.lastPrice")}</div>
+                  <div className="coin-breakeven-subtitle text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
+                    <div>{t(isMobile ? "coin.lastPriceShort" : "coin.lastPrice")}</div>
                     <div>{lastPriceStr}</div>
                   </div>
                 </CardContent>
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.positions")}
@@ -1112,14 +1142,14 @@ const App = ({
                     {positionsStr}
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
-                    <div>{t("coin.maxPositions")}</div>
+                    <div>{t(isMobile ? "coin.maxShort" : "coin.maxPositions")}</div>
                     <div>{maxPositionsStr}</div>
                   </div>
                 </CardContent>
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.profit")}
@@ -1139,8 +1169,9 @@ const App = ({
                   </svg>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis">
-                    {profitStr}
+                  <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis"
+                    data-tone={profit > 0 ? "gain" : profit < 0 ? "loss" : "neutral"}>
+                    {isMobile ? formatPhoneMoney(currencyWrapper(currency)(profit), currency.symbol, true) : profitStr}
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
                     <div>{t("coin.profitRate")}</div>
@@ -1150,7 +1181,7 @@ const App = ({
               </Card>
             </FadeUp>
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.costPrice")}
@@ -1181,7 +1212,7 @@ const App = ({
             </FadeUp>
 
             <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
-              <Card>
+              <Card className="coin-metric-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {t("coin.sellPrice")}

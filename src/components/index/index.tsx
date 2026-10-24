@@ -26,7 +26,6 @@ import { AnimatedPage } from "../motion";
 import PageLoadingOverlay from "../page-loading-overlay";
 import AutoBackupIndicator from "../auto-backup-indicator";
 import SyncStatusIndicator from "../sync-status-indicator";
-import "./index.css";
 import { Route, Routes, HashRouter, Outlet, Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 
 import { CurrencyRateDetail, QuoteColor } from "@/middlelayers/types";
@@ -42,6 +41,7 @@ import {
   getInitialQueryDateRange,
   getQuoteColor,
   getDefaultCurrencyRate,
+  getConfiguration,
 } from "@/middlelayers/configuration";
 import React from "react";
 import { Progress } from "../ui/progress";
@@ -64,8 +64,13 @@ import { syncRuntime } from "@/middlelayers/sync/runtime";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
-import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
+import { BottomSheet, Button as MobileButton, InsetGroup, ListRow, MOBILE_MEDIA_QUERY, MobilePage, PullToRefresh, useHaptics, useIsMobile } from "@/components/mobile";
+import TopCoinsRank from "../top-coins-rank";
+import ProfitSummary from "../profit-summary";
+import LatestAssetsPercentage from "../latest-assets-percentage";
+import AssetsPercentageChange from "../assets-percentage-change";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
+import { MobileIcon, type MobileIconName } from "@/components/mobile/icons";
 import { useAlertBadge } from "@/components/use-alert-badge";
 import { MobileHeaderTotal } from "@/components/mobile/header-total";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
@@ -124,6 +129,7 @@ function TopBar({
   compactTitle,
   refreshAction,
   onBack,
+  overview,
 }: {
   mobile: boolean;
   isProUser: boolean;
@@ -140,20 +146,40 @@ function TopBar({
   compactTitle?: string;
   refreshAction: React.MutableRefObject<(() => Promise<void>) | null>;
   onBack?: () => void;
+  overview: boolean;
 }) {
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
+  const [configuredSource, setConfiguredSource] = useState(false);
+  useEffect(() => {
+    if (!mobile || !overview || availableDates.length > 0) return;
+    let active = true;
+    void getConfiguration().then((config) => {
+      if (!active) return;
+      const chains = ["erc20", "sol", "btc", "doge", "trc20", "ton", "sui"] as const;
+      setConfiguredSource(Boolean(
+        config?.others?.length || config?.exchanges?.some((exchange) => exchange.active !== false) ||
+        config?.stockConfig?.brokers?.some((broker) => broker.active !== false) ||
+        chains.some((chain) => config?.[chain]?.addresses?.some((address) =>
+          typeof address === "string" || address.active !== false)),
+      ));
+    }).catch(() => { if (active) setConfiguredSource(false); });
+    return () => { active = false; };
+  }, [mobile, overview, availableDates.length]);
+  const showActions = !mobile || (overview && (availableDates.length > 0 || configuredSource));
 
   return (
-    <div id="app-top-bar" className="sticky top-0 z-10 glass-subtle border-b relative">
+    <div id="app-top-bar" className={`sticky top-0 z-10 glass-subtle border-b relative${mobile ? ` mobile-topbar ${onBack ? " mobile-topbar-back" : " mobile-topbar-root"}${compactTitle && !onBack ? " mobile-topbar-collapsed" : ""}` : ""}`}>
       <div className="flex h-12 items-center px-4">
         {mobile && onBack && <button type="button" className="mobile-back mobile-header-back"
           onClick={onBack} aria-label={t("common.back", "Back")}>
           <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
         </button>}
-        {compactTitle && <span className="mobile-compact-title">{compactTitle}</span>}
-        {!(mobile && onBack && compactTitle) && <MobileHeaderTotal currency={currentCurrency} live={isProUser} />}
+        {compactTitle && <span className={`mobile-compact-title${overview ? " mobile-overview-compact-title" : ""}`}>{compactTitle}</span>}
+        {(!mobile || compactTitle) && !(mobile && onBack && compactTitle) &&
+          <MobileHeaderTotal currency={currentCurrency} live={isProUser}
+            range={overview && dateRange?.from && dateRange.to ? { start: dateRange.from, end: dateRange.to } : undefined} />}
         {isProUser && !mobile && (
           <div className="mr-4">
             <RealTimeTotalValue
@@ -163,12 +189,12 @@ function TopBar({
           </div>
         )}
         <div className="ml-auto flex items-center space-x-3">
-          <DatePicker
+          {(!mobile || (overview && availableDates.length > 0)) && <DatePicker
             availableDates={availableDates}
             value={dateRange}
             onDateChange={onDatePickerValueChange}
-          />
-          <TooltipProvider>
+          />}
+          {showActions && <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div>
@@ -200,7 +226,7 @@ function TopBar({
                 </p>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
+          </TooltipProvider>}
         </div>
       </div>
       {refreshProgress > 0 && refreshButtonLoading && (
@@ -230,6 +256,8 @@ type LayoutProps = {
   sidebarCollapsed: boolean;
   onSidebarToggle: () => void;
   initializing: boolean;
+  loadFailed: boolean;
+  onRetryDataLoad: () => void;
   isProUser: boolean;
   quoteColor: QuoteColor;
   currentCurrency: CurrencyRateDetail;
@@ -247,6 +275,8 @@ function Layout({
   sidebarCollapsed,
   onSidebarToggle,
   initializing,
+  loadFailed,
+  onRetryDataLoad,
   isProUser,
   quoteColor,
   currentCurrency,
@@ -335,7 +365,8 @@ function Layout({
           dateRange={dateRange}
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
-          compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          compactTitle={mobile && headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          overview={location.pathname === "/overview"}
           onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
           refreshAction={refreshAction}
@@ -366,11 +397,22 @@ function Layout({
             <MobilePage title={routeTitle(location.pathname, t)} />
           </div>}
           <div className="relative min-h-[400px] min-w-0" aria-busy={initializing}>
+            {mobile && loadFailed && /^\/(overview|history|summary|wallets|comparison|cost-basis|coins)(\/|$)/.test(location.pathname) ? <div className="mobile-empty-state mobile-data-error" role="alert">
+              <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
+                <circle cx="56" cy="56" r="48" fill="currentColor" opacity=".08" />
+                <circle cx="56" cy="56" r="33" stroke="currentColor" strokeWidth="2.5" />
+                <path d="M56 36v27M56 76h.1" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+              </svg>
+              <h2>{t("app.dataLoadFailed")}</h2>
+              <p>{t("app.dataLoadFailedDescription")}</p>
+              <MobileButton onClick={onRetryDataLoad}>{t("app.retryDataLoad")}</MobileButton>
+            </div> : <>
             <React.Suspense
               fallback={<RouteLoadingFallback hidden={initializing} />}
             >
               <Outlet context={unread} />
             </React.Suspense>
+            </>}
             {initializing && (
               <PageLoadingOverlay
                 title={t("loading.portfolio")}
@@ -391,34 +433,85 @@ function Layout({
 
 function MoreHub() {
   const { t } = useTranslation();
+  const haptic = useHaptics();
   const unread = useOutletContext<number>();
-  const items = [
-    { href: "#/rebalance", label: t("nav.rebalance") },
-    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined },
-    { href: "#/assistant", label: t("nav.assistant") },
-    { href: "#/settings", label: t("nav.settings") },
+  const items: { href: string; label: string; value?: string; icon: MobileIconName }[] = [
+    { href: "#/rebalance", label: t("nav.rebalance"), icon: "rebalance" },
+    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined, icon: "goals" },
+    { href: "#/assistant", label: t("nav.assistant"), icon: "assistant" },
+    { href: "#/settings", label: t("nav.settings"), icon: "settings" },
   ];
-  return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
-    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>{item.label}</ListRow>)}
-  </InsetGroup></div>;
+  return <div className="mobile-more-hub ios-d3-more" onClickCapture={() => haptic("selection")}>
+    <InsetGroup title={t("more.group.plan")}>
+      {items.slice(0, 2).map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
+        <MobileIcon name={item.icon} />{item.label}
+      </ListRow>)}
+    </InsetGroup>
+    <InsetGroup title={t("more.group.manage")}>
+      {items.slice(2).map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
+        <MobileIcon name={item.icon} />{item.label}
+      </ListRow>)}
+    </InsetGroup>
+  </div>;
 }
 
-function AnalyticsHub() {
+function AnalyticsHub({ currency, dateRange, quoteColor }: {
+  currency: CurrencyRateDetail; dateRange: { start: Date; end: Date }; quoteColor: QuoteColor;
+}) {
   const { t } = useTranslation();
-  const items = [
-    { href: "#/wallets", label: t("nav.wallets") },
-    { href: "#/comparison", label: t("nav.comparison") },
-    { href: "#/cost-basis", label: t("nav.costBasis") },
+  const [sheet, setSheet] = useState<"allocation" | "rank" | "profit" | "positions" | null>(null);
+  const items: { label: string; detail: string; icon: "allocation" | "rank" | "wallets" | "comparison" | "profit" | "positions" | "cost"; href?: string; sheet?: "allocation" | "rank" | "profit" | "positions" }[] = [
+    { sheet: "allocation", label: t("overview.allocation"), detail: t("analytics.allocationDetail"), icon: "allocation" },
+    { sheet: "rank", label: t("analytics.rank"), detail: t("analytics.rankDetail"), icon: "rank" },
+    { href: "#/wallets", label: t("nav.wallets"), detail: t("analytics.walletsDetail"), icon: "wallets" },
+    { href: "#/comparison", label: t("nav.comparison"), detail: t("analytics.comparisonDetail"), icon: "comparison" },
+    { sheet: "profit", label: t("analytics.profit"), detail: t("analytics.profitDetail"), icon: "profit" },
+    { sheet: "positions", label: t("analytics.positionChanges"), detail: t("analytics.positionChangesDetail"), icon: "positions" },
+    { href: "#/cost-basis", label: t("nav.costBasis"), detail: t("analytics.costDetail"), icon: "cost" },
   ];
-  return <div className="mobile-analytics-hub"><InsetGroup title={t("nav.analytics", "Analytics")}>
-    {items.map((item) => <ListRow key={item.href} href={item.href}>{item.label}</ListRow>)}
-  </InsetGroup></div>;
+  return <div className="mobile-analytics-hub">
+    <div className="analytics-tile-grid">
+      {items.map((item) => {
+        const content = <><span className="analytics-tile-icon"><AnalyticsTileIcon name={item.icon} /></span>
+          <strong>{item.label}</strong><small>{item.detail}</small></>;
+        return item.href
+          ? <a className="analytics-tile" key={item.label} href={item.href}>{content}</a>
+          : <button className="analytics-tile" type="button" key={item.label} onClick={() => setSheet(item.sheet!)}>{content}</button>;
+      })}
+    </div>
+    <BottomSheet open={sheet !== null} onOpenChange={(open) => { if (!open) setSheet(null); }}
+      title={sheet === "allocation" ? t("overview.allocation")
+        : sheet === "rank" ? t("analytics.rank")
+        : sheet === "positions" ? t("analytics.positionChanges") : t("analytics.profit")}
+      detents={["large"]} initialDetent="large">
+      {sheet === "allocation" && <div className="d2-allocation-sheet"><LatestAssetsPercentage dateRange={dateRange} currency={currency} /></div>}
+      {sheet === "rank" && <div className="d2-rank-sheet"><TopCoinsRank dateRange={dateRange} currency={currency} /></div>}
+      {sheet === "profit" && <div className="d2-profit-sheet"><ProfitSummary dateRange={dateRange} currency={currency} quoteColor={quoteColor} /></div>}
+      {sheet === "positions" && <div className="d2-positions-sheet"><AssetsPercentageChange dateRange={dateRange} /></div>}
+    </BottomSheet>
+  </div>;
+}
+
+function AnalyticsTileIcon({ name }: { name: "allocation" | "rank" | "wallets" | "comparison" | "profit" | "positions" | "cost" }) {
+  const paths = {
+    allocation: <><circle cx="12" cy="12" r="8" /><path d="M12 4v8l6.5 4.5" /></>,
+    rank: <><path d="M4 20h16M6 16h3v4H6zM11 11h3v9h-3zM16 6h3v14h-3z" /></>,
+    wallets: <><rect x="3" y="6" width="18" height="14" rx="3" /><path d="M3 9V6a2 2 0 0 1 2-2h13M15 13h6" /></>,
+    comparison: <><path d="M4 6h14M4 11h9M4 16h12M18 4l3 2-3 2M16 14l3 2-3 2" /></>,
+    profit: <><path d="M4 18l5-6 4 3 7-9M15 6h5v5" /></>,
+    positions: <><path d="M4 18V9M9 18V5M14 18v-7M19 18V7M3 20h18" /></>,
+    cost: <><path d="M7 4h10l3 3v13H4V4h3zM8 10h8M8 14h8M8 18h5" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
 type AppRoutesProps = {
   sidebarCollapsed: boolean;
   onSidebarToggle: () => void;
   initializing: boolean;
+  loadFailed: boolean;
+  onRetryDataLoad: () => void;
   isProUser: boolean;
   setIsProUser: React.Dispatch<React.SetStateAction<boolean>>;
   quoteColor: QuoteColor;
@@ -444,6 +537,8 @@ function AppRoutes({
   sidebarCollapsed,
   onSidebarToggle,
   initializing,
+  loadFailed,
+  onRetryDataLoad,
   isProUser,
   setIsProUser,
   quoteColor,
@@ -478,6 +573,8 @@ function AppRoutes({
             sidebarCollapsed={sidebarCollapsed}
             onSidebarToggle={onSidebarToggle}
             initializing={initializing}
+            loadFailed={loadFailed}
+            onRetryDataLoad={onRetryDataLoad}
             isProUser={isProUser}
             quoteColor={quoteColor}
             currentCurrency={currentCurrency}
@@ -513,7 +610,7 @@ function AppRoutes({
           element={
             <AnimatedPage>
               <PageWrapper dateRange={maxDateRange} hasData={hasData}>
-                <AnalyticsHub />
+                <AnalyticsHub currency={currentCurrency} dateRange={maxDateRange} quoteColor={quoteColor} />
                 <Summary
                   currency={currentCurrency}
                   dateRange={maxDateRange}
@@ -677,6 +774,8 @@ const App = () => {
   const [hasData, setHasData] = useState(true);
   const [retainHistory, setRetainHistory] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const retryLoad = useRef<(() => void) | null>(null);
   const [dataChangedVersion, setDataChangedVersion] = useState(0);
   const [autoBackupStatus, setAutoBackupStatus] = useState<
     "idle" | "running"
@@ -707,6 +806,7 @@ const App = () => {
 
     const start = () => {
       if (!active) return;
+      setLoadFailed(false);
       setInitializing(true);
       void loadStartupData()
         .then(() => {
@@ -720,8 +820,9 @@ const App = () => {
         })
         .catch(() => {
           if (!active) return;
+          setLoadFailed(true);
           console.warn("startup data loading failed");
-          toast({
+          if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) toast({
             title: t("app.dataLoadFailed"),
             duration: 86_400_000,
             action: <ToastAction altText={t("app.retryDataLoad")} onClick={start} className="touch:min-h-11">
@@ -743,10 +844,12 @@ const App = () => {
           }
         });
     };
+    retryLoad.current = start;
     start();
 
     return () => {
       active = false;
+      retryLoad.current = null;
     };
   }, []);
 
@@ -1042,6 +1145,8 @@ const App = () => {
           sidebarCollapsed={sidebarCollapsed}
           onSidebarToggle={handleSidebarToggle}
           initializing={initializing}
+          loadFailed={loadFailed}
+          onRetryDataLoad={() => retryLoad.current?.()}
           isProUser={isProUser}
           setIsProUser={setIsProUser}
           quoteColor={quoteColor}

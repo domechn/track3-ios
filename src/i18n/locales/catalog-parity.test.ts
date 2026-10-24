@@ -30,7 +30,7 @@ describe("locale catalog parity", () => {
       ],
       "loading.route": ["Loading page", "正在加载页面"],
       "loading.routeDesc": ["Preparing this view.", "正在准备当前页面。"],
-      "data.encryption.key.title": ["Encryption Key", "加密密钥"],
+      "data.encryption.key.title": ["Encryption key", "加密密钥"],
       "data.encryption.key.description": [
         "Change the application-layer key used to encrypt sensitive configuration values and chat message content. Existing encrypted data is re-encrypted when you save. Assets and transactions remain in the local SQLite database without application-layer encryption.",
         "更改用于在应用层加密敏感配置值和聊天消息正文的密钥。保存时，现有加密数据会使用新密钥重新加密。资产与交易仍以未经过应用层加密的形式存储在本地 SQLite 数据库中。",
@@ -44,7 +44,7 @@ describe("locale catalog parity", () => {
         "确认新加密密钥",
       ],
       "data.encryption.key.update": [
-        "Update Encryption Key",
+        "Update encryption key",
         "更新加密密钥",
       ],
       "data.encryption.key.saving": ["Saving...", "保存中..."],

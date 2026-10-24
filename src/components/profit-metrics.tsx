@@ -26,6 +26,7 @@ import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { useIsMobile } from "./mobile";
 
 const App = ({
   dateRange,
@@ -65,7 +66,8 @@ const App = ({
     dateAndValues: [] as { date: Date; value: number }[],
   });
   const [isATHTimesModalOpen, setIsATHTimesModalOpen] = useState(false);
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
   const wsize = useWindowSize();
   const { reportLoaded } = useContext(OverviewLoadingContext);
 
@@ -223,7 +225,7 @@ const App = ({
       }
     }
 
-    return arr.slice(startIndex, endIndex + 1);
+    return maxLength === 0 ? [] : arr.slice(startIndex, endIndex + 1);
   }
 
   function onATHTimesClick() {
@@ -278,6 +280,50 @@ const App = ({
   }
 
   const MaxTotalValueView = React.memo(() => {
+    if (isMobile) {
+      const shortDate = (date: Date | number) => new Intl.DateTimeFormat(
+        locale === "zh" ? "zh-CN" : "en-US",
+        { year: "numeric", month: "short", day: "numeric" },
+      ).format(new Date(date));
+      const shortRange = (start: Date, end: Date) => {
+        if (start.toDateString() === end.toDateString()) return shortDate(start);
+        const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+        if (locale === "zh") return `${shortDate(start)}–${sameMonth ? end.getDate() + "日" : shortDate(end)}`;
+        const monthDay = (date: Date) => new Intl.DateTimeFormat("en-US",
+          { month: "short", day: "numeric" }).format(date);
+        return sameMonth
+          ? `${monthDay(start)}–${end.getDate()}, ${end.getFullYear()}`
+          : `${monthDay(start)}–${monthDay(end)}${start.getFullYear() === end.getFullYear() ? `, ${end.getFullYear()}` : ""}`;
+      };
+      const amount = (value: number) => `${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(value)))}`;
+      const streakDays = (start: Date, end: Date) => start.getTime() === 0 ? 0 : daysBetweenDates(start, end) + 1;
+      const streakValue = (start: Date, end: Date) => {
+        const days = streakDays(start, end);
+        return `${days} ${t(days === 1 ? "profitMetrics.day" : "profitMetrics.days")}`;
+      };
+      const tiles = [
+        { label: t("profitMetrics.maxContProfitShort"), value: streakValue(maxProfileDateRange.start, maxProfileDateRange.end), date: maxProfileDateRange.start.getTime() === 0 ? "—" : shortRange(maxProfileDateRange.start, maxProfileDateRange.end) },
+        { label: t("profitMetrics.maxContLossShort"), value: streakValue(maxLostDateRange.start, maxLostDateRange.end), date: maxLostDateRange.start.getTime() === 0 ? "—" : shortRange(maxLostDateRange.start, maxLostDateRange.end) },
+        { label: t("profitMetrics.maxProfitShort"), value: maxSingleDayProfitData.value < 0 ? "—" : amount(maxSingleDayProfitData.value), date: shortDate(maxSingleDayProfitData.timestamp), tone: "gain" },
+        { label: t("profitMetrics.maxLossShort"), value: maxSingleDayLostData.value > 0 ? "—" : `−${amount(maxSingleDayLostData.value)}`, date: shortDate(maxSingleDayLostData.timestamp), tone: "loss" },
+        { label: t("profitMetrics.maxDrawdownShort"), value: `${maxDrawdownData.value.toFixed(2).replace("-", "−")}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
+      ];
+      return <div>
+        {athReachedDetailsDialog}
+        <div className="profit-metrics-mobile">
+          {tiles.map((tile) => <div className="profit-metric-tile" key={tile.label}>
+            <span className="profit-metric-label">{tile.label}</span>
+            <strong className="profit-metric-value ios-money" data-tone={tile.tone}>{tile.value}</strong>
+            <span className="profit-metric-date">{tile.date}</span>
+          </div>)}
+          <button type="button" className="profit-metric-tile" onClick={onATHTimesClick}>
+            <span className="profit-metric-label">{t("profitMetrics.athReachedShort")}</span>
+            <strong className="profit-metric-value ios-money">{athTimes.times} {t("profitMetrics.times")}</strong>
+            <span className="profit-metric-date"><InfoCircledIcon className="inline h-3.5 w-3.5" /> {t("profitMetrics.dialogTitle")}</span>
+          </button>
+        </div>
+      </div>;
+    }
     return (
       <div>
         {athReachedDetailsDialog}
@@ -381,7 +427,7 @@ const App = ({
   });
 
   return (
-    <Card>
+    <Card className="profit-metrics-card">
       <CardHeader className="space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {t("profitMetrics.title")}

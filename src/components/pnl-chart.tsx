@@ -14,13 +14,32 @@ import { positiveNegativeColor } from "@/utils/color";
 import { currencyWrapper, simplifyNumber } from "@/utils/currency";
 import { glassScaleOptions, glassTooltip } from "@/utils/chart-theme";
 import { timeToDateStr } from "@/utils/date";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
+import type { Chart as ChartJS } from "chart.js";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
 import { useTranslation } from "@/i18n";
+import { useHaptics, useIsMobile } from "@/components/mobile";
+import { useTheme } from "@/components/common/theme";
 
 const chartName = "PNL of Asset";
+
+export function indexForPnlPixel(scale: { getValueForPixel: (pixel: number) => number | undefined }, pixel: number, count: number): number {
+  const value = scale.getValueForPixel(pixel);
+  return Math.max(0, Math.min(count - 1, Math.round(value ?? 0)));
+}
+
+export function pnlAxisBounds(values: number[]): { min: number; max: number; stepSize: number } | object {
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  if (min === max) return {};
+  const rough = (max - min) / (min < 0 && max > 0 ? 4 : 3);
+  const base = 10 ** Math.floor(Math.log10(rough));
+  const stepSize = [1, 2, 2.5, 4, 5, 10].map((factor) => factor * base)
+    .find((step) => step >= rough) ?? base * 10;
+  return { min: Math.floor(min / stepSize) * stepSize, max: Math.ceil(max / stepSize) * stepSize, stepSize };
+}
 
 const App = ({
   currency,
@@ -33,7 +52,13 @@ const App = ({
   quoteColor: QuoteColor;
   className?: string;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
+  const haptic = useHaptics();
+  const lastScrubIndex = useRef<number | null>(null);
+  const chartRef = useRef<ChartJS<"bar", (number | undefined)[]> | null>(null);
+  const [scrub, setScrub] = useState<{ index: number; left: number } | null>(null);
+  const { resolvedTheme } = useTheme();
   const { needResize } = useContext(ChartResizeContext);
   const [pnlChartData, setPnlChartData] = useState<PNLChartData>([]);
   const [chartWidth, setChartWidth] = useState(600);
@@ -61,6 +86,9 @@ const App = ({
       timestamp: pnlChartData[index + 1].timestamp,
     }));
   }, [pnlChanges, pnlChartData, chartWidth, currency]);
+  const mobileAxis = useMemo(() => {
+    return pnlAxisBounds(plottedPNL.map((point) => point.change));
+  }, [plottedPNL]);
 
   const rangeKey = useMemo(
     () => `${dateRange.start.getTime()}-${dateRange.end.getTime()}`,
@@ -87,6 +115,7 @@ const App = ({
   const options = {
     maintainAspectRatio: false,
     responsive: true,
+    animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : { duration: 350 },
     onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
     hover: {
       mode: "index",
@@ -110,6 +139,7 @@ const App = ({
       },
       tooltip: {
         ...glassTooltip,
+        enabled: !isMobile,
         callbacks: {
           label: (context: { parsed: { y?: number } }) => {
             const yv = context.parsed.y;
@@ -126,11 +156,13 @@ const App = ({
     },
     scales: {
       x: {
+        display: !isMobile,
         title: {
           display: false,
         },
         ticks: {
           ...glassScaleOptions.ticks,
+          display: !isMobile,
           maxRotation: 0,
           minRotation: 0,
           align: "center",
@@ -141,11 +173,13 @@ const App = ({
             const end = data.length - 1;
             // only show start and end date
             if (index === start) {
-              return timeToDateStr(data[index].timestamp);
+              return isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(data[index].timestamp)) : timeToDateStr(data[index].timestamp);
             }
 
             if (index === end) {
-              return timeToDateStr(data[index].timestamp);
+              return isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { month: "short", day: "numeric" }).format(new Date(data[index].timestamp)) : timeToDateStr(data[index].timestamp);
             }
 
             return "";
@@ -154,8 +188,10 @@ const App = ({
         grid: {
           display: false,
         },
+        border: { display: !isMobile },
       },
       y: {
+        ...(isMobile ? mobileAxis : {}),
         title: {
           display: false,
           text: currency.currency,
@@ -163,15 +199,17 @@ const App = ({
         offset: true,
         ticks: {
           ...glassScaleOptions.ticks,
+          ...(isMobile && "stepSize" in mobileAxis ? { stepSize: mobileAxis.stepSize } : {}),
           precision: 2,
-          maxTicksLimit: 4,
+          maxTicksLimit: isMobile ? 6 : 4,
           callback: (value: any) => {
-            return simplifyNumber(value);
+            return value === 0 ? "0" : simplifyNumber(value);
           },
         },
         grid: {
           ...glassScaleOptions.grid,
         },
+        border: { display: !isMobile },
       },
     },
   };
@@ -186,7 +224,12 @@ const App = ({
 
   function pnlBackgroundColor(val: "positive" | "negative"): string {
     const c = positiveNegativeColor(val === "positive" ? 1 : -1, quoteColor);
-    return c === "green" ? "rgba(16,185,129,0.8)" : "rgba(244,63,94,0.8)";
+    if (!isMobile) {
+      return c === "green" ? "rgba(16,185,129,0.8)" : "rgba(244,63,94,0.8)";
+    }
+    return c === "green"
+      ? resolvedTheme === "dark" ? "#30d158" : "#34c759"
+      : resolvedTheme === "dark" ? "#ff453a" : "#ff3b30";
   }
 
   function lineData() {
@@ -215,12 +258,50 @@ const App = ({
     };
   }
 
+  function showScrub(clientX: number, element: HTMLDivElement) {
+    if (!isMobile || !plottedPNL.length) return;
+    const chart = chartRef.current;
+    if (!chart?.scales.x) return;
+    const bounds = element.getBoundingClientRect();
+    const x = Math.max(0, Math.min(bounds.width, clientX - bounds.left));
+    const canvasBounds = chart.canvas.getBoundingClientRect();
+    const canvasX = (clientX - canvasBounds.left) * chart.width / canvasBounds.width;
+    const index = indexForPnlPixel(chart.scales.x, canvasX, plottedPNL.length);
+    if (index !== lastScrubIndex.current) haptic("selection");
+    lastScrubIndex.current = index;
+    setScrub({ index, left: Math.max(62, Math.min(bounds.width - 62, x)) });
+  }
+
+  function clearScrub() {
+    lastScrubIndex.current = null;
+    setScrub(null);
+  }
+
   return (
     <div className={className}>
-      <Bar role="img" aria-label={t("pnl.chartSummary")
-        .replace("{count}", String(pnlChanges.length))
-        .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
-        options={options as any} data={lineData()} />
+      <div className="overview-pnl-plot" onPointerDown={(event) => showScrub(event.clientX, event.currentTarget)}
+        onPointerMove={(event) => showScrub(event.clientX, event.currentTarget)}
+        onClick={(event) => showScrub(event.clientX, event.currentTarget)}
+        onPointerLeave={clearScrub} onTouchMove={(event) => showScrub(event.touches[0].clientX, event.currentTarget)}
+        onTouchEnd={clearScrub} onTouchCancel={clearScrub}>
+        <Bar ref={chartRef} role="img" aria-label={t("pnl.chartSummary")
+          .replace("{count}", String(pnlChanges.length))
+          .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
+          options={options as any} data={lineData()} />
+        {isMobile && scrub && plottedPNL[scrub.index] && <div className="pnl-scrub-chip" style={{ left: scrub.left }}>
+          <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+            { month: "short", day: "numeric" }).format(new Date(plottedPNL[scrub.index].timestamp))}</span>
+          <strong data-tone={positiveNegativeColor(plottedPNL[scrub.index].change, quoteColor) === "green" ? "gain" : "loss"}>
+            {plottedPNL[scrub.index].change < 0 ? "−" : "+"}{currency.symbol}{Math.abs(plottedPNL[scrub.index].change).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </strong>
+        </div>}
+      </div>
+      {isMobile && plottedPNL.length > 0 && <div className="overview-pnl-dates" aria-hidden="true">
+        <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { month: "short", day: "numeric" }).format(new Date(pnlChartData[0].timestamp))}</span>
+        <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { month: "short", day: "numeric" }).format(new Date(plottedPNL[plottedPNL.length - 1].timestamp))}</span>
+      </div>}
       {plottedPNL.length > 0 && <table className="sr-only" aria-label={t("pnl.chartData")}>
         <thead><tr><th scope="col">{t("profitMetrics.date")}</th><th scope="col">{t("history.change")}</th></tr></thead>
         <tbody>{plottedPNL.map(({ change, timestamp }, index) => <tr key={`${timestamp}-${index}`}>

@@ -16,6 +16,9 @@ vi.mock("@/i18n", () => ({
         "assistant.chat.noResponse": "(No response)",
         "assistant.chat.think.label": "Thinking",
         "assistant.chat.toolActivity": "Tool activity",
+        "assistant.chat.toolSummary.one": "{count} tool · {status}",
+        "assistant.chat.toolSummary.many": "{count} tools · {status}",
+        "assistant.chat.toolStatus.done": "done",
         "assistant.usage.tokens": "Prompt {prompt} · Completion {completion} tokens",
         "assistant.usage.cost": "Est. {cost}",
         "assistant.usage.estimated": "Estimated",
@@ -31,9 +34,10 @@ describe("MessageBubble", () => {
     render(<MessageBubble message={{ role: "assistant", blocks: [{ kind: "agent_activity", activities: [
       { taskId: "fetch", skillName: "portfolio", description: "Read portfolio", status: "completed", resultPreview: "Done" },
     ] }] }} />);
-    const details = screen.getByText("Tool activity").closest("details");
+    const details = screen.getByText(/Tool activity/).closest("details");
     expect(details).not.toHaveAttribute("open");
     expect(details).toHaveTextContent("Read portfolio");
+    expect(details?.querySelector("summary")).toHaveTextContent("1 tool · done");
     vi.mocked(isIOS).mockReturnValue(false);
   });
 
@@ -48,6 +52,17 @@ describe("MessageBubble", () => {
     rerender(<MessageBubble message={message} pricePerMillionTokens={2} />);
     expect(screen.getByText(/\$0\.003\b/)).toBeTruthy();
     expect(screen.queryByText(/\$0\.003000/)).toBeNull();
+    expect(screen.getByText(/\$0\.003\b/).closest(".ios-d3-chat-bubble-usage")).toBeTruthy();
+    expect(screen.getByText(/\$0\.003\b/).closest(".ios-d3-chat-body")).toBeNull();
+  });
+
+  it("keeps completed thinking available on iPhone after the reply starts", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<MessageBubble message={{ role: "assistant", blocks: [
+      { kind: "think", text: "Checked the portfolio" }, { kind: "text", text: "Done" },
+    ] }} />);
+    expect(screen.getByText("Thinking")).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
   });
 
   it("uses separate input and output rates for estimated cost", () => {
@@ -88,6 +103,14 @@ describe("MessageBubble", () => {
     const msg: ChatMessage = { role: "assistant", blocks: [] };
     render(<MessageBubble message={msg} isStreaming />);
     expect(screen.getByText("Thinking...")).toBeTruthy();
+  });
+
+  it("marks only an active reply for the iPhone streaming caret", () => {
+    const message: ChatMessage = { role: "assistant", blocks: [{ kind: "text", text: "Working" }] };
+    const { rerender } = render(<MessageBubble message={message} isStreaming />);
+    expect(screen.getByTestId("assistant-bubble")).toHaveAttribute("data-streaming", "true");
+    rerender(<MessageBubble message={message} />);
+    expect(screen.getByTestId("assistant-bubble")).toHaveAttribute("data-streaming", "false");
   });
 
   it("renders the thinking indicator for a legacy whitespace-only block", () => {

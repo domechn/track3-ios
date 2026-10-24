@@ -82,7 +82,7 @@ describe("Summary page shell", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { level: 1, name: /summary/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /analytics/i })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/loading summary data/i);
 
     vi.advanceTimersByTime(9000);

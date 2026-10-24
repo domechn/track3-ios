@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   queryTransactionsBySymbolAndDateRange: vi.fn(),
   calculateTotalProfit: vi.fn(),
   queryLastAssetsBySymbol: vi.fn(),
+  queryAllDataDates: vi.fn(),
   queryAssetMaxAmountBySymbol: vi.fn(),
   updateTransactionPrice: vi.fn(),
   updateTransactionTxnType: vi.fn(),
@@ -135,6 +136,7 @@ vi.mock("@/middlelayers/charts", () => ({
     mocks.queryTransactionsBySymbolAndDateRange,
   calculateTotalProfit: mocks.calculateTotalProfit,
   queryLastAssetsBySymbol: mocks.queryLastAssetsBySymbol,
+  queryAllDataDates: mocks.queryAllDataDates,
   queryAssetMaxAmountBySymbol: mocks.queryAssetMaxAmountBySymbol,
   updateTransactionPrice: mocks.updateTransactionPrice,
   updateTransactionTxnType: mocks.updateTransactionTxnType,
@@ -236,6 +238,7 @@ beforeEach(() => {
     coins: [],
   });
   mocks.queryLastAssetsBySymbol.mockResolvedValue(undefined);
+  mocks.queryAllDataDates.mockResolvedValue([]);
   mocks.queryAssetMaxAmountBySymbol.mockResolvedValue(0);
   mocks.updateTransactionPrice.mockResolvedValue(undefined);
   mocks.updateTransactionTxnType.mockResolvedValue(undefined);

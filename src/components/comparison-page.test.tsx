@@ -53,6 +53,39 @@ beforeEach(() => {
 });
 
 describe("Comparison page", () => {
+  it("leaves quick ranges unselected when the latest two snapshots are shown on a phone", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    localStorage.removeItem(COMPARISON_DATES_KEY);
+    try {
+      vi.mocked(queryAllDataDates).mockResolvedValue([
+        { id: "head", date: "2024-04-16", createdAt: "2024-04-16T00:00:00Z" },
+        { id: "base", date: "2024-04-15", createdAt: "2024-04-15T00:00:00Z" },
+      ]);
+      vi.mocked(queryCoinDataByUUID).mockResolvedValue([]);
+      render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+      await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+      expect(screen.getAllByRole("radio").every((radio) => radio.getAttribute("aria-checked") === "false")).toBe(true);
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
+  });
+  it("keeps the desktop currency spacing in comparison totals", async () => {
+    vi.mocked(queryAllDataDates).mockResolvedValue([
+      { id: "head", date: "2024-04-16", createdAt: "2024-04-16T00:00:00Z" },
+      { id: "base", date: "2024-04-15", createdAt: "2024-04-15T00:00:00Z" },
+    ]);
+    vi.mocked(queryCoinDataByUUID).mockResolvedValue([
+      { symbol: "BTC", assetType: "crypto", amount: 1, value: 1000, price: 1000 },
+    ]);
+    render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(document.querySelector(".comparison-total-grid")).toHaveTextContent("$ 1,000.00");
+  });
   it("consumes an assistant comparison date selection after applying it", async () => {
     localStorage.setItem(COMPARISON_DATES_KEY, JSON.stringify({ base: "2024-04-15", head: "2024-04-16" }));
     vi.mocked(queryAllDataDates).mockResolvedValue([
@@ -177,6 +210,20 @@ describe("Comparison page", () => {
 
     expect(icon).toBeInTheDocument();
     expect(icon).toHaveClass("text-current");
+  });
+
+  it("shows one neutral marker for an unchanged asset metric", async () => {
+    vi.mocked(queryAllDataDates).mockResolvedValue([
+      { id: 1, date: "2024-04-16" },
+      { id: 2, date: "2024-04-15" },
+    ] as never);
+    vi.mocked(queryCoinDataByUUID).mockResolvedValue([
+      { symbol: "USDC", assetType: "crypto", amount: 100, value: 100, price: 1 },
+    ]);
+    render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    const change = document.querySelector(".comparison-metric-row > :nth-child(3)");
+    expect(change).toHaveTextContent(/^—$/);
   });
 
   it("uses date picker buttons for the base and head dates instead of select comboboxes", async () => {

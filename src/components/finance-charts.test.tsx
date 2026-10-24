@@ -46,6 +46,25 @@ it("shows zero cost basis gains with a neutral value and no plus sign", () => {
   expect(gain).not.toHaveStyle({ color: "#10b981" });
 });
 
+it("shows USD cost basis totals with a dollar symbol on phones", () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: query.includes("max-width: 950px"), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  });
+  try {
+    const report: CostBasisReport = {
+      method: "FIFO", totals: { proceeds: 200, costBasis: 130, gainLoss: 70, shortTerm: 0, longTerm: 70 },
+      assets: [], disposals: [], openLots: [], unrealized: [], warnings: [],
+    };
+    const { getByText } = render(<CostCharts report={report} quoteColor="green-up-red-down" />);
+    expect(getByText("Gain/loss").parentElement).toHaveTextContent("+$70.00");
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
+});
+
 it("shows a compact loading placeholder with an accessible status", () => {
   const { getByRole, container } = render(<FinanceChartSkeleton />);
   expect(getByRole("status")).toHaveTextContent("Loading");
@@ -80,8 +99,8 @@ it("maps calculator gains and composition to charts without Cartesian axes on th
   });
   rerender(<CostCharts report={report} quoteColor="red-up-green-down" />);
   const line = vi.mocked(Line).mock.calls.at(-1)?.[0];
-  expect(line?.data.datasets[0].borderColor).toBe("#f43f5e");
-  expect(line?.data.datasets[0].backgroundColor).toBe("#f43f5e20");
+  expect(line?.data.datasets[0].borderColor).toBe("#d70015");
+  expect(line?.data.datasets[0].backgroundColor).toBe("#d7001520");
 });
 
 it("maps deviations from the calculator and includes the configured tolerance", () => {
@@ -93,6 +112,9 @@ it("maps deviations from the calculator and includes the configured tolerance", 
   } as RebalanceResult;
   render(<RebalanceCharts result={result} tolerancePercent={3} quoteColor="green-up-red-down" />);
   const deviations = vi.mocked(Bar).mock.calls[1][0];
+  const allocation = vi.mocked(Bar).mock.calls[0][0];
+  expect(allocation.options?.scales?.y?.ticks?.autoSkip).toBe(false);
+  expect(allocation.data.datasets[0].backgroundColor).not.toBe(allocation.data.datasets[1].backgroundColor);
   expect(deviations.data.labels).toEqual(["BTC", "ETH"]);
   expect(deviations.data.datasets[0].data).toEqual([20, -20]);
   expect(deviations["aria-label"]).toContain("3%");
@@ -100,11 +122,29 @@ it("maps deviations from the calculator and includes the configured tolerance", 
 });
 
 it("maps portfolio values and a total value goal to separate line datasets", () => {
+  const previousMatchMedia = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: query.includes("max-width: 950px"), media: query, onchange: null,
+    addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  });
+  try {
   const rule = { id: 1, kind: "total_value_target", comparator: "gte", threshold: 150 } as AlertRule;
   render(<GoalChart rules={[rule]} snapshots={[]} portfolioValues={[
     { date: "2025-01-01", value: 100 }, { date: "2025-01-02", value: 120 },
   ]} />);
   const chart = vi.mocked(Line).mock.calls[0][0];
-  expect(chart.data.labels).toEqual(["2025-01-01", "2025-01-02"]);
+  expect(chart.data.labels).toEqual(["Jan 1", "Jan 2"]);
+  expect(chart.options?.scales?.y?.ticks).toEqual(expect.objectContaining({ callback: expect.any(Function) }));
+  expect(chart.options?.scales?.x?.ticks).toEqual(expect.objectContaining({
+    font: expect.objectContaining({ family: expect.stringContaining("-apple-system") }),
+  }));
+  expect(chart.options?.scales?.y?.ticks).toEqual(expect.objectContaining({
+    font: expect.objectContaining({ family: expect.stringContaining("-apple-system") }),
+  }));
+  expect(chart.options?.scales?.x?.grid?.display).toBe(false);
   expect(chart.data.datasets.map((series) => series.data)).toEqual([[100, 120], [150, 150]]);
+  } finally {
+    window.matchMedia = previousMatchMedia;
+  }
 });

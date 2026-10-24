@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { exportFile } from "@/utils/export-file";
 import { useDataChangedVersion } from "@/contexts/data-changed";
@@ -33,6 +34,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger,
 } from "./ui/alert-dialog";
 import { useIsMobile } from "./mobile";
+import { formatPhoneMoney } from "@/utils/currency";
 
 type TargetDraft = RebalanceTarget & { id: number; previousAsset?: { assetType: AssetType; symbol: string } };
 
@@ -236,9 +238,11 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
   );
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+    <div className="ios-d3-rebalance mx-auto flex max-w-6xl flex-col gap-4">
+      {mobile && document.getElementById("app-top-bar") && createPortal(
+        <span className="ios-d3-pushed-title">{t("rebalance.title")}</span>, document.getElementById("app-top-bar")!)}
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("rebalance.title")}</h1>
+        <h1 className={mobile ? "ios-large-title" : "text-2xl font-semibold tracking-tight"}>{t("rebalance.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("rebalance.description")}</p>
       </header>
       <AISetupCard page="rebalance"
@@ -256,7 +260,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
             <CardHeader className="px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-base">{t("rebalance.targets")}</CardTitle>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="ios-d3-rebalance-presets flex flex-wrap gap-1.5">
                   <Button size="sm" variant="outline" disabled={!holdings.length} onClick={() => applyPreset(true)}>{t("rebalance.equalWeight")}</Button>
                   <Button size="sm" variant="outline" disabled={!holdings.length} onClick={() => applyPreset(false)}>{t("rebalance.currentHoldings")}</Button>
                   <Button size="sm" variant="outline" disabled={!targets.length} onClick={() => {
@@ -272,7 +276,7 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
             <CardContent className="space-y-3 px-4 pb-4">
               {targets.map((target, index) => (
                 <div key={target.id} className={mobile
-                  ? "grid min-w-0 grid-cols-2 items-end gap-3 rounded-2xl border bg-card p-4"
+                  ? "ios-d3-target grid min-w-0 grid-cols-2 items-end gap-3 rounded-2xl bg-card p-4"
                   : "grid grid-cols-[minmax(90px,1fr)_minmax(85px,1fr)_72px_32px] items-end gap-1.5 sm:grid-cols-[150px_minmax(120px,1fr)_110px_32px] touch:grid-cols-2 touch:sm:grid-cols-[150px_minmax(120px,1fr)_110px_44px]"}>
                   <label className="space-y-1 text-xs text-muted-foreground">
                     <span>{t("rebalance.targetKind")}</span>
@@ -335,9 +339,9 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                       aria-label={t("rebalance.increaseTarget").replace("{asset}", labelFor(target))}
                       onClick={() => updateTarget(index, { ...target, percent: stepPercent(target.percent, 1) })}>+</Button>
                   </div>}
-                  <Button className={`${mobile ? "h-11 w-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
+                  <Button className={`${mobile ? "ios-d3-target-remove h-11" : "h-8 w-8"} p-0`} size="sm" variant="ghost"
                     aria-label={t("rebalance.remove").replace("{asset}", labelFor(target))}
-                    onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>×</Button>
+                    onClick={() => setTargets((previous) => previous.filter((_, i) => i !== index))}>{mobile ? t("rebalance.remove").replace("{asset}", labelFor(target)) : "×"}</Button>
                 </div>
               ))}
               <div className="flex flex-wrap items-end justify-between gap-2 border-t pt-3">
@@ -404,19 +408,22 @@ export default function Rebalance({ currency, quoteColor = "green-up-red-down" }
                 </CardHeader>
                 <CardContent className="space-y-2 px-4 pb-4">
                   {visual?.trades.length ? visual.trades.map((row) => (
-                    <div key={`${row.assetType}:${row.symbol}`} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                      <p className="font-medium">
-                        {t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
-                        {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: 8 })} `}
-                        {row.symbol}
+                    <div key={`${row.assetType}:${row.symbol}`} className={`ios-d3-trade flex flex-nowrap items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${row.tradeValue > 0 ? "ios-d3-buy" : "ios-d3-sell"}`}>
+                      <p className="ios-d3-trade-description min-w-0 font-medium">
+                        {mobile && <strong className="ios-d3-trade-symbol block">{row.symbol}</strong>}
+                        <span>{t(row.tradeValue > 0 ? "rebalance.buy" : "rebalance.sell")}{" "}
+                        {row.tradeQuantity === null ? "" : `${Number(Math.abs(row.tradeQuantity).toFixed(8)).toLocaleString(undefined, { maximumFractionDigits: mobile ? 4 : 8 })} `}
+                        {!mobile && row.symbol}</span>
                       </p>
-                      <span className="tabular-nums text-muted-foreground">~{Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency.currency}</span>
+                      <span className="ios-d3-trade-value tabular-nums text-muted-foreground">{mobile
+                        ? formatPhoneMoney(row.tradeValue, currency.symbol, true)
+                        : `~${Math.abs(row.tradeValue).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency.currency}`}</span>
                     </div>
                   )) : <p className="text-sm text-muted-foreground">{t("rebalance.noTrade")}</p>}
                   <div className="flex flex-wrap gap-x-5 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
-                    <span>{t("rebalance.buy")}: {visual?.buyTotal.toFixed(2)} {currency.currency}</span>
-                    <span>{t("rebalance.sell")}: {visual?.sellTotal.toFixed(2)} {currency.currency}</span>
-                    <span>{t("rebalance.cashReserve")}: {(visual?.cash?.tradeValue ?? 0).toFixed(2)} {currency.currency}</span>
+                    <span>{t("rebalance.buy")}: {mobile ? formatPhoneMoney(visual?.buyTotal ?? 0, currency.symbol) : `${visual?.buyTotal.toFixed(2)} ${currency.currency}`}</span>
+                    <span>{t("rebalance.sell")}: {mobile ? formatPhoneMoney(visual?.sellTotal ?? 0, currency.symbol) : `${visual?.sellTotal.toFixed(2)} ${currency.currency}`}</span>
+                    <span>{t("rebalance.cashReserve")}: {mobile ? formatPhoneMoney(visual?.cash?.tradeValue ?? 0, currency.symbol) : `${(visual?.cash?.tradeValue ?? 0).toFixed(2)} ${currency.currency}`}</span>
                   </div>
                 </CardContent>
               </Card>

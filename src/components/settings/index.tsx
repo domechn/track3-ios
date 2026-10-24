@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Outlet,
   Navigate,
@@ -14,10 +16,19 @@ import {
   InfoCircledIcon,
   RocketIcon,
   UpdateIcon,
+  GlobeIcon,
+  LockClosedIcon,
+  TokensIcon,
+  EyeNoneIcon,
+  FileTextIcon,
+  BarChartIcon,
+  ChatBubbleIcon,
 } from "@radix-ui/react-icons";
-import { useTranslation } from "@/i18n";
+import { LOCALE_LABELS, useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
-import { InsetGroup, ListRow } from "@/components/mobile";
+import { InsetGroup, ListRow, useHaptics } from "@/components/mobile";
+import { getCachedPreferCurrency } from "@/middlelayers/configuration";
+import { useTheme } from "@/components/common/theme";
 import AssistantSettings from "./assistant";
 
 const settingsTabs = [
@@ -54,17 +65,17 @@ const settingsTabs = [
 ];
 
 const mobileSettings = [
-  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources" },
-  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency" },
-  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme" },
-  { key: "settings.mobile.language", href: "/settings/appearance?section=language" },
-  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist" },
-  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro" },
-  { key: "settings.mobile.ai", href: "/settings/assistant" },
-  { key: "settings.mobile.security", href: "/settings/data?section=security" },
-  { key: "settings.mobile.backup", href: "/settings/data?section=backup" },
-  { key: "settings.mobile.sync", href: "/settings/sync" },
-  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about" },
+  { key: "settings.mobile.sources", href: "/settings/configuration?section=sources", icon: TokensIcon, group: "portfolio" },
+  { key: "settings.mobile.currency", href: "/settings/configuration?section=currency", icon: BarChartIcon, group: "portfolio" },
+  { key: "settings.tab.appearance", href: "/settings/appearance?section=theme", icon: SunIcon, group: "preferences" },
+  { key: "settings.mobile.language", href: "/settings/appearance?section=language", icon: GlobeIcon, group: "preferences" },
+  { key: "settings.mobile.blacklist", href: "/settings/data?section=blacklist", icon: EyeNoneIcon, group: "preferences" },
+  { key: "settings.mobile.pro", href: "/settings/systemInfo?section=pro", icon: RocketIcon, group: "preferences" },
+  { key: "settings.mobile.ai", href: "/settings/assistant", icon: ChatBubbleIcon, group: "preferences" },
+  { key: "settings.mobile.security", href: "/settings/data?section=security", icon: LockClosedIcon, group: "privacy" },
+  { key: "settings.mobile.backup", href: "/settings/data?section=backup", icon: ArchiveIcon, group: "privacy" },
+  { key: "settings.mobile.sync", href: "/settings/sync", icon: UpdateIcon, group: "privacy" },
+  { key: "settings.mobile.about", href: "/settings/systemInfo?section=about", icon: FileTextIcon, group: "privacy" },
 ] as const;
 
 function TabLink({
@@ -97,35 +108,47 @@ function TabLink({
 }
 
 const App = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { theme } = useTheme();
+  const haptic = useHaptics();
   const lo = useLocation();
+  const [topBar, setTopBar] = useState<HTMLElement | null>(null);
+  useEffect(() => setTopBar(document.getElementById("app-top-bar")), []);
   if (isIOS()) {
     const isHub = lo.pathname === "/settings";
     const title = mobileSettings.find((item) =>
       `${item.href}` === `${lo.pathname}${lo.search}`)?.key ??
       mobileSettings.find((item) => item.href.split("?")[0] === lo.pathname)?.key;
     return (
-      <div className="mx-auto w-full max-w-2xl min-w-0 space-y-5 pb-6">
+      <div className="ios-d3-settings mx-auto w-full max-w-2xl min-w-0 space-y-5 pb-6">
+        {topBar && createPortal(
+          <span className="ios-d3-pushed-title">{t(title ?? "settings.title")}</span>,
+          topBar)}
         {isHub ? (
           <>
-            <h1 className="px-1 pt-2 text-3xl font-bold tracking-tight">{t("settings.title")}</h1>
-            <nav aria-label={t("settings.sectionsAriaLabel")}>
-              <InsetGroup>
-                {mobileSettings.map((item) => (
-                  <ListRow
-                    key={item.href}
-                    href={`#${item.href}`}
-                  >{t(item.key)}</ListRow>
-                ))}
-              </InsetGroup>
+            <h1 className="ios-large-title mb-5 pt-2">{t("settings.title")}</h1>
+            <nav aria-label={t("settings.sectionsAriaLabel")} onClickCapture={() => haptic("selection")}>
+              {(["portfolio", "preferences", "privacy"] as const).map((group) => <InsetGroup key={group} title={t(`settings.mobile.group.${group}`)}>
+                {mobileSettings.filter((item) => item.group === group).map((item) => {
+                  const Icon = item.icon;
+                  const value = item.key === "settings.mobile.currency" ? getCachedPreferCurrency() ?? "USD"
+                    : item.key === "settings.mobile.language" ? LOCALE_LABELS[locale]
+                      : item.key === "settings.tab.appearance" ? theme === "system" ? t("settings.mobile.system") : t(`appearance.theme.${theme}`)
+                        : undefined;
+                  return <ListRow key={item.href} href={`#${item.href}`} value={value}>
+                    <span aria-hidden="true" className="ios-d3-settings-icon"><Icon /></span>
+                    {t(item.key)}
+                  </ListRow>;
+                })}
+              </InsetGroup>)}
             </nav>
           </>
         ) : (
           <>
-            <header className="space-y-3 px-1 pt-1">
-              <h1 className="text-3xl font-bold tracking-tight">{t(title ?? "settings.title")}</h1>
+            <header className="space-y-3 pt-1">
+              <h1 className="ios-large-title mb-5">{t(title ?? "settings.title")}</h1>
             </header>
-            <Outlet />
+            <div className="ios-d3-settings-page"><Outlet /></div>
           </>
         )}
       </div>

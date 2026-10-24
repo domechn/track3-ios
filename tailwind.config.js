@@ -20,8 +20,10 @@ module.exports = {
         sans: [
           "Outfit Variable",
           "ui-sans-serif",
-          "system-ui",
           "-apple-system",
+          "SF Pro Text",
+          "SF Pro Display",
+          "system-ui",
           "Segoe UI",
           "Roboto",
           "Helvetica Neue",
@@ -30,8 +32,8 @@ module.exports = {
         ],
         mono: [
           "JetBrains Mono Variable",
-          "ui-monospace",
           "SFMono-Regular",
+          "ui-monospace",
           "Menlo",
           "Consolas",
           "monospace",

@@ -5,6 +5,7 @@ import { TDateRange } from "@/middlelayers/types";
 import { parseISO } from "date-fns";
 import { Card, CardContent } from "./ui/card";
 import { useTranslation } from "@/i18n";
+import { EmptyState, useIsMobile } from "./mobile";
 
 const emptyDate = parseISO("1970-01-01");
 
@@ -19,8 +20,12 @@ const App = ({
 }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   if (!hasData) {
+    if (isMobile) return <EmptyState title={t("overview.emptyTitle")} description={t("overview.emptyDescription")}
+      illustrationLabel={t("overview.emptyIllustration")}
+      action={t("overview.addFirstSource")} onAction={() => navigate("/settings/configuration")} />;
     return (
       <div className="flex items-center justify-center h-[400px]">
         <Card className="max-w-md w-full">

@@ -26,14 +26,14 @@ export default function AutoBackupIndicator({
   }
 
   if (isIOS()) {
-    return <div role="status" aria-live="polite" className="fixed inset-x-4 z-40 rounded-xl border bg-card p-3 text-sm shadow-sm" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}>
+    return <div role="status" aria-live="polite" className="ios-d3-auto-backup fixed inset-x-4 z-40 rounded-xl bg-card p-3 text-sm" style={{ bottom: "calc(env(safe-area-inset-bottom) + 5rem)" }}>
       <p className="font-medium">{t("autoBackup.indicator.title")}</p>
       <p className="text-muted-foreground">{t("autoBackup.indicator.description")}</p>
     </div>;
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="auto-backup-browser-indicator fixed bottom-4 right-4 z-50">
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>

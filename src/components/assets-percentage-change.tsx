@@ -16,7 +16,7 @@ import {
 } from "@/middlelayers/charts";
 import { timeToDateStr } from "@/utils/date";
 import {
-  chartColors,
+  getChartPalette,
   glassScaleOptions,
   glassTooltip,
 } from "@/utils/chart-theme";
@@ -24,11 +24,16 @@ import { formatAssetLabel, getAssetLogoKey } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
+import { useTheme } from "@/components/common/theme";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "Coins Percentage Overview";
 
 const App = ({ dateRange }: { dateRange: TDateRange }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
+  const chartColors = getChartPalette(isMobile, resolvedTheme);
   const wsize = useWindowSize();
   const [topN, setTopN] = useState<AssetReference[]>([]);
   const [chartWidth, setChartWidth] = useState(600);
@@ -109,12 +114,13 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
       key: "others",
     };
     return [...topNCurrent, othersRow].sort((a, b) => b.current - a.current);
-  }, [assetsPercentageChangeData, topN, t]);
+  }, [assetsPercentageChangeData, topN, t, chartColors]);
 
   const options = useMemo(
     () => ({
       maintainAspectRatio: false,
       responsive: true,
+      animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : undefined,
       onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
       hover: {
         mode: "index" as const,
@@ -159,7 +165,17 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
           ticks: {
             ...glassScaleOptions.ticks,
             autoSkip: true,
-            maxTicksLimit: 6,
+            maxTicksLimit: isMobile ? 4 : 6,
+            maxRotation: isMobile ? 0 : undefined,
+            minRotation: isMobile ? 0 : undefined,
+            callback: function (this: { getLabelForValue: (value: number) => string }, value: number) {
+              const label = this.getLabelForValue(value);
+              if (!isMobile) return label;
+              const date = new Date(label);
+              return Number.isNaN(date.getTime()) ? label : new Intl.DateTimeFormat(
+                locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" },
+              ).format(date);
+            },
           },
           grid: { display: false },
         },
@@ -181,7 +197,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
         },
       },
     }),
-    []
+    [isMobile, locale]
   );
 
   const preparedData = useMemo(() => {
@@ -251,17 +267,17 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
       labels: plottedIndices.map((point) => preparedData.labels[point]),
       datasets: [...topNDatasets, othersDataset],
     };
-  }, [preparedData, plottedIndices, topN, t]);
+  }, [preparedData, plottedIndices, topN, t, chartColors]);
 
   return (
     <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Card className="position-changes-card">
+        <CardHeader className="position-changes-header flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("assetsPercentage.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="position-changes-content space-y-2">
           <div
             data-testid="assets-percentage-legend"
             className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs"

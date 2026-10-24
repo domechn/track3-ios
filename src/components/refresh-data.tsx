@@ -4,7 +4,7 @@ import {
   type RefreshAllDataResult,
 } from "../middlelayers/charts";
 import type { RefreshOperation } from "../middlelayers/charts-refresh";
-import type { PortfolioSourceStatus } from "../middlelayers/portfolio-baseline";
+import type { PortfolioSourceResult, PortfolioSourceStatus } from "../middlelayers/portfolio-baseline";
 import { v4 as uuidv4 } from "uuid";
 import { trackEventWithClientID } from "../utils/app";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,7 +15,7 @@ import {
 } from "@radix-ui/react-icons";
 import { RefreshButtonLoadingContext } from "./index/index";
 import { getMemoryCacheInstance } from "@/middlelayers/datafetch/utils/cache";
-import { updateAllCurrencyRates } from "@/middlelayers/configuration";
+import { getConfiguration, updateAllCurrencyRates } from "@/middlelayers/configuration";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -34,6 +34,8 @@ import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-s
 import { normalizeSourceStatuses, sourceIdentity, sortSourceStatuses } from "@/middlelayers/source-status";
 import { partialEndpointKeys } from "@/middlelayers/datafetch/utils/source-failure";
 import { isIOS } from "@/utils/platform";
+import { listPortfolioSources } from "@/middlelayers/data";
+import { isProVersion } from "@/middlelayers/license";
 
 const retries = 3;
 const retryInterval = 3000;
@@ -64,6 +66,8 @@ const App = ({
   const [sourceStatuses, setSourceStatuses] = useState<PortfolioSourceStatus[]>(readStoredStatuses);
   const [lastResult, setLastResult] = useState<RefreshAllDataResult>();
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingSources, setPendingSources] = useState<Array<{ sourceId: string; label: string }>>([]);
+  const [liveSources, setLiveSources] = useState<PortfolioSourceResult[]>([]);
 
   const {
     setButtonLoading: setRefreshLoading,
@@ -99,8 +103,15 @@ const App = ({
     if (sourceId && !lastResult?.sourceResults) return;
     if (isIOS()) setStatusDialogOpen(true);
     setRefreshing(true);
+    setLiveSources([]);
     cancelInsightRefresh();
     setRefreshLoading(true);
+    try {
+      const [config, userInfo] = await Promise.all([getConfiguration(), isProVersion()]);
+      setPendingSources(config ? listPortfolioSources(config, userInfo).filter((source) => !sourceId || source.sourceId === sourceId) : []);
+    } catch {
+      setPendingSources([]);
+    }
     const operation: RefreshOperation = { operationUuid: uuidv4() };
     let succeeded = false;
     let insightStatuses = sourceStatuses;
@@ -115,6 +126,7 @@ const App = ({
         sourceId
           ? {
               retrySourceId: sourceId,
+              onSourceResult: (source) => setLiveSources((current) => [...current.filter((item) => item.sourceId !== source.sourceId), source]),
               previousSourceResults: lastResult!.sourceResults,
               previousSourceStatuses: sourceStatuses,
               ...(lastResult?.portfolioInputGeneration !== undefined
@@ -126,7 +138,9 @@ const App = ({
               previousSnapshotId: lastResult?.snapshotId ?? null,
               previousSnapshotKey: lastResult?.snapshotKey,
             }
-          : sourceStatuses.length ? { previousSourceStatuses: sourceStatuses } : {},
+          : { ...(sourceStatuses.length ? { previousSourceStatuses: sourceStatuses } : {}),
+              onSourceResult: (source: PortfolioSourceResult) => setLiveSources((current) =>
+                [...current.filter((item) => item.sourceId !== source.sourceId), source]) },
         operation,
         (attempt) => retry(attempt, retries, retryInterval),
       );
@@ -216,7 +230,7 @@ const App = ({
 
   const hasFailure = sourceStatuses.some((source) => source.status === "failed" || source.status === "stale");
   const hasPartial = sourceStatuses.some((source) => source.status === "partial");
-  const sourceLabel = (source: PortfolioSourceStatus) => {
+  const sourceLabel = (source: Pick<PortfolioSourceStatus, "sourceId" | "label">) => {
     const wallet = /^(erc20|sol|btc|doge|trc20|ton|sui):(\d+)$/.exec(source.sourceId);
     if (wallet && source.label.toLowerCase() === `${wallet[1]} wallet ${Number(wallet[2]) + 1}`) {
       return t("refresh.walletSource")
@@ -231,6 +245,8 @@ const App = ({
     source.kind === "exchange" && source.hint && !source.hint.startsWith("#")
       ? `${t("refresh.hint.apikey")} ${source.hint}` : source.hint;
   const sortedStatuses = sortSourceStatuses(sourceStatuses);
+  const progressSources = [...pendingSources, ...liveSources.filter((source) =>
+    !pendingSources.some((pending) => pending.sourceId === source.sourceId))];
   const failedStatuses = sortedStatuses.filter((source) => source.status === "failed");
   const partialStatuses = sortedStatuses.filter((source) => source.status === "partial");
   const failedNames = failedStatuses.map(displayIdentity).join(", ");
@@ -279,7 +295,7 @@ const App = ({
       )}
       <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
         <AlertDialogContent className={isIOS()
-          ? "bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+          ? "ios-d3-refresh-sheet bottom-0 left-0 top-auto max-h-[90dvh] w-full max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]"
           : "sm:max-w-md"}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("refresh.sourceStatus")}</AlertDialogTitle>
@@ -291,58 +307,68 @@ const App = ({
                   .replace("{partial}", String(partialStatuses.length))
                   .replace("{stale}", String(sortedStatuses.filter((source) => source.status === "stale").length))
                 : failedStatuses.length
-                ? t("refresh.failedSummary")
+                ? t(isIOS() ? "refresh.failedSummaryMobile" : "refresh.failedSummary")
                   .replace("{count}", String(failedStatuses.length))
                   .replace("{total}", String(sourceStatuses.length))
                   .replace("{sources}", failedNames)
                 : sourceStatuses.some((source) => source.status === "stale")
-                  ? t("refresh.staleWarning").replace("{sources}",
-                    sortedStatuses.filter((source) => source.status === "stale").map(displayIdentity).join(", "))
+                  ? isIOS()
+                    ? t("refresh.staleSummaryMobile")
+                      .replace("{count}", String(sortedStatuses.filter((source) => source.status === "stale").length))
+                      .replace("{total}", String(sourceStatuses.length))
+                    : t("refresh.staleWarning").replace("{sources}",
+                      sortedStatuses.filter((source) => source.status === "stale").map(displayIdentity).join(", "))
                   : t("refresh.allCurrent")}
             </AlertDialogDescription>
             {refreshing && <div role="progressbar" aria-label={t("refresh.inProgress")} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full bg-primary transition-[width]" style={{ width: `${progress}%` }} />
             </div>}
           </AlertDialogHeader>
-          <div className="my-2 max-h-80 space-y-2 overflow-y-auto">
+          <div className="ios-d3-refresh-status-list my-2 max-h-80 overflow-y-auto">
+            {refreshing && (progressSources.length ? progressSources : [{ sourceId: "loading", label: t("refresh.inProgress") }]).map((pending) => {
+              const completed = liveSources.find((source) => source.sourceId === pending.sourceId);
+              const previousFailed = sourceStatuses.some((source) => source.sourceId === pending.sourceId && source.status === "failed");
+              const StatusIcon = completed?.status === "stale" || completed?.status === "partial" ? ExclamationTriangleIcon
+                  : completed ? CheckIcon : UpdateIcon;
+              const label = sourceLabel(pending);
+              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center justify-between gap-3 px-4 py-3">
+                <div className="ios-d3-refresh-row-main">
+                  <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" || completed.status === "partial" ? "text-amber-600" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
+                  <div className="ios-d3-refresh-row-content">
+                    <div className="ios-d3-refresh-row-title">{label}</div>
+                    <div className="text-xs text-muted-foreground">{completed ? t(`refresh.status.${completed.status}`) : t("refresh.inProgress")}</div>
+                  </div>
+                </div>
+                <span className="ios-d3-refresh-row-duration text-muted-foreground">{completed?.startedAt && completed.finishedAt
+                  ? `${((Date.parse(completed.finishedAt) - Date.parse(completed.startedAt)) / 1000).toFixed(1)}s`
+                  : ""}</span>
+                {(previousFailed || completed?.status === "stale") && <Button size="sm" variant="secondary" disabled
+                  aria-label={t("refresh.retrySource").replace("{source}", label)}>{t("refresh.retryButton")}</Button>}
+              </div>;
+            })}
             {!refreshing && sortedStatuses.map((source) => {
               const Icon = kindIcon[source.kind ?? "others"];
               const StatusIcon = statusIcon[source.status];
               return (
               <div key={source.sourceId} role="group" aria-label={displayIdentity(source)}
-                data-source-status-row className="flex items-center justify-between gap-3 rounded-md border px-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold break-all">{sourceLabel(source)}</div>
-                  {source.provider && <div className="text-xs text-muted-foreground">
+                data-source-status-row className="ios-d3-refresh-row flex items-center justify-between gap-3 px-4 py-3">
+                <div className="ios-d3-refresh-row-main">
+                  {isIOS() && <StatusIcon aria-hidden="true" className={`mt-1 h-5 w-5 shrink-0 ${source.status === "ok" ? "text-green-600 dark:text-green-400" : source.status === "failed" ? "text-destructive" : "text-amber-600"}`} />}
+                  <div className="ios-d3-refresh-row-content">
+                  <div className="ios-d3-refresh-row-title" title={sourceLabel(source)}>{sourceLabel(source)}</div>
+                  {source.provider && <div className="ios-d3-refresh-identity text-xs text-muted-foreground">
                     <Icon aria-hidden="true" className="mr-1 inline-block h-3.5 w-3.5" />
                     {source.provider}{source.hint && ` · ${displayHint(source)}`}
                   </div>}
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusStyle[source.status]}`}>
-                      <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                      {t(`refresh.status.${source.status}`)}
-                    </span>
-                    {source.status !== "ok" && source.status !== "partial" && <span className="text-muted-foreground">
-                      {t(`refresh.reason.${source.category ?? "other"}`)}
-                    </span>}
                   </div>
-                  {source.status === "partial" && <div className="mt-1 text-xs text-amber-900 dark:text-amber-300">
-                    {partialMessage(source)}
-                  </div>}
-                  {source.status !== "ok" && source.detail && <details className="mt-1 text-xs text-muted-foreground">
-                    <summary>{t("refresh.details")}</summary>
-                    <span>{redactSecrets(t(detailKey[source.detail]))}</span>
-                  </details>}
-                  {(source.status === "stale" || source.status === "failed") && source.lastSuccessAt && <div className="mt-1 text-xs text-muted-foreground">
-                    {t("refresh.lastData").replace("{time}", new Intl.DateTimeFormat("sv-SE", {
-                      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-                    }).format(new Date(source.lastSuccessAt)))}
-                  </div>}
                 </div>
+                {source.startedAt && source.finishedAt && <span className="ios-d3-refresh-row-duration text-muted-foreground">
+                  {((Date.parse(source.finishedAt) - Date.parse(source.startedAt)) / 1000).toFixed(1)}s
+                </span>}
                 {source.status !== "ok" && lastResult?.sourceResults && (
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant={isIOS() ? "secondary" : "outline"}
                     disabled={refreshLoading}
                     aria-label={t("refresh.retrySource").replace("{source}", displayIdentity(source))}
                     onClick={() => runRefresh(source.sourceId)}
@@ -350,6 +376,28 @@ const App = ({
                     {t("refresh.retryButton")}
                   </Button>
                 )}
+                <div className="ios-d3-refresh-condition flex flex-wrap items-center gap-1.5 text-xs">
+                    {isIOS() ? <span className="text-muted-foreground">{t(`refresh.status.${source.status}`)}</span>
+                      : <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusStyle[source.status]}`}>
+                        <StatusIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(`refresh.status.${source.status}`)}
+                      </span>}
+                    {source.status !== "ok" && source.status !== "partial" && <span className="text-muted-foreground">
+                      · {t(`refresh.reason.${source.category ?? "other"}`)}
+                    </span>}
+                  </div>
+                  {source.status === "partial" && <div className="ios-d3-refresh-extra mt-1 text-xs text-amber-900 dark:text-amber-300">
+                    {partialMessage(source)}
+                  </div>}
+                  {source.status !== "ok" && source.detail && <details className="ios-d3-refresh-extra mt-1 text-xs text-muted-foreground">
+                    <summary>{t("refresh.details")}</summary>
+                    <span>{redactSecrets(t(detailKey[source.detail]))}</span>
+                  </details>}
+                {(source.status === "stale" || source.status === "failed") && source.lastSuccessAt && <div className="ios-d3-refresh-last-data text-xs text-muted-foreground">
+                  {t("refresh.lastData").replace("{time}", new Intl.DateTimeFormat(isIOS() ? locale === "zh" ? "zh-CN" : "en-US" : "sv-SE", isIOS()
+                    ? { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }
+                    : { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(source.lastSuccessAt)))}
+                </div>}
               </div>
             ); })}
           </div>

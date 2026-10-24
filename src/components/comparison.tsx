@@ -34,7 +34,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { BottomSheet, useHaptics, useIsMobile } from "./mobile";
+import { BottomSheet, DeltaPill, SegmentedControl, useHaptics, useIsMobile } from "./mobile";
 import { isSameDay } from "date-fns";
 import { useTranslation } from "@/i18n";
 
@@ -70,7 +70,7 @@ const App = ({
   currency: CurrencyRateDetail;
   quoteColor: QuoteColor;
 }) => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const haptic = useHaptics();
   const quickSwipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -160,6 +160,8 @@ const App = ({
       const options = rawOptions.map((option) => {
         dateIndexes[option.label] = (dateIndexes[option.label] || 0) + 1;
         const hasMultipleSnapshots = dateCounts[option.label] > 1;
+        const displayDate = isMobile ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { year: "numeric", month: "short", day: "numeric" }).format(new Date(parseDateToTS(option.label))) : option.label;
         const snapshotLabel = formatSnapshotLabel(
           option.createdAt,
           dateIndexes[option.label],
@@ -169,8 +171,8 @@ const App = ({
           ...option,
           snapshotLabel,
           displayLabel: hasMultipleSnapshots
-            ? `${option.label} ${snapshotLabel}`
-            : option.label,
+            ? `${displayDate} ${snapshotLabel}`
+            : displayDate,
         };
       });
 
@@ -210,7 +212,7 @@ const App = ({
     return () => {
       cancelled = true;
     };
-  }, [dataChangedVersion]);
+  }, [dataChangedVersion, isMobile, locale]);
 
   useEffect(() => {
     if (!baseId || !headId) {
@@ -445,7 +447,7 @@ const App = ({
     }
 
     if (convertCurrency) {
-      return `${currency.symbol} ${res}`;
+      return `${currency.symbol}${isMobile ? "" : " "}${res}`;
     }
     return res;
   }
@@ -458,9 +460,7 @@ const App = ({
 
   function formatChangePercent(percent: number): string {
     const absStr = prettyNumberToLocaleString(Math.abs(percent));
-    if (absStr === "0.00" || absStr === "-0.00") {
-      return "-";
-    }
+    if (absStr === "0.00" || absStr === "-0.00") return "—";
     const prefix = percent > 0 ? "↑ " : "↓ ";
     return prefix + absStr + "%";
   }
@@ -469,14 +469,12 @@ const App = ({
     diff: number,
     type: "price" | "amount" | "value",
   ): string {
-    const prefix = diff > 0 ? "+" : diff < 0 ? "-" : "";
+    if (diff === 0) return "—";
+    const prefix = diff > 0 ? "+" : "-";
     const abs = Math.abs(diff);
     const raw = formatVal(abs, type);
     if (raw === "-") {
       return "-";
-    }
-    if (prefix === "") {
-      return raw;
     }
     return `${prefix}${raw}`;
   }
@@ -506,11 +504,11 @@ const App = ({
   const hasData = coinComparisons.length > 0;
 
   return (
-    <div className="relative min-h-[400px]" aria-busy={pageLoading}>
+    <div className="d2-comparison relative min-h-[400px]" aria-busy={pageLoading}>
       {!isMobile && <h1 className="sr-only">{t("comparison.h1")}</h1>}
       <StaggerContainer className="space-y-3">
         <FadeUp>
-          <Card>
+          <Card className="comparison-controls-card">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center touch:min-w-0 touch:flex-wrap gap-3">
@@ -518,8 +516,8 @@ const App = ({
                     type="button"
                     onClick={onViewOrHideClick}
                     variant="ghost"
-                    size="icon"
-                    className="touch:h-11 touch:w-11 text-muted-foreground hover:text-foreground h-9 w-9"
+                    size={isMobile ? "sm" : "icon"}
+                    className="comparison-mask-toggle touch:h-11 text-muted-foreground hover:text-foreground h-9"
                     aria-label={t(shouldMaskValue ? "comparison.showValues" : "comparison.hideValues")}
                     aria-pressed={shouldMaskValue}
                   >
@@ -534,8 +532,9 @@ const App = ({
                         aria-hidden="true"
                       />
                     )}
+                    {isMobile && <span>{t(shouldMaskValue ? "comparison.showValues" : "comparison.hideValues")}</span>}
                   </Button>
-                  <div className="flex items-center touch:grid touch:w-full touch:min-w-0 touch:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">
+                  <div className="comparison-date-controls flex items-center touch:grid touch:w-full touch:min-w-0 touch:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">
                     <ComparisonDatePicker
                       label={t("comparison.baseDate")}
                       value={baseId}
@@ -551,21 +550,13 @@ const App = ({
                     />
                   </div>
                 </div>
-                <div className="flex items-center touch:min-w-0 touch:flex-wrap gap-2">
+                <div className="comparison-quick-control flex items-center touch:min-w-0 touch:flex-wrap gap-2">
                   <span className="text-muted-foreground text-sm">
                     {t("comparison.quick")}
                   </span>
-                  <ButtonGroup
-                    value={currentQuickCompare || ""}
-                    onValueChange={(val: string) =>
-                      onQuickCompareButtonClick(val as QuickCompareType)
-                    }
+                  {isMobile ? <div className="comparison-quick-segments"
                     onTouchStart={(event) => {
-                      if (!isMobile) return;
-                      quickSwipeStart.current = {
-                        x: event.touches[0].clientX,
-                        y: event.touches[0].clientY,
-                      };
+                      quickSwipeStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
                     }}
                     onTouchEnd={(event) => {
                       if (!quickSwipeStart.current) return;
@@ -574,9 +565,19 @@ const App = ({
                       quickSwipeStart.current = null;
                       if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
                       event.preventDefault();
-                      const index = Math.max(0, quickRanges.indexOf(currentQuickCompare ?? "7D"));
+                      if (!currentQuickCompare) {
+                        onQuickCompareButtonClick("7D");
+                        return;
+                      }
+                      const index = quickRanges.indexOf(currentQuickCompare);
                       onQuickCompareButtonClick(quickRanges[Math.max(0, Math.min(quickRanges.length - 1, index + (dx < 0 ? 1 : -1)))]);
-                    }}
+                    }}>
+                    <SegmentedControl value={currentQuickCompare} onChange={onQuickCompareButtonClick}
+                    label={t("comparison.quick")}
+                    options={quickRanges.map((value) => ({ value, label: t(`comparison.${value === "YTD" ? "ytd" : value === "ALL" ? "all" : value}`) }))} />
+                  </div> : <ButtonGroup
+                    value={currentQuickCompare || ""}
+                    onValueChange={(val: string) => onQuickCompareButtonClick(val as QuickCompareType)}
                   >
                     <ButtonGroupItem value="7D">
                       {t("comparison.7D")}
@@ -593,7 +594,7 @@ const App = ({
                     <ButtonGroupItem value="ALL">
                       {t("comparison.all")}
                     </ButtonGroupItem>
-                  </ButtonGroup>
+                  </ButtonGroup>}
                 </div>
               </div>
             </CardContent>
@@ -615,13 +616,13 @@ const App = ({
         {hasData && (
           <>
             <FadeUp>
-              <Card>
+              <Card className="comparison-totals-card">
                 <CardContent className="pt-5 pb-4">
                   <p className="text-sm font-medium text-muted-foreground mb-3">
                     {t("comparison.totalValue")}
                   </p>
                   <div className="comparison-total-grid grid grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)] items-center gap-2">
-                    <div className="min-w-0">
+                    <div className="comparison-total-base min-w-0">
                       <p className="text-xs text-muted-foreground truncate">
                         {baseDate}
                       </p>
@@ -632,15 +633,17 @@ const App = ({
                         {formatVal(totalValue.base, "value")}
                       </p>
                     </div>
-                    <div className="text-center min-w-0">
-                      <p className="text-xs text-muted-foreground">
+                    <div className="comparison-total-delta text-center min-w-0">
+                      <p className="comparison-total-delta-label text-xs text-muted-foreground">
                         {t("common.changeLabel")}
                       </p>
-                      <p
+                      {isMobile ? <DeltaPill value={totalValue.changePercent} quoteColor={quoteColor}>
+                        {formatChangePercent(totalValue.changePercent)}
+                      </DeltaPill> : <p
                         className={`text-sm font-semibold tabular-nums truncate ${changeClass(totalValue.changePercent)}`}
                       >
                         {formatChangePercent(totalValue.changePercent)}
-                      </p>
+                      </p>}
                       <p
                         className={`text-xs tabular-nums truncate ${changeClass(
                           totalValue.changePercent,
@@ -656,7 +659,7 @@ const App = ({
                         )}
                       </p>
                     </div>
-                    <div className="text-right min-w-0">
+                    <div className="comparison-total-head text-right min-w-0">
                       <p className="text-xs text-muted-foreground truncate">
                         {headDate}
                       </p>
@@ -795,7 +798,7 @@ function ComparisonDatePicker({
 
   if (isMobile) {
     return <>
-      <Button type="button" variant="outline" className="min-h-11 min-w-0 max-w-[8.5rem] touch:max-w-none touch:px-2 justify-start"
+      <Button type="button" variant="outline" className="comparison-date-button min-h-11 min-w-0 max-w-[8.5rem] touch:max-w-none touch:px-2 justify-start"
         disabled={dateOptions.length === 0} aria-label={selectedOption ? `${label}: ${selectedOption.displayLabel}` : label} onClick={() => setOpen(true)}>
         <CalendarIcon aria-hidden="true" className="mr-1 h-4 w-4 shrink-0" />
         <span className="truncate">{selectedOption?.displayLabel || label}</span>
@@ -978,28 +981,28 @@ function CoinCard({
                 key={m.type}
                 className="comparison-metric-row grid grid-cols-[56px_minmax(0,1fr)_128px_minmax(0,1fr)] items-center gap-3 py-0.5"
               >
-                <div className="text-xs text-muted-foreground">{m.label}</div>
+                <div className="comparison-metric-label text-xs text-muted-foreground">{m.label}</div>
                 <span
-                  className="text-sm truncate tabular-nums"
+                  className="comparison-metric-base text-sm truncate tabular-nums"
                   title={baseText}
                 >
                   {baseText}
                 </span>
                 <div
-                  className="min-w-0 text-center truncate"
-                  title={`${formatChangePercent(m.row.changePercent)} (${diffText})`}
+                  className="comparison-metric-delta min-w-0 text-center truncate"
+                  title={m.row.head === m.row.base ? "—" : `${formatChangePercent(m.row.changePercent)} (${diffText})`}
                 >
                   <span
                     className={`text-xs tabular-nums ${changeClass(m.row.changePercent)}`}
                   >
                     {formatChangePercent(m.row.changePercent)}
                   </span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums ml-1">
+                  {m.row.head !== m.row.base && <span className="text-[11px] text-muted-foreground tabular-nums ml-1">
                     ({diffText})
-                  </span>
+                  </span>}
                 </div>
                 <span
-                  className="text-sm text-right truncate tabular-nums"
+                  className="comparison-metric-head text-sm text-right truncate tabular-nums"
                   title={headText}
                 >
                   {headText}

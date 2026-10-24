@@ -1,5 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { isIOS } from "@/utils/platform";
+vi.mock("@/utils/platform", async (original) => ({
+  ...await original<typeof import("@/utils/platform")>(), isIOS: vi.fn(() => false),
+}));
 import axe from "axe-core";
 import { GeneralSettings } from "./general-settings";
 
@@ -49,12 +53,31 @@ describe("GeneralSettings", () => {
     expect(checkbox).toBeInTheDocument();
   });
 
+  it("uses native style switches for source preferences on iPhone", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<GeneralSettings {...baseProps} />);
+    expect(screen.getByRole("switch", { name: /Group stable coins/i })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /Hide inactive/i })).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
+  });
+
+  it("opens a pushed currency picker with the selected value in the row", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<GeneralSettings {...baseProps} />);
+    expect(screen.getByRole("button", { name: /Base currency.*USD/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Base currency.*USD/ }));
+    expect(screen.getByRole("dialog", { name: "Base currency" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /EUR - Euro/ }));
+    expect(baseProps.onPreferCurrencyChange).toHaveBeenCalledWith("EUR");
+    vi.mocked(isIOS).mockReturnValue(false);
+  });
+
   it("shows skeleton when preferCurrencyLoading", () => {
     const { container } = render(
       <GeneralSettings {...baseProps} preferCurrencyLoading={true} />,
     );
 
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
   });
 
   it("shows exchange rate text when non-USD currency is selected", () => {

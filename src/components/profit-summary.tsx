@@ -26,6 +26,7 @@ import PNLChart from "@/components/pnl-chart";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { Button } from "./ui/button";
+import { SegmentedControl, useIsMobile } from "./mobile";
 
 type SummaryType = "month" | "year";
 
@@ -70,12 +71,15 @@ const App = ({
     {
       total: number;
       year: number;
+      hasData: boolean;
     }[]
   >([]);
   const [selectedYear, setSelectedYear] = useState(dateRange.end.getFullYear());
   const [summaryType, setSummaryType] = useState<SummaryType>("month");
   const [clickedMonth, setClickedMonth] = useState<number | null>(null);
+  const [monthChartRange, setMonthChartRange] = useState<"week" | "month">("month");
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const loadGenRef = useRef(0);
   const monthlyCacheRef = useRef<
@@ -94,6 +98,7 @@ const App = ({
       {
         total: number;
         year: number;
+        hasData: boolean;
       }[]
     >
   >(new Map());
@@ -226,12 +231,12 @@ const App = ({
       const profits = await bluebird.map(
         years,
         async (year) => {
-          const { total } = await calculateTotalProfit({
+          const { total, lastRecordDate } = await calculateTotalProfit({
             start: new Date(year, 0, 1),
             end: new Date(year, 11, 31, 23, 59, 59),
           });
 
-          return { total, year };
+          return { total, year, hasData: Boolean(lastRecordDate) };
         },
         { concurrency: 3 }
       );
@@ -254,6 +259,7 @@ const App = ({
   // month starts from 0
   function onMonthClick(month: number) {
     setClickedMonth(month);
+    setMonthChartRange("month");
   }
 
   function onMonthDetailClick() {
@@ -308,6 +314,7 @@ const App = ({
           month,
           label: getMonthAbbreviation(month + 1),
           total: p.total,
+          hasData: Boolean(p.lastRecordDate),
           key: `m-profit-summary-${p.monthFirstDate.getTime()}`,
         };
       })
@@ -315,6 +322,7 @@ const App = ({
       month: number;
       label: string;
       total: number;
+      hasData: boolean;
       key: string;
     }[];
   }, [monthlyProfitsMap, selectedYear]);
@@ -323,6 +331,7 @@ const App = ({
     return availableYears.map((year) => ({
         year,
         total: yearlyProfitsMap[year]?.total ?? 0,
+        hasData: Boolean(yearlyProfitsMap[year]?.hasData),
       }));
   }, [availableYears, yearlyProfitsMap]);
 
@@ -331,8 +340,13 @@ const App = ({
     let up = 0;
     let down = 0;
     let flat = 0;
+    let empty = 0;
 
     data.forEach((item) => {
+      if (!item.hasData) {
+        empty += 1;
+        return;
+      }
       if (item.total > 0) {
         up += 1;
       } else if (item.total < 0) {
@@ -342,12 +356,12 @@ const App = ({
       }
     });
 
-    return { total: data.length, up, down, flat };
+    return { total: data.length - empty, up, down, flat, empty };
   }, [monthCards, yearCards, summaryType]);
 
   function renderAmount(value: number) {
     return (
-      (value < 0 ? "-" : "+") +
+      (value < 0 ? "-" : value > 0 ? "+" : "") +
       currency.symbol +
       simplifyNumber(currencyWrapper(currency)(Math.abs(value)))
     );
@@ -357,19 +371,28 @@ const App = ({
     if (clickedMonthDateRange !== null) {
       return (
         <div id="month-detail" className="space-y-2">
-          <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+          <div className="profit-month-back flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
             <div className="text-xs text-muted-foreground">
               {t("profitSummary.dailyPnlIn")
                 .replace("{month}", getMonthAbbreviation(clickedMonthDateRange.start.getMonth() + 1))
                 .replace("{year}", String(clickedMonthDateRange.start.getFullYear()))}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onMonthDetailClick}>
-              {t("common.back")}
+            <Button type="button" variant={isMobile ? "ghost" : "outline"} size="sm" onClick={onMonthDetailClick}>
+              {t(isMobile ? "profitSummary.allMonths" : "common.back")}
             </Button>
           </div>
+          {isMobile && <SegmentedControl value={monthChartRange} onChange={setMonthChartRange}
+            label={t("pnl.title")} options={[
+              { value: "week", label: t("comparison.7D") },
+              { value: "month", label: t("comparison.1M") },
+            ]} />}
           <PNLChart
             currency={currency}
-            dateRange={clickedMonthDateRange}
+            dateRange={isMobile && monthChartRange === "week" ? {
+              start: new Date(Math.max(clickedMonthDateRange.start.getTime(),
+                clickedMonthDateRange.end.getTime() - 6 * 24 * 60 * 60 * 1000)),
+              end: clickedMonthDateRange.end,
+            } : clickedMonthDateRange}
             quoteColor={quoteColor}
           />
         </div>
@@ -377,8 +400,8 @@ const App = ({
     }
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
-        {monthCards.map((item) => (
+      <div className="profit-period-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+        {(isMobile ? [...monthCards].reverse() : monthCards).map((item) => (
           <button
             key={item.key}
             type="button"
@@ -395,7 +418,7 @@ const App = ({
                 getToneClass(item.total, quoteColor)
               )}
             >
-              {renderAmount(item.total)}
+              {item.hasData ? renderAmount(item.total) : "—"}
             </div>
           </button>
         ))}
@@ -405,7 +428,7 @@ const App = ({
 
   function renderYearSummary() {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="profit-period-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
         {yearCards.map((item) => (
           <div
             key={`y-profit-summary-${item.year}`}
@@ -430,7 +453,7 @@ const App = ({
   }
 
   return (
-    <Card className="min-h-[280px]">
+    <Card className="profit-summary-card min-h-[280px]">
       <CardHeader className="space-y-2 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -459,19 +482,21 @@ const App = ({
                 </SelectContent>
               </Select>
             )}
-            <ButtonGroup value={summaryType} onValueChange={onSummaryTypeChange}>
+            {isMobile ? <SegmentedControl value={summaryType} onChange={onSummaryTypeChange} label={t("profitSummary.title")}
+              options={[{ value: "month", label: t("profitSummary.month") }, { value: "year", label: t("profitSummary.year") }]} /> : <ButtonGroup value={summaryType} onValueChange={onSummaryTypeChange}>
               <ButtonGroupItem value="month">{t("profitSummary.month")}</ButtonGroupItem>
               <ButtonGroupItem value="year">{t("profitSummary.year")}</ButtonGroupItem>
-            </ButtonGroup>
+            </ButtonGroup>}
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="profit-summary-stats flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>{t("profitSummary.periods").replace("{n}", String(visibleSummaryStats.total))}</span>
           <span>{t("profitSummary.up").replace("{n}", String(visibleSummaryStats.up))}</span>
           <span>{t("profitSummary.down").replace("{n}", String(visibleSummaryStats.down))}</span>
-          <span>{t("profitSummary.flat").replace("{n}", String(visibleSummaryStats.flat))}</span>
+          {(!isMobile || visibleSummaryStats.flat > 0) && <span>{t("profitSummary.flat").replace("{n}", String(visibleSummaryStats.flat))}</span>}
+          {visibleSummaryStats.empty > 0 && <span>{t("profitSummary.empty").replace("{n}", String(visibleSummaryStats.empty))}</span>}
         </div>
         {summaryType === "month" ? renderMonthSummary() : renderYearSummary()}
       </CardContent>

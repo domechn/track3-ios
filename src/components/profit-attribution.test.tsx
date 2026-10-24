@@ -24,7 +24,27 @@ beforeEach(() => vi.clearAllMocks());
 function view() { return <ProfitAttribution currency={currency} dateRange={range} quoteColor="red-up-green-down" />; }
 
 describe("profit attribution", () => {
-  it("opens grouped attribution fields in a phone detail sheet", async () => {
+  it("keeps desktop contributor and detractor previews to five groups", async () => {
+    vi.mocked(queryAttribution).mockResolvedValue({
+      attribution: {
+        entries: Array.from({ length: 12 }, (_, index) => ({
+          symbol: `COIN${index}`, assetType: "crypto" as const, wallet: "w",
+          priceEffect: index < 6 ? index + 1 : -(index - 5),
+          flowEffect: 0, residual: 0, totalChange: index < 6 ? index + 1 : -(index - 5),
+        })),
+        totals: { priceEffect: 0, flowEffect: 0, residual: 0, totalChange: 0 },
+        startValue: 100, endValue: 100,
+      },
+      aliases: {},
+    });
+    render(view());
+    const figure = await screen.findByRole("figure", { name: "Top attribution contributors and detractors" });
+    const [contributors, detractors] = within(figure).getAllByRole("list");
+    expect(within(contributors).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(detractors).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(13);
+  });
+  it("expands grouped attribution fields beneath the phone rank", async () => {
     const previousMatchMedia = window.matchMedia;
     window.matchMedia = (query: string) => ({
       matches: query.includes("max-width: 950px"), media: query, onchange: null,
@@ -36,9 +56,11 @@ describe("profit attribution", () => {
       render(view());
       expect(await screen.findByText("Top contributors")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: /BTC/ }));
-      const dialog = screen.getByRole("dialog", { name: "BTC" });
-      expect(within(dialog).getByText("Quantity change")).toBeInTheDocument();
-      expect(within(dialog).getByText("+€200.00")).toBeInTheDocument();
+      const row = screen.getByRole("button", { name: /BTC/ }).closest("li")!;
+      expect(row.querySelector("img")).toBeInTheDocument();
+      expect(within(row).getByText("Quantity change")).toBeInTheDocument();
+      expect(within(row).getByText("+€200.00")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     } finally {
       window.matchMedia = previousMatchMedia;
     }
@@ -136,6 +158,13 @@ describe("profit attribution", () => {
   });
 
   it("explains both empty market leader sections when all changes are quantity changes", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    try {
     vi.mocked(queryAttribution).mockResolvedValue({
       attribution: { entries: [{ symbol: "BTC", assetType: "crypto", wallet: "w", priceEffect: 0, flowEffect: 100, residual: 0, totalChange: 100 }],
         totals: { priceEffect: 0, flowEffect: 100, residual: 0, totalChange: 100 }, startValue: 0, endValue: 100 },
@@ -143,7 +172,34 @@ describe("profit attribution", () => {
     });
     render(view());
     const figure = await screen.findByRole("figure");
-    expect(within(figure).getAllByText("No market change")).toHaveLength(2);
+    expect(within(figure).getByText("No market change")).toBeInTheDocument();
+    expect(within(figure).getByText("No losses in this period")).toBeInTheDocument();
+    expect(within(figure).getByRole("button", { name: /BTC/ })).toBeInTheDocument();
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
+  });
+
+  it("keeps contributors beyond fifth place reachable on a phone", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    try {
+      vi.mocked(queryAttribution).mockResolvedValue({
+        ...filled,
+        attribution: { ...filled.attribution, entries: Array.from({ length: 6 }, (_, index) => ({
+          symbol: `COIN${index}`, assetType: "crypto" as const, wallet: "w",
+          priceEffect: 60 - index, flowEffect: 0, residual: 0, totalChange: 60 - index,
+        })) },
+      });
+      render(view());
+      expect(await screen.findByRole("button", { name: /COIN5/ })).toBeInTheDocument();
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
   });
 
   it("renders stock attribution with the selected Chinese label", async () => {
