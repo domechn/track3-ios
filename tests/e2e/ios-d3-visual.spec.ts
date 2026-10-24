@@ -10,8 +10,10 @@ test.use({
 });
 
 const phones = [
+  { name: "mini", width: 320, height: 568 },
   { name: "se", width: 375, height: 667 },
   { name: "14", width: 390, height: 844 },
+  { name: "pro-max", width: 430, height: 932 },
 ];
 const settings = [
   ["settings", "/settings", "Settings"],
@@ -105,6 +107,10 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(cancelRule).toBeGreaterThanOrEqual(17);
     const goalNav = await page.locator(".ios-d3-goal-editor-nav").boundingBox();
     expect(saveRule!.y + saveRule!.height).toBeLessThanOrEqual(goalNav!.y + goalNav!.height);
+    const cancelAction = await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Cancel" }).boundingBox();
+    const ruleTitle = await page.locator(".ios-d3-goal-editor-nav h2").boundingBox();
+    expect(ruleTitle!.x - (cancelAction!.x + cancelAction!.width)).toBeGreaterThanOrEqual(8);
+    expect(saveRule!.x - (ruleTitle!.x + ruleTitle!.width)).toBeGreaterThanOrEqual(8);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-goal-editor.png` });
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("spinbutton", { name: "Threshold" }).fill("90000");
     await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).click();
@@ -152,6 +158,11 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await expect(page.locator(".ios-d3-chat-header")).toContainText("Assistant");
     await capture(page, phone.name, theme, "assistant-empty");
     const chatHeader = await page.locator(".ios-d3-chat-header").boundingBox();
+    const backAction = await page.locator("#app-top-bar .mobile-header-back").boundingBox();
+    const sessionsAction = await page.getByTestId("sidebar-toggle").boundingBox();
+    const chatTitle = await page.locator(".ios-d3-chat-header h3").boundingBox();
+    expect(sessionsAction!.x - (backAction!.x + backAction!.width)).toBeGreaterThanOrEqual(8);
+    expect(chatTitle!.x - (sessionsAction!.x + sessionsAction!.width)).toBeGreaterThanOrEqual(8);
     const firstSuggestion = await page.getByTestId("chat-example-summary").boundingBox();
     const composer = await page.locator(".ios-d3-chat-composer").boundingBox();
     expect(chatHeader!.height).toBeLessThanOrEqual(56);

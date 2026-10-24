@@ -63,6 +63,12 @@ test.describe("coarse pointer narrow viewport", () => {
     test(`${route} at 360px has no automated accessibility violations or page overflow`, async ({ page }) => {
       await checkRouteAccessibility(page, route, 360);
     });
+    test(`${route} at 360px in dark mode has no automated accessibility violations or page overflow`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
+      await checkRouteAccessibility(page, route, 360);
+      await expect(page.locator("html")).toHaveClass(/dark/);
+    });
   }
 });
 

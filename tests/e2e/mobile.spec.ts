@@ -601,7 +601,7 @@ for (const size of sizes) {
           await page.screenshot({ path: `test-results/mobile/${size.width}x${size.height}-history-list.png` });
         }
       }
-      if (size.width === 320 || size.width === 375 || size.width === 390) {
+      if (size.width === 320 || size.width === 375 || size.width === 390 || size.width === 430) {
         await page.goto("/#/overview");
         await page.reload();
         await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);

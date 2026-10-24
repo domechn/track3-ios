@@ -144,6 +144,7 @@
   .ios-d3-backup-actions .mobile-inset-section { margin-bottom: 0; }
   .ios-d3-backup-actions .ios-d3-backup-import-section + .mobile-inset-section { margin-top: 26px; }
   .ios-d3-backup-actions .ios-d3-import-note { display: block; margin: 8px 12px 0; }
+  .ios-d3-auto-backup-setting .ios-d3-data-panel-content > .grid { grid-template-columns: minmax(0, 1fr); }
   .ios-d3-backup-actions .ios-d3-backup-folder-actions { flex-wrap: wrap; }
   .ios-d3-backup-folder-actions > button:first-child { min-width: 0; flex: 1 1 180px; white-space: nowrap; }
   .ios-d3-backup-folder-actions > *:last-child { flex: 0 0 auto; }
@@ -237,11 +238,10 @@
   #goal-rule-editor :is(input, select) { min-height: 44px; font-size: 16px; }
   .ios-d3-goal-editor { max-width: 560px; margin: 0 auto; padding-bottom: 120px; }
   .ios-d3-goal-editor > button:first-child { padding-left: 0; color: hsl(var(--primary)); font-size: 17px; }
-  .ios-d3-goal-editor-nav { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
-  .ios-d3-goal-editor-nav h2 { font-size: 17px; font-weight: 600; }
-  .ios-d3-goal-editor-nav h2 { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
-  .ios-d3-goal-editor .ios-d3-goal-editor-nav > button, .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:hover { color: hsl(var(--primary)); background: transparent; font-size: 17px; font-weight: 400; }
-  .ios-d3-goal-editor .ios-d3-goal-editor-nav > .ios-d3-goal-nav-save { font-weight: 600; }
+  .ios-d3-goal-editor-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-height: 52px; }
+  .ios-d3-goal-editor-nav h2 { font-size: 17px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+  .ios-d3-goal-editor .ios-d3-goal-editor-nav > button, .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:hover { padding-inline: 0; color: hsl(var(--primary)); background: transparent; font-size: 17px; font-weight: 400; }
+  .ios-d3-goal-editor .ios-d3-goal-editor-nav > .ios-d3-goal-nav-save { justify-self: end; font-weight: 600; }
   .ios-d3-goal-editor #goal-rule-editor .ios-d3-goal-editor-heading { display: none; }
   .ios-d3-goal-editor #goal-rule-editor { background: transparent; }
   .ios-d3-goal-editor #goal-rule-editor .ios-d3-goal-editor-content { padding: 16px 0; }
@@ -280,7 +280,7 @@
   .ios-d3-rebalance ul[aria-label] li { border: 0; border-radius: 12px; background: hsl(var(--secondary)); }
 
   .ios-d3-chat .glass { border: 0; border-radius: 0; box-shadow: none; }
-  #app-top-bar .ios-d3-chat-header { position: absolute; top: var(--mobile-safe-top); right: 0; left: 0; z-index: 31; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; flex: none; width: 100%; height: 56px; min-height: 56px; gap: 0; padding: 6px 8px 6px 96px; border: 0; background: transparent; pointer-events: none; }
+  #app-top-bar .ios-d3-chat-header { position: absolute; top: var(--mobile-safe-top); right: 0; left: 0; z-index: 31; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; flex: none; width: 100%; height: 56px; min-height: 56px; gap: 0; padding: 6px 8px 6px 84px; border: 0; background: transparent; pointer-events: none; }
   .ios-d3-chat-header :is(button, a) { pointer-events: auto; }
   .ios-d3-chat-header-primary { width: auto; min-width: 0; gap: 4px; }
   #app-top-bar .ios-d3-chat-header-identity, #app-top-bar .ios-d3-chat-header-model { display: none; }
@@ -376,6 +376,9 @@
   .ios-d3-auto-backup p:last-child { margin-left: 14px; font-size: 13px; }
   .ios-d3-sync-indicator button { border: .5px solid var(--ios-separator); border-radius: 99px; background: hsl(var(--card) / .96); box-shadow: none; backdrop-filter: blur(18px); font-size: 13px; }
   .ios-d3-sync-popover { border: .5px solid var(--ios-separator); border-radius: 16px; background: hsl(var(--card)); box-shadow: none; font-size: 15px; }
+}
+@media (max-width: 340px) and (pointer: coarse) {
+  .ios-d3-chat-header h3 { left: calc(50% + 20px); }
 }
 @keyframes ios-d3-caret { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {

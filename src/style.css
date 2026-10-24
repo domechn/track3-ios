@@ -138,6 +138,7 @@
       --secondary: 240 3% 18%; --secondary-foreground: 0 0% 98%;
       --muted: 240 3% 18%; --muted-foreground: 240 3% 69%;
       --border: 240 3% 27%; --input: 240 3% 27%; --ring: 221 94% 70%;
+      --destructive: 4 100% 61%; --destructive-foreground: 0 0% 0%;
     }
   }
 }

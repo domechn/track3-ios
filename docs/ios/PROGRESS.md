@@ -1,5 +1,12 @@
 # iOS port progress
 
+## D4 visual QA and integration
+
+- Extended the browser review matrix to all four requested widths (320, 375, 390, and 430 px) in light and dark. Primary routes retain the existing overflow, clipped-text, safe-area, and chart checks; feature routes capture settings, editors, goals, rebalance, assistant, refresh, first launch, and startup states. The CI workflow already uploads `test-results/mobile/*.png` as `ios-browser-screenshots` before the desktop Playwright run clears that directory.
+- The new 320 px capture found Backup's folder actions extending about 6 px beyond their card. A constrained phone grid column keeps the buttons inside the card; the light and dark tests now pass. The screenshots also exposed two header overlaps at 320 px: Save crossed into “New rule,” and the assistant's sessions button crossed into its title. The alert editor now uses a three-column header, and the assistant title and actions have measured 8 px gaps. A new dark WCAG AA route sweep found 1.67:1 text contrast on the Sync passphrase warning. The phone dark destructive token now uses the iOS loss red with a black label on filled controls; the Sync check passes.
+- `docs/ios/DESIGN.md` records the final shared tokens, components, and review matrix. The README shows 14 compressed light and dark screenshots from the rich browser fixture.
+- Local checks passed: frontend build and TypeScript, browser-test TypeScript, 1,879 Vitest tests in 227 files, 93 desktop Playwright tests (including the 16 new dark route checks), 122 phone Playwright tests, the final 25-test D3 visual sweep after the header fixes, 61 pure Rust tests, and `cargo check --locked --lib`. The browser runs left 485 PNGs in `test-results/mobile/`, with no missing light/dark primary or feature route capture at 320, 375, 390, or 430 px. Fourteen optimized 390×844 PNGs under `docs/ios/screens/` total about 1 MiB. The initial Rust check stopped before app compilation because this container lacked the GTK/WebKit development packages installed by CI; the check passed after installing that same package set. No new CI run, iOS simulator build, or signed-device check has been made from this uncommitted worktree.
+
 ## D2 comparison and data-screen review fixes
 
 - Comparison leaves quick ranges unselected until one is applied. The Analytics tiles, cost values, history asset details, and sheet headings now align at phone widths. Position changes fills its sheet and uses the system font for legend percentages.
