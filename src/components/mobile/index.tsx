@@ -215,7 +215,7 @@ export function SwipeableRow({ children, actions, className, allowImmediateActio
 
 export function SegmentedControl<T extends string>({ options, value, onChange, className, label }: {
   options: { value: T; label: string }[];
-  value: T;
+  value: T | null;
   onChange: (value: T) => void;
   className?: string;
   label?: string;

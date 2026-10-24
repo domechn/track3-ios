@@ -24,6 +24,26 @@ beforeEach(() => vi.clearAllMocks());
 function view() { return <ProfitAttribution currency={currency} dateRange={range} quoteColor="red-up-green-down" />; }
 
 describe("profit attribution", () => {
+  it("keeps desktop contributor and detractor previews to five groups", async () => {
+    vi.mocked(queryAttribution).mockResolvedValue({
+      attribution: {
+        entries: Array.from({ length: 12 }, (_, index) => ({
+          symbol: `COIN${index}`, assetType: "crypto" as const, wallet: "w",
+          priceEffect: index < 6 ? index + 1 : -(index - 5),
+          flowEffect: 0, residual: 0, totalChange: index < 6 ? index + 1 : -(index - 5),
+        })),
+        totals: { priceEffect: 0, flowEffect: 0, residual: 0, totalChange: 0 },
+        startValue: 100, endValue: 100,
+      },
+      aliases: {},
+    });
+    render(view());
+    const figure = await screen.findByRole("figure", { name: "Top attribution contributors and detractors" });
+    const [contributors, detractors] = within(figure).getAllByRole("list");
+    expect(within(contributors).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(detractors).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(13);
+  });
   it("expands grouped attribution fields beneath the phone rank", async () => {
     const previousMatchMedia = window.matchMedia;
     window.matchMedia = (query: string) => ({

@@ -63,7 +63,7 @@ export default function ProfitAttribution({ currency, dateRange, quoteColor, log
   const bars = (items: typeof groups, emptyKey: string) => (
     items.length === 0 ? <p className="text-xs text-muted-foreground">{label(emptyKey)}</p> :
     <ol className="space-y-2">
-      {items.map((group) => {
+      {(isMobile ? items : items.slice(0, 5)).map((group) => {
         const key = `${dimension}:${group.key}`;
         const asset = dimension === "coin" ? {
           assetType: group.key.startsWith("stock:") ? "stock" as const : "crypto" as const,

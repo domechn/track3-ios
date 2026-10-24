@@ -98,6 +98,7 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
         holding.amount, Number(last[0]) * costFactor, new Date(Date.UTC(2026, 7, 24)).toISOString()]);
     }
     for (const [symbol, amount, saleFactor, day] of [
+      ["SOL", 5, 1.08, 20],
       ["BTC", 0.08, 1.05, 40],
       ["ETH", 0.8, 0.82, 44],
     ] as const) {

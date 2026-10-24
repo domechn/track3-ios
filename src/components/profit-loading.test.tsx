@@ -125,4 +125,32 @@ describe("Profit loading", () => {
     }
   });
 
+  it("changes the phone profit query when a hero range is selected", async () => {
+    const oldMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: vi.fn(), removeListener: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(),
+    });
+    try {
+      render(<MemoryRouter><Profit
+        currency={usdCurrency}
+        dateRange={{ start: new Date(2024, 0, 1), end: new Date(2024, 3, 30, 23, 59, 59) }}
+        showRangeControl
+        quoteColor="green-up-red-down"
+      /></MemoryRouter>);
+      expect(screen.getByRole("radio", { name: "ALL" })).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(screen.getByRole("radio", { name: "7D" }));
+      await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
+        start: new Date(2024, 3, 24), end: new Date(2024, 3, 30, 23, 59, 59),
+      }));
+      fireEvent.click(screen.getByRole("radio", { name: "ALL" }));
+      await waitFor(() => expect(calculateTotalProfitMock).toHaveBeenLastCalledWith({
+        start: new Date(2024, 0, 1), end: new Date(2024, 3, 30, 23, 59, 59),
+      }));
+    } finally {
+      window.matchMedia = oldMatchMedia;
+    }
+  });
+
 });

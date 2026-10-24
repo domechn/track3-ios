@@ -72,9 +72,35 @@ describe("ProfitMetrics", () => {
       expect(profit?.querySelector(".profit-metric-value")).toHaveTextContent("$40.00");
       expect(profit?.querySelector(".profit-metric-date")).toHaveTextContent("Jan 2, 2024");
       const streak = document.querySelector(".profit-metric-tile");
-      expect(streak?.querySelector(".profit-metric-value")).toHaveTextContent("days");
+      expect(streak?.querySelector(".profit-metric-value")).toHaveTextContent("1 day");
       expect(streak?.querySelector(".profit-metric-date")).toHaveTextContent("Jan 2");
       expect(streak?.querySelector(".profit-metric-date")).not.toHaveTextContent(" – ");
+      const lossStreak = screen.getByText("Longest loss streak").closest(".profit-metric-tile");
+      expect(lossStreak?.querySelector(".profit-metric-value")).toHaveTextContent("0 days");
+      expect(lossStreak?.querySelector(".profit-metric-date")).toHaveTextContent("—");
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
+  });
+  it("uses the mathematical minus sign for a phone drawdown", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    try {
+      vi.mocked(queryTotalValues).mockResolvedValue([
+        { totalValue: 100, timestamp: new Date("2024-01-01").getTime() },
+        { totalValue: 130, timestamp: new Date("2024-01-02").getTime() },
+        { totalValue: 117, timestamp: new Date("2024-01-03").getTime() },
+      ]);
+      render(wrapWithProviders(0));
+      await waitFor(() => expect(reportLoaded).toHaveBeenCalled());
+      const lossStreak = screen.getByText("Longest loss streak").closest(".profit-metric-tile");
+      expect(lossStreak?.querySelector(".profit-metric-value")).toHaveTextContent("1 day");
+      expect(screen.getByText("Max drawdown").closest(".profit-metric-tile")
+        ?.querySelector(".profit-metric-value")).toHaveTextContent("−10.00%");
     } finally {
       window.matchMedia = previousMatchMedia;
     }

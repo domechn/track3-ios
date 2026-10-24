@@ -661,7 +661,7 @@ const App = ({
                   </span>
                   <span className="history-asset-value font-mono text-sm">{currency.symbol}{prettyNumberToLocaleString(currencyWrapper(currency)(item.value))}</span>
                 </div>
-                <div className="mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                <div className="history-mobile-asset-meta mt-1 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                   <span>{t("common.amountLabel")}: {prettyNumberKeepNDigitsAfterDecimalPoint(item.amount, 4)}</span>
                   <span>{t("common.priceLabel")}: {currency.symbol}{prettyPriceNumberToLocaleString(currencyWrapper(currency)(item.price))}</span>
                 </div>

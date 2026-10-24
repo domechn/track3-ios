@@ -17,7 +17,7 @@
     min-height: 100px;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: flex-end;
+    justify-content: flex-start;
     border-radius: 16px;
     background: hsl(var(--card));
     padding: 12px;
@@ -32,7 +32,7 @@
     height: 30px;
     flex: none;
     place-items: center;
-    margin-bottom: auto;
+    margin-bottom: 0;
     border-radius: 10px;
     background: color-mix(in srgb, var(--ios-accent) 11%, transparent);
     color: var(--ios-accent);
@@ -52,6 +52,8 @@
   .d2-allocation-sheet .overview-allocation-card, .d2-positions-sheet .position-changes-card { border: 0; background: transparent; box-shadow: none; }
   .d2-positions-sheet .position-changes-header { display: none; }
   .d2-positions-sheet .position-changes-content { padding: 0; }
+  .d2-positions-sheet .position-changes-content > div:last-child { height: max(350px, calc(100dvh - env(safe-area-inset-top) - 12rem)) !important; }
+  .d2-positions-sheet [data-testid="assets-percentage-legend-item"] > span:last-child { font-family: inherit; font-variant-numeric: tabular-nums; }
   .d2-profit-sheet > [data-ui-card] { border: 0; box-shadow: none; }
   .d2-profit-sheet .profit-summary-card { background: transparent; }
   .d2-profit-sheet .profit-summary-card > :first-child { padding: 0 0 12px; }
@@ -87,9 +89,6 @@
   .history-mobile-snapshot-delta[data-tone="gain"] { background: color-mix(in srgb, var(--ios-gain) 12%, transparent); color: var(--ios-gain); }
   .history-mobile-snapshot-delta[data-tone="loss"] { background: color-mix(in srgb, var(--ios-loss) 12%, transparent); color: var(--ios-loss); }
   .history-detail-dialog::before { display: none; }
-  .history-detail-sheet .mobile-sheet-heading { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; text-align: center; }
-  .history-detail-sheet .mobile-sheet-heading > :first-child { grid-column: 2; }
-  .history-detail-sheet .mobile-sheet-close { grid-column: 3; }
   .history-detail-sheet .mobile-sheet-body { width: 100%; min-width: 0; overflow-x: hidden; background: hsl(var(--background)); }
   .history-detail-sheet .history-detail-dialog { display: grid; width: 100% !important; min-width: 0; max-width: 100% !important; max-height: none !important; gap: 16px; overflow: visible; border-radius: 0; padding-bottom: 0; }
   .history-detail-meta { display: grid; gap: 4px; }
@@ -107,6 +106,7 @@
   .history-detail-dialog .history-mobile-asset .mobile-swipe-actions { overflow: hidden; }
   .history-detail-dialog .history-mobile-asset-content { padding: 9px 16px; }
   .history-detail-dialog .history-mobile-asset-content > :last-child { margin-top: 2px; }
+  .history-detail-dialog .history-mobile-asset-meta { padding-left: 58px; }
   .history-detail-dialog .history-mobile-asset:not(:last-child) { border-bottom: .5px solid var(--ios-separator); }
   .history-detail-dialog .history-asset-value { font-family: inherit; font-variant-numeric: tabular-nums; }
   .history-mobile-rank { width: 14px; flex: none; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 400; }
@@ -181,6 +181,7 @@
   .d2-summary .attribution-rank-details { display: grid; gap: 8px; padding: 0 12px 12px; }
   .d2-summary .attribution-rank-details > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
   .d2-summary .attribution-rank-details dt { color: hsl(var(--muted-foreground)); }
+  .d2-summary .profit-range { width: 100%; margin-top: 12px; }
 
   .d2-wallets > .wallet-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .d2-wallets > .wallet-stack > * { min-width: 0; margin: 0; }
@@ -202,8 +203,6 @@
   .d2-wallets .wallet-change-controls { display: flex; flex-direction: column; align-items: stretch; }
   .d2-wallets .wallet-change-controls .mobile-segments { width: 100%; }
   .d2-wallets .wallet-change-controls .mobile-segment { min-width: 0; padding-inline: 4px; }
-  .d2-wallets .wallet-change-page-size { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; color: hsl(var(--muted-foreground)); font-size: 13px; }
-  .d2-wallets .wallet-change-page-size select { min-height: 36px; border-radius: 9px; background: hsl(var(--secondary)); padding: 0 8px; color: hsl(var(--foreground)); font-size: 15px; }
   .d2-wallets [data-tile-category], .d2-coin [data-tile-category] { container-type: inline-size; --d2-tile-ink: #121317; }
   .d2-wallets [data-tile-category="cex"], .d2-coin [data-tile-category="cex"] { --d2-tile-ink: #fff; }
   .dark .d2-wallets [data-tile-category="cex"], .dark .d2-coin [data-tile-category="cex"] { --d2-tile-ink: #121317; }
@@ -239,6 +238,7 @@
   .d2-coin [data-single-wallet="true"] { display: none; }
 
   .d2-cost .cost-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .d2-cost .cost-metric-label { min-height: 2.75em; }
   .d2-cost .cost-metric-value { overflow: visible; font-size: clamp(13px, 3.6vw, 17px); white-space: nowrap; overflow-wrap: normal; }
   .d2-cost details { overflow: hidden; border: 0; border-radius: 14px; background: hsl(var(--card)); }
   .d2-cost details > summary { min-height: 52px; padding: 14px 16px; font-size: 15px; }

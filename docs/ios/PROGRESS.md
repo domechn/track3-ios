@@ -1,5 +1,13 @@
 # iOS port progress
 
+## D2 comparison and data-screen review fixes
+
+- Comparison leaves quick ranges unselected until one is applied. The Analytics tiles, cost values, history asset details, and sheet headings now align at phone widths. Position changes fills its sheet and uses the system font for legend percentages.
+- Analytics labels and sheet titles now agree for Top coins and Returns; the monthly drill-down uses “Daily P&L.” The Analytics Net P&L section has a local 7D/1M/1Y/All control. The shared Overview section keeps its existing range behavior.
+- Profit metrics use a true minus sign for drawdown, count one-day streaks as one day, and show a dash for a zero-day streak. Desktop attribution previews remain limited to five gainers and five detractors.
+- Wallet Value Changes uses the same wallet names as allocation and keeps paging without a phone row-size select. The browser demo includes a September trade so that month no longer appears flat beside September best and worst days.
+- Verification in this worktree: app and browser-test TypeScript passed; `corepack yarn test` passed 1,851 tests in 227 files; the mobile, iOS parity, and accessibility Playwright suites passed 135/135. They regenerated 196 PNGs under `test-results/mobile/`. I inspected 320 px route captures and 375/390 px light and dark detail captures. No new CI, simulator, or physical-device run was performed here.
+
 ## D2 reviewer follow-up
 
 - Fixed the browser-test TypeScript error from the unsupported scroll behavior. Added a browser check for SE card margins and coin History row separation; updated assertions for the History delete position, coin detail title, and comparison pill.

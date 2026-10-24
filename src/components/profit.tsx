@@ -48,10 +48,12 @@ const App = ({
   currency,
   dateRange,
   showCoinsProfitPercentage,
+  showRangeControl = false,
   quoteColor,
 }: {
   currency: CurrencyRateDetail;
   showCoinsProfitPercentage?: boolean;
+  showRangeControl?: boolean;
   dateRange: TDateRange;
   quoteColor: QuoteColor;
 }) => {
@@ -72,20 +74,24 @@ const App = ({
   >([]);
   const [logoMap, setLogoMap] = useState<{ [x: string]: string }>({});
   const [view, setView] = useState<"summary" | "attribution">("summary");
+  const [profitRange, setProfitRange] = useState<"7D" | "1M" | "1Y" | "ALL">("ALL");
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const loadGenRef = useRef(0);
   const logoPathCacheRef = useRef<Map<string, string>>(new Map());
 
-  const rangeKey = useMemo(
-    () => `${dateRange.start.getTime()}-${dateRange.end.getTime()}`,
-    [dateRange.start, dateRange.end],
-  );
+  const selectedDateRange = useMemo(() => {
+    if (!isMobile || !showRangeControl || profitRange === "ALL") return dateRange;
+    const days = profitRange === "7D" ? 7 : profitRange === "1M" ? 30 : 365;
+    const start = new Date(dateRange.end.getFullYear(), dateRange.end.getMonth(), dateRange.end.getDate() - days + 1);
+    return { start: new Date(Math.max(dateRange.start.getTime(), start.getTime())), end: dateRange.end };
+  }, [dateRange.start, dateRange.end, isMobile, showRangeControl, profitRange]);
+  const rangeKey = `${selectedDateRange.start.getTime()}-${selectedDateRange.end.getTime()}`;
   const dataChangedVersion = useDataChangedVersion();
 
   useEffect(() => {
     const gen = ++loadGenRef.current;
 
-    calculateTotalProfit(dateRange)
+    calculateTotalProfit(selectedDateRange)
       .then((res) => {
         if (gen !== loadGenRef.current) {
           return;
@@ -319,7 +325,7 @@ const App = ({
                 )}
             </div>
             <div className="text-xs text-muted-foreground">
-              {t("profit.netPnl")}
+              {t(showRangeControl ? "profit.netPnlShort" : "profit.netPnl")}
             </div>
           </div>
           <div>
@@ -329,11 +335,17 @@ const App = ({
               </span>}
           </div>
         </div>
+        {isMobile && showRangeControl && view === "summary" && <SegmentedControl
+          value={profitRange} onChange={setProfitRange} className="profit-range"
+          label={t("profit.range")}
+          options={(["7D", "1M", "1Y", "ALL"] as const).map((value) => ({
+            value, label: t(value === "ALL" ? "comparison.all" : `comparison.${value}`),
+          }))} />}
         </>}
       </CardHeader>
       <CardContent className="space-y-2">
         {view === "attribution" ? (
-          <ProfitAttribution currency={currency} dateRange={dateRange} quoteColor={quoteColor} logoMap={logoMap} />
+          <ProfitAttribution currency={currency} dateRange={selectedDateRange} quoteColor={quoteColor} logoMap={logoMap} />
         ) : <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {topProfitData.length > 0 && <div className="space-y-1">

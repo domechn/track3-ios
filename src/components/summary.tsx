@@ -90,6 +90,7 @@ const App = ({
                   dateRange={dateRange}
                   quoteColor={quoteColor}
                   showCoinsProfitPercentage={true}
+                  showRangeControl={true}
                 />
               </FadeUp>
             </>

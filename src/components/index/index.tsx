@@ -460,8 +460,8 @@ function AnalyticsHub({ currency, dateRange, quoteColor }: {
     </div>
     <BottomSheet open={sheet !== null} onOpenChange={(open) => { if (!open) setSheet(null); }}
       title={sheet === "allocation" ? t("overview.allocation")
-        : sheet === "rank" ? t("topCoinsRank.title")
-        : sheet === "positions" ? t("analytics.positionChanges") : t("profitSummary.title")}
+        : sheet === "rank" ? t("analytics.rank")
+        : sheet === "positions" ? t("analytics.positionChanges") : t("analytics.profit")}
       detents={["large"]} initialDetent="large">
       {sheet === "allocation" && <div className="d2-allocation-sheet"><LatestAssetsPercentage dateRange={dateRange} currency={currency} /></div>}
       {sheet === "rank" && <div className="d2-rank-sheet"><TopCoinsRank dateRange={dateRange} currency={currency} /></div>}

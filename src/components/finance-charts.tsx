@@ -96,7 +96,7 @@ export function CostCharts({ report, quoteColor }: { report: CostBasisReport; qu
         { key: "finance.unrealizedPnl", value: visual.unrealized, rate: visual.rates.unrealized, rateKey: "finance.openReturn" },
       ].map(({ key, value, rate, rateKey }) => <Card key={key} className="min-w-0">
         <CardContent className="space-y-1 p-3">
-          <p className="text-xs text-muted-foreground">{t(key)}</p>
+          <p className="cost-metric-label text-xs text-muted-foreground">{t(key)}</p>
           <p className="cost-metric-value truncate text-lg font-semibold tabular-nums" style={{ color: value === 0 ? undefined : tone(value > 0, quoteColor) }}>
             {isMobile
               ? `${value > 0 ? "+" : value < 0 ? "−" : ""}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

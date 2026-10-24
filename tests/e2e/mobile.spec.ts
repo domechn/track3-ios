@@ -30,21 +30,32 @@ test("data screens expose grouped history and analytics destinations", async ({ 
     await expect(page.locator(".analytics-tile")).toHaveCount(7);
     expect(await page.locator(".analytics-tile-grid").evaluate((node) =>
       node.scrollWidth <= node.clientWidth && node.getBoundingClientRect().height > 250)).toBe(true);
+    const tileTitleTops = await page.locator(".analytics-tile strong").evaluateAll((titles) =>
+      titles.map((title) => title.getBoundingClientRect().top));
+    for (let index = 0; index < 6; index += 2) {
+      expect(Math.abs(tileTitleTops[index] - tileTitleTops[index + 1])).toBeLessThanOrEqual(1);
+    }
     await page.locator(".analytics-tile").getByText("Allocation", { exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Allocation" }).locator("canvas")).toBeVisible();
     await page.getByRole("dialog", { name: "Allocation" }).getByRole("button", { name: "Close" }).click();
     await page.locator(".analytics-tile").getByText("Position changes", { exact: true }).click();
-    await expect(page.getByRole("dialog", { name: "Position changes" }).locator("canvas")).toBeVisible();
+    const positions = page.getByRole("dialog", { name: "Position changes" });
+    await expect(positions.locator("canvas")).toBeVisible();
+    expect(await positions.locator("[data-testid='assets-percentage-legend-item'] span:last-child").first()
+      .evaluate((node) => getComputedStyle(node).fontFamily)).toBe(
+        await positions.locator(".position-changes-content").evaluate((node) => getComputedStyle(node).fontFamily));
     await page.getByRole("dialog", { name: "Position changes" }).getByRole("button", { name: "Close" }).click();
     await expect(page.locator(".analytics-tile[href='#/wallets']")).toBeVisible();
     await expect(page.locator(".analytics-tile[href='#/comparison']")).toBeVisible();
     await expect(page.locator(".analytics-tile[href='#/cost-basis']")).toBeVisible();
     await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
-    const monthCards = page.getByRole("dialog", { name: "Profit Summary" }).locator(".profit-summary-card .grid > button");
+    const monthCards = page.getByRole("dialog", { name: "Returns" }).locator(".profit-summary-card .grid > button");
     await expect(monthCards.first()).toContainText("Oct");
+    await expect(monthCards.nth(1)).toContainText("Sep");
+    await expect(monthCards.nth(1)).not.toContainText("$0.0");
     await expect(monthCards.nth(3)).toContainText("—");
     await expect(monthCards.nth(3)).not.toContainText("+");
-    await page.getByRole("dialog", { name: "Profit Summary" }).getByRole("button", { name: "Close" }).click();
+    await page.getByRole("dialog", { name: "Returns" }).getByRole("button", { name: "Close" }).click();
     await page.locator(".d2-summary .ath-current-value").evaluate((node) =>
       window.scrollTo(0, node.getBoundingClientRect().top + window.scrollY - 100));
     const hero = (await page.locator(".d2-summary .ath-current-value").boundingBox())!;
@@ -57,6 +68,10 @@ test("data screens expose grouped history and analytics destinations", async ({ 
       Boolean(node.compareDocumentPosition(document.querySelector(".d2-cost [data-ai-setup-suggestion]")!) & Node.DOCUMENT_POSITION_FOLLOWING),
     )).toBe(true);
     const openPnL = page.getByText("Unrealized P&L", { exact: true }).locator("..").locator(".tabular-nums").first();
+    const costValueTops = await page.locator(".d2-cost .cost-metric-value").evaluateAll((values) =>
+      values.map((value) => value.getBoundingClientRect().top));
+    expect(Math.abs(costValueTops[0] - costValueTops[1])).toBeLessThanOrEqual(1);
+    expect(Math.abs(costValueTops[2] - costValueTops[3])).toBeLessThanOrEqual(1);
     expect(await openPnL.evaluate((node) => getComputedStyle(node).whiteSpace)).toBe("nowrap");
     expect(await openPnL.evaluate((node) => node.scrollWidth)).toBeLessThanOrEqual(
       await openPnL.evaluate((node) => node.clientWidth),
@@ -134,6 +149,7 @@ test("SE data cards keep equal side margins and coin history labels clear their 
     }
     await page.goto("/#/comparison");
     await expect(page.locator(".comparison-total-delta .mobile-delta-pill")).toBeVisible();
+    await expect(page.locator(".comparison-quick-segments [aria-checked='true']")).toHaveCount(0);
     const hideValues = (await page.locator(".comparison-mask-toggle").boundingBox())!;
     expect(hideValues.x).toBeLessThanOrEqual(17);
     await page.goto("/#/wallets");
@@ -167,6 +183,11 @@ for (const width of [375, 390]) {
         await page.locator(".history-mobile-snapshot-button").first().click();
         const detail = page.getByRole("dialog", { name: /historical data detail/i });
         await expect(detail.locator(".history-mobile-asset")).toHaveCount(7);
+        const assetIndent = await detail.locator(".history-mobile-asset").first().evaluate((row) => ({
+          symbol: row.querySelector(".history-mobile-asset-content > div:first-child > span:first-child > span:last-child")!.getBoundingClientRect().left,
+          amount: row.querySelector(".history-mobile-asset-meta > span:first-child")!.getBoundingClientRect().left,
+        }));
+        expect(Math.abs(assetIndent.symbol - assetIndent.amount)).toBeLessThanOrEqual(2);
         const deleteButton = (await detail.getByRole("button", { name: "Delete snapshot" }).boundingBox())!;
         const stats = (await detail.locator(".grid").first().boundingBox())!;
         expect(deleteButton.y).toBeGreaterThan(stats.y + stats.height);
@@ -216,21 +237,21 @@ for (const width of [375, 390]) {
         await page.locator(".d2-summary figure[aria-label]").scrollIntoViewIfNeeded();
         await capture("attribution");
         await page.locator(".analytics-tile").getByText("Top coins").click();
-        const rank = page.getByRole("dialog", { name: "Top Coins Rank" });
+        const rank = page.getByRole("dialog", { name: "Top coins" });
         await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toBeVisible();
         await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toContainText("%");
         await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toContainText("$");
         await capture("top-coins");
         await rank.getByRole("button", { name: "Close" }).click();
         await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
-        const returns = page.getByRole("dialog", { name: "Profit Summary" });
+        const returns = page.getByRole("dialog", { name: "Returns" });
         await expect(returns.locator(".profit-summary-card")).toBeVisible();
         await capture("returns-sheet");
         await returns.getByRole("button", { name: "Close" }).click();
 
         await page.goto("/#/wallets");
         await expect(page.locator(".wallet-change-mobile-list")).toBeVisible();
-        await expect(page.getByRole("combobox", { name: "Rows" })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Rows" })).toHaveCount(0);
         await page.locator(".wallet-change-mobile-list").scrollIntoViewIfNeeded();
         await capture("wallet-changes");
 

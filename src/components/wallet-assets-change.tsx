@@ -5,7 +5,7 @@ import {
   WalletAssetsChangeData,
 } from "@/middlelayers/types";
 import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
-import { insertEllipsis } from "@/utils/string";
+import { getWalletDisplayName } from "./wallet-assets-percentage";
 import MoneyBankIcon from "@/assets/icons/money-bank-icon.png";
 import AirdropIcon from "@/assets/icons/airdrop-icon.png";
 import {
@@ -38,7 +38,7 @@ import { Button } from "./ui/button";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
-import { MobileRecordList, SegmentedControl, useHaptics, useIsMobile } from "./mobile";
+import { MobileRecordList, SegmentedControl, useIsMobile } from "./mobile";
 
 type SortMode = "changeValue" | "changePercentage" | "absChange";
 type PageSize = "20" | "50" | "100";
@@ -83,7 +83,6 @@ const App = ({
   const loadGenRef = useRef(0);
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const haptic = useHaptics();
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const [walletAssetsChange, setWalletAssetsChange] =
     useState<WalletAssetsChangeData>([]);
@@ -135,14 +134,10 @@ const App = ({
           !item.walletType || item.walletType === "null"
             ? t("common.unknown")
             : item.walletType,
-        walletAliasText:
-          item.walletAlias ??
-          insertEllipsis(
-            !item.wallet || item.wallet === "null"
-              ? t("common.unknown")
-              : item.wallet,
-            32,
-          ),
+        walletAliasText: getWalletDisplayName({
+          ...item,
+          wallet: !item.wallet || item.wallet === "null" ? t("common.unknown") : item.wallet,
+        }),
       })),
     [walletAssetsChange],
   );
@@ -247,12 +242,6 @@ const App = ({
                   { value: "changePercentage", label: t("walletValueChanges.sortByPercent") },
                   { value: "absChange", label: t("walletValueChanges.sortByVolatility") },
                 ]} />
-              <label className="wallet-change-page-size">
-                <span>{t("history.rowsLabel")}</span>
-                <select value={pageSize} onChange={(event) => { haptic("selection"); setPageSize(event.target.value as PageSize); }}>
-                  {(["20", "50", "100"] as const).map((value) => <option value={value} key={value}>{value}</option>)}
-                </select>
-              </label>
             </> : <>
             <ButtonGroup
               value={sortMode}

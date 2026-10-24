@@ -225,7 +225,7 @@ const App = ({
       }
     }
 
-    return arr.slice(startIndex, endIndex + 1);
+    return maxLength === 0 ? [] : arr.slice(startIndex, endIndex + 1);
   }
 
   function onATHTimesClick() {
@@ -296,12 +296,17 @@ const App = ({
           : `${monthDay(start)}–${monthDay(end)}${start.getFullYear() === end.getFullYear() ? `, ${end.getFullYear()}` : ""}`;
       };
       const amount = (value: number) => `${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(value)))}`;
+      const streakDays = (start: Date, end: Date) => start.getTime() === 0 ? 0 : daysBetweenDates(start, end) + 1;
+      const streakValue = (start: Date, end: Date) => {
+        const days = streakDays(start, end);
+        return `${days} ${t(days === 1 ? "profitMetrics.day" : "profitMetrics.days")}`;
+      };
       const tiles = [
-        { label: t("profitMetrics.maxContProfitShort"), value: `${daysBetweenDates(maxProfileDateRange.start, maxProfileDateRange.end)} ${t("profitMetrics.days")}`, date: shortRange(maxProfileDateRange.start, maxProfileDateRange.end) },
-        { label: t("profitMetrics.maxContLossShort"), value: `${daysBetweenDates(maxLostDateRange.start, maxLostDateRange.end)} ${t("profitMetrics.days")}`, date: shortRange(maxLostDateRange.start, maxLostDateRange.end) },
+        { label: t("profitMetrics.maxContProfitShort"), value: streakValue(maxProfileDateRange.start, maxProfileDateRange.end), date: maxProfileDateRange.start.getTime() === 0 ? "—" : shortRange(maxProfileDateRange.start, maxProfileDateRange.end) },
+        { label: t("profitMetrics.maxContLossShort"), value: streakValue(maxLostDateRange.start, maxLostDateRange.end), date: maxLostDateRange.start.getTime() === 0 ? "—" : shortRange(maxLostDateRange.start, maxLostDateRange.end) },
         { label: t("profitMetrics.maxProfitShort"), value: maxSingleDayProfitData.value < 0 ? "—" : amount(maxSingleDayProfitData.value), date: shortDate(maxSingleDayProfitData.timestamp), tone: "gain" },
         { label: t("profitMetrics.maxLossShort"), value: maxSingleDayLostData.value > 0 ? "—" : `−${amount(maxSingleDayLostData.value)}`, date: shortDate(maxSingleDayLostData.timestamp), tone: "loss" },
-        { label: t("profitMetrics.maxDrawdownShort"), value: `${maxDrawdownData.value.toFixed(2)}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
+        { label: t("profitMetrics.maxDrawdownShort"), value: `${maxDrawdownData.value.toFixed(2).replace("-", "−")}%`, date: shortDate(maxDrawdownData.date), tone: "loss" },
       ];
       return <div>
         {athReachedDetailsDialog}

@@ -565,10 +565,14 @@ const App = ({
                       quickSwipeStart.current = null;
                       if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
                       event.preventDefault();
-                      const index = Math.max(0, quickRanges.indexOf(currentQuickCompare ?? "7D"));
+                      if (!currentQuickCompare) {
+                        onQuickCompareButtonClick("7D");
+                        return;
+                      }
+                      const index = quickRanges.indexOf(currentQuickCompare);
                       onQuickCompareButtonClick(quickRanges[Math.max(0, Math.min(quickRanges.length - 1, index + (dx < 0 ? 1 : -1)))]);
                     }}>
-                    <SegmentedControl value={currentQuickCompare ?? "7D"} onChange={onQuickCompareButtonClick}
+                    <SegmentedControl value={currentQuickCompare} onChange={onQuickCompareButtonClick}
                     label={t("comparison.quick")}
                     options={quickRanges.map((value) => ({ value, label: t(`comparison.${value === "YTD" ? "ytd" : value === "ALL" ? "all" : value}`) }))} />
                   </div> : <ButtonGroup

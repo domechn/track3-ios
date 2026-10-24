@@ -53,6 +53,27 @@ beforeEach(() => {
 });
 
 describe("Comparison page", () => {
+  it("leaves quick ranges unselected when the latest two snapshots are shown on a phone", async () => {
+    const previousMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes("max-width: 950px"), media: query, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    });
+    localStorage.removeItem(COMPARISON_DATES_KEY);
+    try {
+      vi.mocked(queryAllDataDates).mockResolvedValue([
+        { id: "head", date: "2024-04-16", createdAt: "2024-04-16T00:00:00Z" },
+        { id: "base", date: "2024-04-15", createdAt: "2024-04-15T00:00:00Z" },
+      ]);
+      vi.mocked(queryCoinDataByUUID).mockResolvedValue([]);
+      render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+      await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+      expect(screen.getAllByRole("radio").every((radio) => radio.getAttribute("aria-checked") === "false")).toBe(true);
+    } finally {
+      window.matchMedia = previousMatchMedia;
+    }
+  });
   it("keeps the desktop currency spacing in comparison totals", async () => {
     vi.mocked(queryAllDataDates).mockResolvedValue([
       { id: "head", date: "2024-04-16", createdAt: "2024-04-16T00:00:00Z" },
