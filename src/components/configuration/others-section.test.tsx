@@ -55,7 +55,7 @@ describe("OthersSection", () => {
   it("has an add button", () => {
     render(<OthersSection {...baseProps} />);
 
-    expect(screen.getByText("Add Symbol")).toBeInTheDocument();
+    expect(screen.getByText("Add symbol")).toBeInTheDocument();
   });
 
   it("requires confirmation before removing a custom symbol", () => {

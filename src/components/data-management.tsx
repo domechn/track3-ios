@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { useToast } from "@/components/ui/use-toast";
 import ConfirmDeleteDialog from "@/components/common/confirm-delete-dialog";
 import { useOptimisticDelete } from "@/components/common/use-optimistic-delete";
@@ -24,6 +24,7 @@ import {
 import type { ExportData } from "@/middlelayers/datamanager";
 import { timeToDateStr } from "@/utils/date";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +57,7 @@ import { chooseBackupLocation } from "@/utils/backup-location";
 import { isIOS } from "@/utils/platform";
 import { appLockEnabled, setAppLockEnabled } from "@/utils/ios-native";
 import { ConfirmSheet } from "@/components/mobile/overlays";
+import { InsetGroup } from "@/components/mobile";
 import { useSearchParams } from "react-router-dom";
 
 const App = ({ onDataImported }: { onDataImported?: () => void }) => {
@@ -280,7 +282,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
   const showSecurity = !section || section === "security";
 
   return (
-    <div className="ios-d3-settings-content space-y-6">
+    <div className="ios-d3-settings-content ios-d3-data-settings space-y-6">
       {showBackup && showImportConfirm && <ConfirmSheet title={t("data.restoreConfirm.title")} onDismiss={() => {
         setShowImportConfirm(false);
         setExportData(undefined);
@@ -324,7 +326,25 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </p>
       </div>}
 
-      {showBackup && <div className="grid gap-4 sm:grid-cols-2">
+      {showBackup && isIOS() && <div className="ios-d3-backup-actions">
+        <InsetGroup title={t("data.import")}>
+          <button type="button" className="ios-d3-data-action-row" onClick={onImportDataClick}><span>{t("data.importButton")}</span><ChevronRightIcon aria-hidden="true" /></button>
+        </InsetGroup>
+        <p className="ios-d3-settings-note">{t("data.importDesc")}</p>
+        <InsetGroup title={t("data.export")}>
+          <div className="ios-d3-setting-switch-row">
+            <Label htmlFor="exportConfigurationCheckbox">{t("data.includeConfig")}</Label>
+            <Switch id="exportConfigurationCheckbox" checked={exportConfiguration} onCheckedChange={setExportConfiguration} aria-label={t("data.includeConfig")} />
+          </div>
+          <div className="ios-d3-setting-switch-row">
+            <Label htmlFor="exportDataCheckbox">{t("data.includeHistory")}</Label>
+            <Switch id="exportDataCheckbox" checked disabled aria-label={t("data.includeHistory")} />
+          </div>
+          <button type="button" className="ios-d3-data-action-row" onClick={onExportDataClick}><span>{t("data.exportButton")}</span><ChevronRightIcon aria-hidden="true" /></button>
+          <button type="button" className="ios-d3-data-action-row" onClick={() => void onShareDataClick()}><span>{t("data.shareJSON")}</span><ChevronRightIcon aria-hidden="true" /></button>
+        </InsetGroup>
+      </div>}
+      {showBackup && !isIOS() && <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -374,7 +394,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </Card>
       </div>}
 
-      {showBackup && <Card>
+      {showBackup && <Card className="ios-d3-auto-backup-setting">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.autoBackup")}
@@ -444,7 +464,7 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </CardContent>
       </Card>}
 
-      {showBlacklist && <Card>
+      {showBlacklist && <Card className="ios-d3-blacklist-setting">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.blacklist")}
@@ -486,20 +506,18 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
         </CardContent>
       </Card>}
 
-      {showSecurity && isIOS() && <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">{t("data.appLock.title")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      {showSecurity && isIOS() && <Card className="ios-d3-lock-setting">
+        <CardContent className="space-y-3 pt-5">
+          <div className="ios-d3-setting-switch-row">
+            <Label htmlFor="app-lock-switch">{t("data.appLock.title")}</Label>
+            <Switch id="app-lock-switch" aria-label={t("data.appLock.title")} checked={lockEnabled} disabled={lockBusy} onCheckedChange={() => void toggleAppLock()} />
+          </div>
           <p className="text-sm text-muted-foreground">{t("data.appLock.description")}</p>
           {lockError && <p role="alert" className="text-sm text-destructive">{t("data.appLock.failed")}</p>}
-          <Button className="min-h-11" disabled={lockBusy} onClick={() => void toggleAppLock()}>
-            {t(lockEnabled ? "data.appLock.disable" : "data.appLock.enable")}
-          </Button>
         </CardContent>
       </Card>}
 
-      {showSecurity && <Card>
+      {showSecurity && <Card className="ios-d3-encryption-setting">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("data.encryption.key.title")}

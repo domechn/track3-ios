@@ -28,16 +28,19 @@ test("More opens every iPhone settings section through the Settings hub", async 
   await expect(page).toHaveURL(/#\/settings$/);
   await expect(page.locator("#app-main-content h1")).toHaveCount(1);
   const sections = page.getByRole("navigation", { name: "Settings sections" });
+  const sectionLink = (title: string) => sections.getByRole("link").filter({
+    has: page.locator(".mobile-list-label", { hasText: new RegExp(`^${title}$`) }),
+  });
   for (const title of [
     "Data sources", "Currency", "Appearance", "Language", "Blacklist",
     "Pro and license", "AI assistant", "Security", "Backup", "Backup and sync", "About",
   ]) {
-    const link = sections.getByRole("link", { name: title, exact: true });
+    const link = sectionLink(title);
     await expect(link).toBeVisible();
     await expect(link).toHaveClass(/mobile-list-row/);
     expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }
-  await sections.getByRole("link", { name: "Language" }).click();
+  await sectionLink("Language").click();
   await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
   await expect(page.locator("#app-top-bar .mobile-compact-title")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
@@ -76,6 +79,7 @@ test("an edge swipe inside a source editor leaves the form open", async ({ page,
   await page.setViewportSize({ width: 390, height: 844 });
   await installTauriBridge(page);
   await page.goto("/#/settings/configuration?section=sources");
+  await page.getByRole("button", { name: "Add source" }).click();
   await page.getByRole("button", { name: "Add exchange" }).click();
   const editor = page.getByRole("dialog", { name: "Edit data source" });
   await expect(editor).toBeVisible();
@@ -128,6 +132,7 @@ test("More and source selections use the native haptic bridge", async ({ page })
   await expect.poll(bridge.haptics).toBe(1);
   await page.getByRole("link", { name: "Data sources" }).click();
   await expect.poll(bridge.haptics).toBe(2);
+  await page.getByRole("button", { name: "Add source" }).click();
   await page.getByRole("button", { name: "Add exchange" }).click();
   await expect.poll(bridge.haptics).toBe(3);
 });
@@ -151,6 +156,7 @@ for (const width of [375, 390, 430]) {
     await expect(page.getByRole("link", { name: "Data sources" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole("link", { name: "Data sources" }).click();
+    await page.getByRole("button", { name: "Add source" }).click();
     await expect(page.getByRole("button", { name: "Add exchange" })).toBeVisible();
     await page.getByRole("button", { name: "Add exchange" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
@@ -195,7 +201,7 @@ for (const width of [375, 390, 430]) {
     await page.goto("/#/goals");
     await expect(page.getByRole("heading", { level: 1, name: "Goals & Alerts" })).toBeVisible();
     await expect(page.locator("#app-main-content h1")).toHaveCount(1);
-    await page.getByText("Add alert", { exact: true }).click();
+    await page.getByRole("button", { name: "Add alert" }).click();
     await expect(page.getByRole("dialog", { name: "Add alert" })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto("/#/rebalance");

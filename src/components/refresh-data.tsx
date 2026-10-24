@@ -34,6 +34,8 @@ import { cancelInsightRefresh, refreshInsights } from "@/middlelayers/insights-s
 import { normalizeSourceStatuses, sourceIdentity, sortSourceStatuses } from "@/middlelayers/source-status";
 import { partialEndpointKeys } from "@/middlelayers/datafetch/utils/source-failure";
 import { isIOS } from "@/utils/platform";
+import { listPortfolioSources } from "@/middlelayers/data";
+import { isProVersion } from "@/middlelayers/license";
 
 const retries = 3;
 const retryInterval = 3000;
@@ -64,9 +66,8 @@ const App = ({
   const [sourceStatuses, setSourceStatuses] = useState<PortfolioSourceStatus[]>(readStoredStatuses);
   const [lastResult, setLastResult] = useState<RefreshAllDataResult>();
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingSourceLabels, setPendingSourceLabels] = useState<string[]>([]);
+  const [pendingSources, setPendingSources] = useState<Array<{ sourceId: string; label: string }>>([]);
   const [liveSources, setLiveSources] = useState<PortfolioSourceResult[]>([]);
-  const [refreshDuration, setRefreshDuration] = useState<number>();
 
   const {
     setButtonLoading: setRefreshLoading,
@@ -105,26 +106,11 @@ const App = ({
     setLiveSources([]);
     cancelInsightRefresh();
     setRefreshLoading(true);
-    setRefreshDuration(undefined);
-    const startedAt = Date.now();
     try {
-      const config = await getConfiguration();
-      const wallets = ["btc", "erc20", "sol", "doge", "trc20", "ton", "sui"]
-        .flatMap((key) => {
-          const entries = (config as unknown as Record<string, { addresses?: Array<string | { alias?: string; active?: boolean }> }> | undefined)?.[key]?.addresses ?? [];
-          return entries.filter((entry) => typeof entry === "string" || entry.active !== false)
-            .map((entry, index) => typeof entry === "string" ? `${key.toUpperCase()} wallet ${index + 1}` : entry.alias || `${key.toUpperCase()} wallet ${index + 1}`);
-        });
-      setPendingSourceLabels(sourceId
-        ? sourceStatuses.filter((source) => source.sourceId === sourceId).map(sourceLabel)
-        : [
-          ...(config?.exchanges ?? []).filter((source) => source.active !== false).map((source, index) => source.alias?.trim() || `${source.name} ${index + 1}`),
-          ...(config?.stockConfig?.brokers ?? []).filter((source) => source.active !== false).map((source, index) => source.alias?.trim() || `${source.name.toUpperCase()} ${index + 1}`),
-          ...wallets,
-          ...(config?.others?.length ? [t("refresh.othersSource")] : []),
-        ]);
+      const [config, userInfo] = await Promise.all([getConfiguration(), isProVersion()]);
+      setPendingSources(config ? listPortfolioSources(config, userInfo).filter((source) => !sourceId || source.sourceId === sourceId) : []);
     } catch {
-      setPendingSourceLabels([]);
+      setPendingSources([]);
     }
     const operation: RefreshOperation = { operationUuid: uuidv4() };
     let succeeded = false;
@@ -166,7 +152,6 @@ const App = ({
       if (result.sourceStatuses) {
         const statuses = normalizeSourceStatuses(result.sourceStatuses);
         setSourceStatuses(statuses);
-        setRefreshDuration(Date.now() - startedAt);
         insightStatuses = statuses;
         setStatusDialogOpen(statuses.some((source) => source.status === "failed" || source.status === "stale"));
         try {
@@ -215,7 +200,6 @@ const App = ({
       toast({ description: t(messageKey), variant: "destructive" });
       trackEventWithClientID("data_refreshed", { failed: "true" });
     } finally {
-      setRefreshDuration((current) => current ?? Date.now() - startedAt);
       setRefreshing(false);
       setRefreshLoading(false);
       setProgress(0);
@@ -246,7 +230,7 @@ const App = ({
 
   const hasFailure = sourceStatuses.some((source) => source.status === "failed" || source.status === "stale");
   const hasPartial = sourceStatuses.some((source) => source.status === "partial");
-  const sourceLabel = (source: PortfolioSourceStatus) => {
+  const sourceLabel = (source: Pick<PortfolioSourceStatus, "sourceId" | "label">) => {
     const wallet = /^(erc20|sol|btc|doge|trc20|ton|sui):(\d+)$/.exec(source.sourceId);
     if (wallet && source.label.toLowerCase() === `${wallet[1]} wallet ${Number(wallet[2]) + 1}`) {
       return t("refresh.walletSource")
@@ -261,8 +245,8 @@ const App = ({
     source.kind === "exchange" && source.hint && !source.hint.startsWith("#")
       ? `${t("refresh.hint.apikey")} ${source.hint}` : source.hint;
   const sortedStatuses = sortSourceStatuses(sourceStatuses);
-  const progressLabels = [...pendingSourceLabels, ...liveSources.map((source) => source.label)
-    .filter((label) => !pendingSourceLabels.includes(label))];
+  const progressSources = [...pendingSources, ...liveSources.filter((source) =>
+    !pendingSources.some((pending) => pending.sourceId === source.sourceId))];
   const failedStatuses = sortedStatuses.filter((source) => source.status === "failed");
   const partialStatuses = sortedStatuses.filter((source) => source.status === "partial");
   const failedNames = failedStatuses.map(displayIdentity).join(", ");
@@ -337,15 +321,16 @@ const App = ({
             </div>}
           </AlertDialogHeader>
           <div className="ios-d3-refresh-status-list my-2 max-h-80 space-y-2 overflow-y-auto">
-            {refreshing && (progressLabels.length ? progressLabels : [t("refresh.inProgress")]).map((label, index) => {
-              const completed = liveSources.find((source) => source.label === label);
+            {refreshing && (progressSources.length ? progressSources : [{ sourceId: "loading", label: t("refresh.inProgress") }]).map((pending) => {
+              const completed = liveSources.find((source) => source.sourceId === pending.sourceId);
               const StatusIcon = completed?.status === "stale" ? ExclamationTriangleIcon : completed ? CheckIcon : UpdateIcon;
-              return <div key={`${label}-${index}`} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center gap-3 px-4 py-3">
+              const label = sourceLabel(pending);
+              return <div key={pending.sourceId} data-source-status-row role="group" aria-label={label} className="ios-d3-refresh-row flex items-center gap-3 px-4 py-3">
                 <StatusIcon aria-hidden="true" className={`h-5 w-5 shrink-0 ${completed ? completed.status === "stale" ? "text-destructive" : "text-green-600 dark:text-green-400" : "animate-spin text-primary motion-reduce:animate-none"}`} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
                 <span className="text-xs tabular-nums text-muted-foreground">{completed?.startedAt && completed.finishedAt
                   ? `${((Date.parse(completed.finishedAt) - Date.parse(completed.startedAt)) / 1000).toFixed(1)}s`
-                  : t("refresh.inProgress")}</span>
+                  : t("refresh.waiting")}</span>
               </div>;
             })}
             {!refreshing && sortedStatuses.map((source) => {
@@ -356,10 +341,8 @@ const App = ({
                 data-source-status-row className="ios-d3-refresh-row flex items-center justify-between gap-3 rounded-md px-4 py-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold break-all">{sourceLabel(source)}</div>
-                  {(source.startedAt && source.finishedAt || refreshDuration !== undefined) && <div className="text-xs tabular-nums text-muted-foreground">
-                    {((source.startedAt && source.finishedAt
-                      ? Date.parse(source.finishedAt) - Date.parse(source.startedAt)
-                      : refreshDuration ?? 0) / 1000).toFixed(1)}s
+                  {source.startedAt && source.finishedAt && <div className="text-xs tabular-nums text-muted-foreground">
+                    {((Date.parse(source.finishedAt) - Date.parse(source.startedAt)) / 1000).toFixed(1)}s
                   </div>}
                   {source.provider && <div className="text-xs text-muted-foreground">
                     <Icon aria-hidden="true" className="mr-1 inline-block h-3.5 w-3.5" />

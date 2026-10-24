@@ -35,12 +35,12 @@ export function MobileOthers(props: {
     props.onSave(editor.index, { ...editor.value, symbol: editor.value.symbol.trim().toUpperCase(), amount });
     setEditor(undefined);
   };
-  return <section className="ios-d3-others space-y-2">
+  return <section className={`ios-d3-others space-y-2${props.hideEmpty ? " ios-d3-others-empty" : ""}`}>
     <div className="flex items-center justify-between gap-2">
-      <h2 className="ios-d3-section-heading">{t("config.others")}</h2>
+      {!props.hideEmpty && <h2 className="ios-d3-section-heading">{t("config.others")}</h2>}
       <Button variant="ghost" className="ios-d3-text-action min-h-11" onClick={() => open(null)}>{t("config.addSymbol")}</Button>
     </div>
-    <div className="ios-d3-others-group overflow-hidden rounded-2xl bg-card">
+    {!props.hideEmpty && <div className="ios-d3-others-group overflow-hidden rounded-2xl bg-card">
       {props.others.length === 0 && !props.hideEmpty && <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.others.empty")}</p>}
       {props.others.map((other, index) => <div key={`${other.symbol}-${index}`} className="ios-d3-others-row flex min-w-0 items-center gap-2 px-4 py-2">
         <span className="ios-d3-source-avatar" aria-hidden="true">{other.symbol.slice(0, 2).toUpperCase()}</span>
@@ -50,7 +50,7 @@ export function MobileOthers(props: {
         </button>
         <button className="ios-d3-source-more" aria-label={t("mobile.sources.moreActions").replace("{source}", other.symbol)} onClick={() => setMenu(index)}><DotsHorizontalIcon aria-hidden="true" /></button>
       </div>)}
-    </div>
+    </div>}
     {menu !== null && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(null); }} title={props.others[menu]?.symbol ?? ""} actions={[
       { label: t("config.others.attachTo"), onClick: () => props.onAttach(menu) },
       { label: t("common.delete"), destructive: true, onClick: () => setRemoval(menu) },

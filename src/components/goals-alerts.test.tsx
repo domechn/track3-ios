@@ -56,11 +56,29 @@ it("opens rule editing as a full-screen page on iPhone", async () => {
   render(<GoalsAlerts />);
   await screen.findByText("No rules yet");
   expect(screen.queryByRole("button", { name: "Save rule" })).not.toBeInTheDocument();
-  await userEvent.click(screen.getByText("Add alert"));
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
   expect(screen.getByRole("dialog", { name: "Add alert" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Save rule" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("dialog", { name: "Add alert" })).not.toBeInTheDocument();
+});
+
+it("keeps empty alert history actions out of the iPhone page", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<GoalsAlerts />);
+  await screen.findByText("No rules yet");
+  expect(screen.getByRole("button", { name: "Add alert" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Acknowledge all" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Clear history" })).not.toBeInTheDocument();
+});
+
+it("lets an iPhone owner choose an alert kind in one form row", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  render(<GoalsAlerts />);
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
+  const kind = screen.getByRole("combobox", { name: "Alert kind" });
+  await userEvent.selectOptions(kind, "asset_value_target");
+  expect(screen.getByRole("textbox", { name: "Symbol" })).toBeInTheDocument();
 });
 
 it("uses a switch to toggle a saved alert on iPhone", async () => {
@@ -90,7 +108,7 @@ it("traps focus and locks background scroll while the iPhone rule editor is open
   vi.mocked(isIOS).mockReturnValue(true);
   render(<><button>Outside</button><GoalsAlerts /></>);
   await screen.findByText("No rules yet");
-  await userEvent.click(screen.getByText("Add alert"));
+  await userEvent.click(screen.getByRole("button", { name: "Add alert" }));
   const dialog = screen.getByRole("dialog", { name: "Add alert" });
   expect(document.body.style.overflow).toBe("hidden");
   within(dialog).getByRole("button", { name: "Cancel" }).focus();

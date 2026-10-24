@@ -17,7 +17,7 @@ import AISetupCard from "./common/ai-setup-card";
 import { FinanceChartSkeleton, GoalChart } from "./finance-charts";
 import { alertSentence, goalEtaDays } from "./finance-visuals";
 import { queryPNLChartValue } from "@/middlelayers/charts-timeseries";
-import { BarChartIcon, ClockIcon, DashboardIcon, MagicWandIcon, MixIcon, PieChartIcon } from "@radix-ui/react-icons";
+import { BarChartIcon, ClockIcon, DashboardIcon, MagicWandIcon, MixIcon, PieChartIcon, PlusIcon } from "@radix-ui/react-icons";
 import ConfirmDeleteDialog from "./common/confirm-delete-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -168,22 +168,23 @@ export default function GoalsAlerts() {
   }
 
   const editor = <Card id="goal-rule-editor" className="border-0 shadow-none">
-    <CardHeader className="pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
-    <CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2" aria-label={t("goals.templates")}>
+    <CardHeader className="ios-d3-goal-editor-heading pb-3"><CardTitle className="text-base">{t(draft.id ? "goals.editRule" : "goals.newRule")}</CardTitle></CardHeader>
+    <CardContent className="ios-d3-goal-editor-content space-y-4">
+      {!isIOS() && <div className="flex flex-wrap gap-2" aria-label={t("goals.templates")}>
         {templates.map((kind) => (
           <Button key={kind} size="sm" variant={draft.kind === kind ? "default" : "outline"}
             onClick={() => setDraft({ ...emptyDraft, kind })}>{t(`goals.kind.${kind}`)}</Button>
         ))}
-      </div>
+      </div>}
+      <p className="text-xs text-muted-foreground">{t("goals.units")}</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {!isIOS() && <label className="space-y-1 text-sm">
+        <label className="space-y-1 text-sm">
           <span>{t("goals.kind")}</span>
           <select className="h-10 w-full rounded-md border bg-background px-3" value={draft.kind}
             onChange={(e) => setDraft({ ...draft, kind: e.target.value as AlertKind })}>
             {templates.map((kind) => <option key={kind} value={kind}>{t(`goals.kind.${kind}`)}</option>)}
           </select>
-        </label>}
+        </label>
         {needsAsset(draft.kind) && <>
           <label className="space-y-1 text-sm">
             <span>{t("goals.assetType")}</span>
@@ -228,7 +229,6 @@ export default function GoalsAlerts() {
             onChange={(e) => { setValidationField(null); setDraft({ ...draft, cooldownMinutes: e.target.value }); }} />
         </label>
       </div>
-      <p className="text-xs text-muted-foreground">{t("goals.units")}</p>
       <div className="ios-d3-goal-editor-actions flex gap-2">
         <Button onClick={() => void save()}>{t("goals.saveRule")}</Button>
         {draft.id > 0 && <Button variant="outline" onClick={() => setDraft(emptyDraft)}>{t("common.cancel")}</Button>}
@@ -240,9 +240,12 @@ export default function GoalsAlerts() {
 
   return (
     <div className="ios-d3-goals mx-auto flex max-w-5xl flex-col gap-4 pb-8">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
+      <div className="ios-d3-goals-heading flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("goals.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("goals.subtitle")}</p>
+        </div>
+        {isIOS() && <Button type="button" variant="ghost" className="ios-d3-goals-add" aria-label={t("goals.mobile.add")} onClick={() => setManualOpen(true)}><PlusIcon aria-hidden="true" /></Button>}
       </div>
       <AISetupCard page="goals"
         summary={rules.length ? rules.map((rule) => `${rule.id}: ${rule.kind} ${rule.symbol ?? ""} ${rule.comparator} ${rule.threshold} ${rule.window ?? ""} ${rule.enabled ? "enabled" : "disabled"}`).join("; ") : "No alert rules"}
@@ -260,7 +263,6 @@ export default function GoalsAlerts() {
         </CardContent>
       </Card>
       {isIOS() ? <>
-        <Button type="button" variant="outline" className="order-last min-h-11" onClick={() => setManualOpen(true)}>{t("goals.mobile.add")}</Button>
         {manualOpen && <ModalPage title={t("goals.mobile.add")} onDismiss={() => setManualOpen(false)}>
           <div className="ios-d3-goal-editor">
           <div className="ios-d3-goal-editor-nav"><Button type="button" variant="ghost" className="min-h-11" onClick={() => setManualOpen(false)}>{t("common.cancel")}</Button><h2>{t(draft.id ? "goals.editRule" : "goals.newRule")}</h2></div>
@@ -314,7 +316,7 @@ export default function GoalsAlerts() {
                             onChange={(e) => void mutate(() => setAlertRuleEnabled(rule.id, e.target.checked))} />}
                         {t(isIOS() && !rule.enabled ? "finance.paused" : "goals.enabled")}
                       </label>
-                      <Button size="sm" variant="outline" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => edit(rule)}>{t("goals.edit")}</Button>
                       <ConfirmDeleteDialog
                         trigger={<Button size="sm" variant="ghost" className="text-destructive">{t("common.delete")}</Button>}
                         title={t("common.delete")}
@@ -325,11 +327,11 @@ export default function GoalsAlerts() {
                     </div>
                   </div>
                   {isGoal && measurement.status === "ready" && <div className="flex items-center gap-3">
-                    <div role="img" aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`)) + `: ${progress.toFixed(0)}%`}
+                    {!isIOS() && <div role="img" aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`)) + `: ${progress.toFixed(0)}%`}
                       className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
                       style={{ background: `conic-gradient(hsl(var(--primary)) ${progress}%, hsl(var(--muted)) 0)` }}>
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-card text-[10px] font-semibold">{progress.toFixed(0)}%</span>
-                    </div>
+                    </div>}
                     <div className="min-w-0 flex-1">
                       <Progress value={progress} aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`))} />
                       <p className="pt-1 text-xs text-muted-foreground">{measurement.value?.toLocaleString()} / {rule.threshold.toLocaleString()} USD · {eta === null
@@ -345,7 +347,7 @@ export default function GoalsAlerts() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">{t("goals.history")}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          {(!isIOS() || history.length > 0) && <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={!history.some((alert) => !alert.acknowledgedAt)}
               onClick={() => void mutate(acknowledgeAllAlerts)}>{t("goals.ackAll")}</Button>
             <AlertDialog>
@@ -361,7 +363,7 @@ export default function GoalsAlerts() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </div>}
           {!loading && !history.length && <p className="text-sm text-muted-foreground">{t("goals.noHistory")}</p>}
           <ol className="space-y-2">
             {history.map((alert) => {

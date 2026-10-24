@@ -45,7 +45,6 @@ function ThinkBlock({ text, isStreaming, hasResponseStarted }: {
 
   const displayText = stripThinkTags(text);
   if (!displayText) return null;
-  if (isIOS() && !isStreaming && hasResponseStarted) return null;
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--glass-border)] bg-accent/30">
@@ -200,7 +199,7 @@ export default function MessageBubble({
   return (
     <div
       className={cn(
-        "ios-d3-chat-bubble flex w-full gap-2",
+        "ios-d3-chat-bubble flex w-full flex-wrap gap-2",
         isUser ? "justify-end" : "justify-start",
       )}
       data-testid={isUser ? "user-bubble" : "assistant-bubble"}
@@ -216,6 +215,7 @@ export default function MessageBubble({
       )}
       <div
         className={cn(
+          "ios-d3-chat-body",
           isUser ? "max-w-full" : "flex-1 min-w-0",
           "rounded-2xl px-4 py-3 shadow-sm",
           isUser
@@ -259,10 +259,13 @@ export default function MessageBubble({
               (block.kind === "text" && stripThinkTags(block.text))) && (
               <p className="text-sm italic text-muted-foreground">{t("assistant.chat.noResponse")}</p>
             )}
-            {message.usage && <UsageLabel usage={message.usage} pricePerMillionTokens={pricePerMillionTokens} inputPricePerMillionTokens={inputPricePerMillionTokens} outputPricePerMillionTokens={outputPricePerMillionTokens} />}
           </div>
         )}
       </div>
+      {!isUser && message.usage && <div className="ios-d3-chat-bubble-usage basis-full pl-9">
+        <UsageLabel usage={message.usage} pricePerMillionTokens={pricePerMillionTokens}
+          inputPricePerMillionTokens={inputPricePerMillionTokens} outputPricePerMillionTokens={outputPricePerMillionTokens} />
+      </div>}
       {isUser && (
         <span
           aria-hidden

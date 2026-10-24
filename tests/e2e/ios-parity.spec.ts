@@ -169,7 +169,7 @@ for (const phone of phones) {
     await page.screenshot({ path: `test-results/mobile/ios-${phone.name}-first-launch.png` });
     await page.getByRole("button", { name: "Add your first source" }).click();
     await expect(page).toHaveURL(/#\/settings\/configuration$/);
-    await page.getByRole("button", { name: "Add Symbol" }).click();
+    await page.getByRole("button", { name: "Add symbol" }).click();
     const form = page.getByRole("dialog", { name: "Edit custom asset" });
     await form.getByRole("textbox", { name: "Symbol" }).fill("ETH");
     await form.getByRole("textbox", { name: "Amount" }).fill("2");
@@ -189,6 +189,7 @@ for (const phone of phones) {
     await page.getByRole("navigation", { name: "Settings sections" })
       .getByRole("link", { name: "Data sources" }).click();
 
+    await page.getByRole("button", { name: "Add source" }).click();
     await page.getByRole("button", { name: "Add wallet" }).click();
     const wallet = page.getByRole("dialog", { name: "Edit data source" });
     await wallet.getByRole("button", { name: "Continue" }).click();

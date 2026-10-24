@@ -10,6 +10,7 @@ import { ActionSheet, useHaptics } from "@/components/mobile";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
 import { Switch } from "@/components/ui/switch";
 import { getWalletLogo } from "@/lib/utils";
+import UnknownLogo from "@/assets/icons/unknown-logo.svg";
 import type { ExchangeRow, StockBrokerRow, WalletRow, SelectOption } from "./types";
 
 export type MobileSourcesProps = {
@@ -56,6 +57,7 @@ export function MobileSources(props: MobileSourcesProps) {
   const [errorField, setErrorField] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [providerQuery, setProviderQuery] = useState("");
+  const [kindPickerOpen, setKindPickerOpen] = useState(false);
   const start = (kind: Kind, original?: Draft) => {
     haptic("selection");
     setError("");
@@ -143,9 +145,10 @@ export function MobileSources(props: MobileSourcesProps) {
     { kind: "broker", label: t("mobile.sources.brokers"), add: t("mobile.sources.addBroker"), rows: props.brokers, options: props.brokerOptions },
   ];
   const providerOptions = sections.find((section) => section.kind === editor?.kind)?.options ?? [];
+  const hasSources = props.exchanges.length + props.wallets.length + props.brokers.length > 0;
   return (
     <div className="ios-d3-sources">
-      {props.exchanges.length + props.wallets.length + props.brokers.length === 0 && <div className="ios-d3-onboarding">
+      {!hasSources && <div className="ios-d3-onboarding">
         <div className="ios-d3-onboarding-art" aria-hidden="true">
           <svg viewBox="0 0 160 160" fill="none">
             <circle cx="80" cy="80" r="68" fill="currentColor" opacity=".08" />
@@ -157,21 +160,22 @@ export function MobileSources(props: MobileSourcesProps) {
         <ol aria-label={t("mobile.sources.gettingStarted")}>
           {[1, 2, 3].map((step) => <li key={step} className="ios-d3-onboarding-card"><span>{step}</span>{t(`mobile.sources.step.${step}`)}</li>)}
         </ol>
+        <Button className="ios-d3-editor-primary mt-5 min-h-12 w-full" onClick={() => setKindPickerOpen(true)}>{t("mobile.sources.addSource")}</Button>
       </div>}
-      {sections.map(({ kind, label, add, rows, options }) => (
+      {hasSources && sections.map(({ kind, label, add, rows, options }) => (
         <section key={kind} aria-label={label} className="ios-d3-source-section space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="ios-d3-section-heading">{label}</h2>
             <Button className="ios-d3-text-action min-h-11" variant="ghost" onClick={() => start(kind)}>{add}</Button>
           </div>
-          {(rows.length > 0 || props.exchanges.length + props.wallets.length + props.brokers.length > 0) && <div className="ios-d3-source-group overflow-hidden rounded-2xl bg-card">
+          <div className="ios-d3-source-group overflow-hidden rounded-2xl bg-card">
             {rows.length === 0 ? <p className="px-4 py-5 text-sm text-muted-foreground">{t("mobile.sources.empty")}</p> : rows.map((row, index) => {
               const identity = kind === "exchange" ? maskSensitive((row as ExchangeRow).apiKey)
                 : kind === "wallet" ? truncateAddress((row as WalletRow).address)
                 : maskSensitive((row as StockBrokerRow).queryId);
               const name = row.alias || options.find((option) => option.value === row.type)?.label || row.type;
               return <div key={`${row.type}-${index}`} className="ios-d3-source-row flex min-w-0 items-center gap-2 px-4 py-2">
-                <span className="ios-d3-source-avatar" aria-hidden="true"><img src={getWalletLogo(row.type)} alt="" />{row.type.slice(0, 2).toUpperCase()}</span>
+                <SourceAvatar type={row.type} />
                 <button className="min-h-11 min-w-0 flex-1 text-left" onClick={() => start(kind, row)}>
                   <span className="block truncate font-medium">{name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{identity}</span>
@@ -186,9 +190,11 @@ export function MobileSources(props: MobileSourcesProps) {
                   onClick={() => { haptic("selection"); setMenu({ kind, value: row, name }); }}><DotsHorizontalIcon aria-hidden="true" /></button>
               </div>;
             })}
-          </div>}
+          </div>
         </section>
       ))}
+      {kindPickerOpen && <ActionSheet open onOpenChange={setKindPickerOpen} title={t("mobile.sources.addSource")}
+        actions={sections.map(({ kind, add }) => ({ label: add, onClick: () => { setKindPickerOpen(false); start(kind); } }))} />}
       {menu && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(undefined); }}
         title={menu.name} actions={[
           ...(props.isPro ? [{
@@ -213,7 +219,7 @@ export function MobileSources(props: MobileSourcesProps) {
           </div>
           <div className="ios-d3-editor-intro">
             <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
-              <img src={getWalletLogo(editor.draft.type)} alt="" />{editor.draft.type.slice(0, 2).toUpperCase()}
+              {getWalletLogo(editor.draft.type) !== UnknownLogo && <img src={getWalletLogo(editor.draft.type)} alt="" />}{getWalletLogo(editor.draft.type) === UnknownLogo && editor.draft.type.slice(0, 2).toUpperCase()}
             </span>
             <h2 className="text-3xl font-bold">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
           </div>
@@ -225,9 +231,9 @@ export function MobileSources(props: MobileSourcesProps) {
               const type = option.value;
               if (editor.kind === "exchange" && type !== editor.draft.type) {
                 const { password: _password, passphrase: _passphrase, ...rest } = editor.draft as ExchangeRow;
-                setEditor({ ...editor, draft: { ...rest, type } });
-              } else update({ type });
-            }}><span className="ios-d3-source-avatar" aria-hidden="true"><img src={getWalletLogo(option.value)} alt="" />{option.value.slice(0, 2).toUpperCase()}</span><span>{option.label}</span>{editor.draft.type === option.value ? <CheckIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}</button>)}
+                setEditor({ ...editor, step: 2, draft: { ...rest, type } });
+              } else setEditor({ ...editor, step: 2, draft: { ...editor.draft, type } });
+            }}><SourceAvatar type={option.value} /><span>{option.label}</span>{editor.draft.type === option.value ? <CheckIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}</button>)}
             </div>
             <Button className="ios-d3-editor-primary min-h-12 w-full" onClick={() => setEditor({ ...editor, step: 2 })}>{t("mobile.sources.continue")}<ChevronRightIcon aria-hidden="true" /></Button>
           </> : <>
@@ -259,6 +265,11 @@ export function MobileSources(props: MobileSourcesProps) {
   );
 }
 
+function SourceAvatar({ type }: { type: string }) {
+  const logo = getWalletLogo(type);
+  return <span className="ios-d3-source-avatar" aria-hidden="true">{logo === UnknownLogo ? type.slice(0, 2).toUpperCase() : <img src={logo} alt="" />}</span>;
+}
+
 function Field({ id, label, value, onChange, secret = false, onPaste, readOnly = false, invalid = false, error }: {
   id: string; label: string; value: string; onChange: (value: string) => void; secret?: boolean; onPaste?: () => void; readOnly?: boolean; invalid?: boolean; error?: string;
 }) {
@@ -267,7 +278,7 @@ function Field({ id, label, value, onChange, secret = false, onPaste, readOnly =
   return <div className="ios-d3-source-field space-y-2">
     <Label htmlFor={id}>{label}</Label>
     <div className="ios-d3-field-control flex gap-2">
-      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? `${id}-error` : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+      <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} placeholder={t(id === "mobile-alias" ? "mobile.sources.optional" : "mobile.sources.fieldRequired")} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? `${id}-error` : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
       {secret && <button type="button" className="ios-d3-reveal" aria-label={`${t("mobile.sources.holdReveal")} ${label}`}
         onPointerDown={() => setRevealed(true)} onPointerUp={() => setRevealed(false)}
         onPointerCancel={() => setRevealed(false)} onPointerLeave={() => setRevealed(false)}

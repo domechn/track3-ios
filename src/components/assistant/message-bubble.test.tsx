@@ -48,6 +48,17 @@ describe("MessageBubble", () => {
     rerender(<MessageBubble message={message} pricePerMillionTokens={2} />);
     expect(screen.getByText(/\$0\.003\b/)).toBeTruthy();
     expect(screen.queryByText(/\$0\.003000/)).toBeNull();
+    expect(screen.getByText(/\$0\.003\b/).closest(".ios-d3-chat-bubble-usage")).toBeTruthy();
+    expect(screen.getByText(/\$0\.003\b/).closest(".ios-d3-chat-body")).toBeNull();
+  });
+
+  it("keeps completed thinking available on iPhone after the reply starts", () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    render(<MessageBubble message={{ role: "assistant", blocks: [
+      { kind: "think", text: "Checked the portfolio" }, { kind: "text", text: "Done" },
+    ] }} />);
+    expect(screen.getByText("Thinking")).toBeInTheDocument();
+    vi.mocked(isIOS).mockReturnValue(false);
   });
 
   it("uses separate input and output rates for estimated cost", () => {

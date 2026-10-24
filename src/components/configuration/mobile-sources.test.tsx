@@ -87,7 +87,19 @@ describe("mobile data sources", () => {
     render(<MobileSources {...props} exchanges={[]} />);
     const steps = screen.getByRole("list", { name: "Getting started" });
     expect(steps.querySelectorAll("li")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Add source" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Exchanges" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add source" }));
     expect(screen.getByRole("button", { name: "Add exchange" })).toBeInTheDocument();
+  });
+
+  it("opens visible credential inputs as soon as a provider is selected", () => {
+    render(<MobileSources {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    fireEvent.click(screen.getByRole("button", { name: "OKX" }));
+    expect(screen.getByRole("textbox", { name: "API key" })).toHaveAttribute("placeholder", "Required");
+    expect(screen.getByRole("textbox", { name: "Alias" })).toHaveAttribute("placeholder", "Optional");
+    expect(screen.getByLabelText("API secret")).toHaveAttribute("placeholder", "Required");
   });
 
   it.each([
@@ -100,13 +112,11 @@ describe("mobile data sources", () => {
     ]} />);
     fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
     fireEvent.click(screen.getByRole("button", { name: provider === "okex" ? "OKX" : "Bitget" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByRole("textbox", { name: "API key" }), { target: { value: "new-key" } });
     fireEvent.change(screen.getByLabelText("API secret"), { target: { value: "new-secret" } });
     fireEvent.change(screen.getByLabelText(label), { target: { value: "old-provider-secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: "Binance" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(save.mock.calls[0][0]).not.toHaveProperty("password");

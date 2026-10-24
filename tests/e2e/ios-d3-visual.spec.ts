@@ -44,7 +44,7 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.setViewportSize({ width: phone.width, height: phone.height });
     await page.emulateMedia({ colorScheme: theme });
     await page.addInitScript(() => localStorage.setItem("track3-ui-theme", "system"));
-    await installTauriBridge(page, undefined, false, true, false, false, true, false, false, true);
+    await installTauriBridge(page, undefined, false, true, false, false, true, false, false, true, true);
     mkdirSync("test-results/mobile", { recursive: true });
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -63,9 +63,10 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("dialog", { name: "Edit data source" })).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-provider.png` });
     await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("textbox", { name: "API key" })).toHaveAttribute("placeholder", "Required");
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-credentials.png` });
     await page.getByRole("dialog", { name: "Edit data source" }).getByRole("button", { name: "Cancel" }).click();
-    await page.getByRole("button", { name: "Add Symbol" }).click();
+    await page.getByRole("button", { name: "Add symbol" }).click();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-custom-asset-editor.png` });
     await page.getByRole("dialog", { name: "Edit custom asset" }).getByRole("button", { name: "Cancel" }).click();
 
@@ -101,6 +102,7 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await capture(page, phone.name, theme, "rebalance-trades");
     await page.goto("/#/assistant");
     await expect(page.getByRole("textbox", { name: "Ask the assistant..." })).toBeVisible();
+    await expect(page.locator(".ios-d3-chat-header")).toContainText("Assistant");
     await capture(page, phone.name, theme, "assistant-empty");
     const chatHeader = await page.locator(".ios-d3-chat-header").boundingBox();
     const firstSuggestion = await page.getByTestId("chat-example-summary").boundingBox();
@@ -109,6 +111,8 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(firstSuggestion!.y + firstSuggestion!.height).toBeLessThanOrEqual(composer!.y);
     await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Say hello");
     await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.locator('.ios-d3-chat-bubble[data-streaming="true"] .markdown-content')).toBeVisible({ timeout: 1500 });
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-assistant-streaming.png` });
     await expect(page.getByText("Hello from SSE")).toBeVisible();
     const reply = await page.getByText("Hello from SSE").boundingBox();
     const composerAfterReply = await page.locator(".ios-d3-chat-composer").boundingBox();
@@ -120,14 +124,21 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     expect(composerAfterReply!.y + composerAfterReply!.height).toBeLessThanOrEqual(tabBar!.y);
     expect(chatHeader!.height).toBeLessThanOrEqual(56);
     await capture(page, phone.name, theme, "assistant-chat");
+    await page.getByRole("textbox", { name: "Ask the assistant..." }).fill("Show my tool activity");
+    await page.getByRole("button", { name: "Send" }).click();
+    await expect(page.getByText("Tool activity")).toBeVisible();
+    await capture(page, phone.name, theme, "assistant-tools");
 
     await page.goto("/#/overview");
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
     await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh.png` });
+    await expect(page.locator(".ios-d3-refresh-sheet [role='progressbar']")).toHaveCount(0, { timeout: 90_000 });
+    if (!await page.getByRole("alertdialog", { name: "Source status" }).isVisible()) {
+      await page.getByRole("button", { name: "Source status" }).click();
+    }
     await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
-    await expect(page.locator("[data-source-status-row]").first()).toContainText(/\d+(\.\d+)?s/);
     await expect(page.locator(".ios-d3-toast-viewport")).toHaveCount(1);
     await expect(page.locator(".ios-d3-toast-viewport")).toBeHidden();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh-results.png` });
@@ -147,6 +158,9 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Add your first source" }).click();
     await expect(page.getByRole("list", { name: "Getting started" })).toBeVisible();
     await capture(page, phone.name, theme, "onboarding");
+    await page.getByRole("button", { name: "Add source" }).click();
+    await expect(page.getByRole("button", { name: "Add exchange" })).toBeVisible();
+    await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-kind-picker.png` });
   });
 
   test(`D3 protected startup is captured on iPhone ${phone.name} in ${theme}`, async ({ page }) => {

@@ -22,9 +22,11 @@ import {
   BarChartIcon,
   ChatBubbleIcon,
 } from "@radix-ui/react-icons";
-import { useTranslation } from "@/i18n";
+import { LOCALE_LABELS, useTranslation } from "@/i18n";
 import { isIOS } from "@/utils/platform";
 import { InsetGroup, ListRow, useHaptics } from "@/components/mobile";
+import { getCachedPreferCurrency } from "@/middlelayers/configuration";
+import { useTheme } from "@/components/common/theme";
 import AssistantSettings from "./assistant";
 
 const settingsTabs = [
@@ -104,7 +106,8 @@ function TabLink({
 }
 
 const App = () => {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { theme } = useTheme();
   const haptic = useHaptics();
   const lo = useLocation();
   if (isIOS()) {
@@ -121,7 +124,11 @@ const App = () => {
               {(["portfolio", "preferences", "privacy"] as const).map((group) => <InsetGroup key={group} title={t(`settings.mobile.group.${group}`)}>
                 {mobileSettings.filter((item) => item.group === group).map((item) => {
                   const Icon = item.icon;
-                  return <ListRow key={item.href} href={`#${item.href}`}>
+                  const value = item.key === "settings.mobile.currency" ? getCachedPreferCurrency() ?? "USD"
+                    : item.key === "settings.mobile.language" ? LOCALE_LABELS[locale]
+                      : item.key === "settings.tab.appearance" ? theme === "system" ? t("settings.mobile.system") : t(`appearance.theme.${theme}`)
+                        : undefined;
+                  return <ListRow key={item.href} href={`#${item.href}`} value={value}>
                     <span aria-hidden="true" className={`ios-d3-settings-icon ios-d3-tone-${item.tone}`}><Icon /></span>
                     {t(item.key)}
                   </ListRow>;

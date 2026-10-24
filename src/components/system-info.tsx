@@ -9,7 +9,7 @@ import HideIcon from "@/assets/icons/hide-icon.png";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ReloadIcon } from "@radix-ui/react-icons";
+import { EyeOpenIcon, EyeClosedIcon, ReloadIcon } from "@radix-ui/react-icons";
 import {
   clearLicenseCache,
   LicenseCenter,
@@ -24,6 +24,7 @@ import { useTranslation } from "@/i18n";
 import { redactSecrets } from "@/middlelayers/security/redact";
 import { isIOS } from "@/utils/platform";
 import { useSearchParams } from "react-router-dom";
+import { InsetGroup, ListRow } from "@/components/mobile";
 
 type SubscriptionInfo = {
   planType: "monthly" | "yearly" | null;
@@ -322,6 +323,42 @@ const App = ({
   const yearlyPlan = getPlan("yearly");
   const yearlySavingsLabel = getYearlySavingsLabel(monthlyPlan, yearlyPlan);
   const section = isIOS() ? searchParams.get("section") : null;
+
+  if (isIOS() && section === "about") return <div className="ios-d3-system-settings">
+    <InsetGroup>
+      <ListRow value={version}>{t("system.appVersion")}</ListRow>
+    </InsetGroup>
+    <p className="ios-d3-settings-note">{t("system.appVersionNote")}</p>
+  </div>;
+
+  if (isIOS() && section === "pro") return <div className="ios-d3-system-settings space-y-6">
+    <InsetGroup>
+      <ListRow value={activeLicense ? t("system.pro") : t("system.free")}>{t("system.proStatus")}</ListRow>
+      {activeLicense && subscriptionInfo && <ListRow value={subscriptionStatusLabel(subscriptionInfo.status)}>{t("system.statusLabel")}</ListRow>}
+      {activeLicense && subscriptionInfo?.planType && <ListRow value={t(subscriptionInfo.planType === "monthly" ? "system.monthly" : "system.yearly")}>{t("system.planLabel")}</ListRow>}
+    </InsetGroup>
+    <section>
+      <h2 className="ios-d3-section-heading">{t("system.legacyInputTitle")}</h2>
+      <div className="ios-d3-license-group">
+        <div className="ios-d3-license-field">
+          <Input id="license" aria-label={t("system.legacyInputTitle")} autoComplete="off" value={inputLicense ?? ""}
+            type={showLicense ? "text" : "password"} onChange={(e) => setInputLicense(e.target.value)}
+            placeholder={t("system.licensePlaceholder")} disabled={!!activeLicense} />
+          <Button type="button" variant="ghost" size="icon" onClick={() => setShowLicense(!showLicense)}
+            aria-label={t(showLicense ? "settings.assistant.hideKey" : "settings.assistant.showKey")}>
+            {showLicense ? <EyeClosedIcon /> : <EyeOpenIcon />}
+          </Button>
+        </div>
+      </div>
+      {(!activeLicense || subscriptionInfo?.isLegacy) && <p className="ios-d3-settings-note">{t(activeLicense ? "system.legacyNote" : "system.legacyInputDesc")}</p>}
+      {activeLicense ? <ConfirmDeleteDialog
+        trigger={<Button variant="destructive" className="mt-4 w-full" disabled={inactiveLicenseLoading}>{t("system.inactivate")}</Button>}
+        title={t("system.inactivateTitle")} description={t("system.inactivateDescLegacy")}
+        cancelLabel={t("common.cancel")}
+        actions={[{ label: t("common.confirm"), onClick: onInactiveLicenseClick }]} />
+        : <Button className="mt-4 w-full" onClick={onSaveLicenseClick} disabled={saveLicenseLoading || !inputLicense}>{t("system.activate")}</Button>}
+    </section>
+  </div>;
 
   return (
     <div className="space-y-6">

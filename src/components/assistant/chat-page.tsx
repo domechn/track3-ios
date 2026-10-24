@@ -539,7 +539,7 @@ function ChatContent({
         onDecideAction={(id, decision) => void chat.decideAction(id, decision)}
         canDecideAction={!!sessionId && config.allowActions !== false && !chat.isStreaming && !saveError}
       />
-      {chat.messages.length > 0 && !isIOS() && (
+      {chat.messages.length > 0 && (
         <QuickActions
           disabled={chat.isStreaming}
           onRun={(key) => {

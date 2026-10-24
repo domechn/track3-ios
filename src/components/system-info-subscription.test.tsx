@@ -122,10 +122,26 @@ describe("System Info subscription management", () => {
     vi.mocked(isIOS).mockReturnValue(true);
     window.location.hash = "#/settings/systemInfo?section=about";
     render(<SystemInfo onProStatusChange={vi.fn()} />);
-    expect(await screen.findByText("0.6.1")).toBeInTheDocument();
+    expect(await screen.findByText("0.6.1")).toHaveClass("mobile-list-value");
     expect(screen.queryByText("Upgrade to Pro")).not.toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
+  });
+
+  it("shows an active iPhone Pro license without a permanent loading label", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    window.location.hash = "#/settings/systemInfo?section=pro";
+    mocks.getLicenseIfIsPro.mockResolvedValue("existing-license");
+    mocks.getSubscriptionInfo.mockImplementation(() => new Promise(() => {}));
+    try {
+      render(<SystemInfo onProStatusChange={vi.fn()} />);
+      expect(await screen.findByText("Pro")).toBeInTheDocument();
+      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Inactivate" })).toBeInTheDocument();
+    } finally {
+      vi.mocked(isIOS).mockReturnValue(false);
+      window.location.hash = "";
+    }
   });
 
   it("keeps subscription controls available when plan data is malformed", async () => {

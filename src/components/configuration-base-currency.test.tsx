@@ -120,7 +120,7 @@ describe("Configuration base currency initialization", () => {
     vi.mocked(isIOS).mockReturnValue(true);
     window.location.hash = "#/settings/configuration?section=sources";
     render(<Configuration />);
-    expect(await screen.findByRole("button", { name: "Add Symbol" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Add symbol" })).toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);
     window.location.hash = "";
   });

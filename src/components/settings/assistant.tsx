@@ -218,7 +218,7 @@ const App = () => {
   }
 
   return (
-    <div className="ios-d3-settings-content space-y-6">
+    <div className="ios-d3-settings-content ios-d3-assistant-settings space-y-6">
       <div>
         <h3 className="text-lg font-medium tracking-tight">
           {t("settings.assistant.title")}
@@ -228,7 +228,7 @@ const App = () => {
         </p>
       </div>
 
-      <Card>
+      <Card className="ios-d3-assistant-field">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("settings.assistant.endpoint")}
@@ -252,7 +252,7 @@ const App = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ios-d3-assistant-field">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("settings.assistant.apiKey")}
@@ -292,7 +292,7 @@ const App = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ios-d3-assistant-field">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("settings.assistant.model")}
@@ -316,7 +316,7 @@ const App = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ios-d3-assistant-field">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("settings.assistant.contextSize")}
@@ -383,7 +383,7 @@ const App = () => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="ios-d3-assistant-field">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("settings.assistant.advancedJson")}

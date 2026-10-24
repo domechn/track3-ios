@@ -142,7 +142,7 @@ type SourceSpec = {
   unsupported?: boolean;
 };
 
-function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): SourceSpec[] {
+function listPortfolioSourceSpecs(config: GlobalConfig, userInfo: UserLicenseInfo): SourceSpec[] {
   const sources: SourceSpec[] = [];
   const secrets = configuredSecretValues(config);
   const nextNumber = (provider: string) => `#${sources.filter((source) => source.provider === provider).length + 1}`;
@@ -234,6 +234,10 @@ function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): 
   return sources;
 }
 
+export function listPortfolioSources(config: GlobalConfig, userInfo: UserLicenseInfo): Array<{ sourceId: string; label: string }> {
+  return listPortfolioSourceSpecs(config, userInfo).map(({ sourceId, label }) => ({ sourceId, label }));
+}
+
 // progress percent is 70
 export async function fetchPortfolios(
   config: GlobalConfig,
@@ -241,7 +245,7 @@ export async function fetchPortfolios(
   userInfo: UserLicenseInfo,
   options: { sourceId?: string; onSourceResult?: (source: PortfolioSourceResult) => void } = {},
 ): Promise<LoadPortfoliosResult> {
-  const allSources = listPortfolioSources(config, userInfo);
+  const allSources = listPortfolioSourceSpecs(config, userInfo);
   const sources = options.sourceId
     ? allSources.filter((source) => source.sourceId === options.sourceId)
     : allSources;
