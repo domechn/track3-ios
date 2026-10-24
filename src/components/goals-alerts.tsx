@@ -331,11 +331,11 @@ export default function GoalsAlerts() {
                     </div>
                   </div>
                   {isGoal && measurement.status === "ready" && <div className="flex items-center gap-3">
-                    {!isIOS() && <div role="img" aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`)) + `: ${progress.toFixed(0)}%`}
+                    <div role="img" aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`)) + `: ${progress.toFixed(0)}%`}
                       className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
                       style={{ background: `conic-gradient(hsl(var(--primary)) ${progress}%, hsl(var(--muted)) 0)` }}>
                       <span className="grid h-8 w-8 place-items-center rounded-full bg-card text-[10px] font-semibold">{progress.toFixed(0)}%</span>
-                    </div>}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <Progress value={progress} aria-label={t("goals.progress").replace("{kind}", t(`goals.kind.${rule.kind}`))} />
                       <p className="pt-1 text-xs text-muted-foreground">{measurement.value?.toLocaleString()} / {rule.threshold.toLocaleString()} USD · {eta === null

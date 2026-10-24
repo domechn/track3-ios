@@ -53,8 +53,8 @@ const GeneralSettings = memo(function GeneralSettings({
     <InsetGroup>
       <ListRow trailing={<Switch id="groupUSD" checked={groupUSD} onCheckedChange={onGroupUSDChange} aria-label={t("config.groupStablecoins")} />}>{t("config.groupStablecoins")}</ListRow>
       <ListRow trailing={<Switch id="hideInactive" checked={hideInactive} onCheckedChange={onHideInactiveChange} aria-label={t("config.hideInactiveSources")} />}>{t("config.hideInactiveSources")}</ListRow>
-      <ListRow onClick={() => setPicker("size")} value={String(querySize)}>{t("config.countOfResults")}</ListRow>
-      <ListRow onClick={() => setPicker("currency")} value={preferCurrencyLoading ? <Skeleton className="h-4 w-12" /> : preferCurrency}>{t("config.baseCurrency")}</ListRow>
+      <ListRow onClick={() => setPicker("size")} value={String(querySize)}>{t("config.mobile.countOfResults")}</ListRow>
+      <ListRow onClick={() => setPicker("currency")} value={preferCurrencyLoading ? <Skeleton className="h-4 w-12" /> : preferCurrency}>{t("config.mobile.baseCurrency")}</ListRow>
     </InsetGroup>
     <Button size="sm" variant="ghost" className="mt-2 min-h-11 text-primary" onClick={onUpdateCurrencyRatesClick} disabled={preferCurrencyLoading || refreshCurrencyLoading}>
       <UpdateIcon className={`mr-2 h-4 w-4 ${refreshCurrencyLoading ? "animate-spin" : ""}`} />{t("config.updateCurrencyRates")}
@@ -62,10 +62,10 @@ const GeneralSettings = memo(function GeneralSettings({
     {preferredCurrencyDetail && preferCurrency !== defaultBaseCurrency && <p className="px-3 text-xs text-muted-foreground">
       {`1 ${defaultBaseCurrency} = ${prettyPriceNumberToLocaleString(preferredCurrencyDetail.rate)} ${preferredCurrencyDetail.currency}`}
     </p>}
-    {picker && <ModalPage title={t(picker === "size" ? "config.countOfResults" : "config.baseCurrency")} onDismiss={() => setPicker(undefined)}>
+    {picker && <ModalPage title={t(picker === "size" ? "config.mobile.countOfResults" : "config.mobile.baseCurrency")} onDismiss={() => setPicker(undefined)}>
       <div className="ios-d3-picker-page">
         <button className="ios-d3-picker-back" onClick={() => setPicker(undefined)}>{t("common.back")}</button>
-        <h2>{t(picker === "size" ? "config.countOfResults" : "config.baseCurrency")}</h2>
+        <h2>{t(picker === "size" ? "config.mobile.countOfResults" : "config.mobile.baseCurrency")}</h2>
         <div className="ios-d3-picker-group">{(picker === "size" ? querySizeOptions : preferCurrencyOptions).map((option) =>
           <button key={option.value} onClick={() => {
             if (picker === "size") onQuerySizeChange(option.value);

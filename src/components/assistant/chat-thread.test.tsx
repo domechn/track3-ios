@@ -111,6 +111,13 @@ describe("ChatThread", () => {
     expect(onPickPrompt.mock.calls[0]?.[0]).toBe("How is my portfolio doing?");
     vi.mocked(isIOS).mockReturnValue(false);
   });
+  it("keeps desktop welcome prompts clickable with their full question", async () => {
+    vi.mocked(isIOS).mockReturnValue(false);
+    const onPickPrompt = vi.fn();
+    render(<ChatThread messages={[]} isStreaming={false} onPickPrompt={onPickPrompt} />);
+    await userEvent.click(screen.getByRole("button", { name: /How is my portfolio doing/ }));
+    expect(onPickPrompt).toHaveBeenCalledWith("How is my portfolio doing?");
+  });
 
   it("renders the streaming indicator when streaming and no assistant block present", () => {
     const messages: ChatMessage[] = [{ role: "user", content: "Hi" }];

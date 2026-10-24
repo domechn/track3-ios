@@ -429,11 +429,11 @@ const App = ({ onDataImported }: { onDataImported?: () => void }) => {
           </div>
           {isIOS() && <dl className="space-y-2 text-sm text-muted-foreground">
             <div className="flex justify-between gap-3">
-              <dt>{t("data.lastBackupAt")}</dt>
+              <dt>{t("data.mobile.lastBackupAt")}</dt>
               <dd>{lastBackupAt ? timeToDateStr(lastBackupAt, true) : t("data.na")}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>{t("data.lastImportAt")}</dt>
+              <dt>{t("data.mobile.lastImportAt")}</dt>
               <dd>{lastImportAt ? timeToDateStr(lastImportAt, true) : t("data.na")}</dd>
             </div>
           </dl>}

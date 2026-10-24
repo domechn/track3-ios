@@ -192,6 +192,7 @@ const App = ({
   const [exchanges, setExchanges] = useState<ExchangeRow[]>([]);
   const [stockBrokers, setStockBrokers] = useState<StockBrokerRow[]>([]);
   const [others, setOthers] = useState<OtherRow[]>([]);
+  const [addOtherRequest, setAddOtherRequest] = useState(0);
   const safeError = (error: unknown) => redactSecrets(
     error instanceof Error ? error.message : String(error),
     [...configuredSecretValues({ exchanges, stockBrokers, addExchangeConfig, addStockBrokerConfig, proLicense }),
@@ -1215,9 +1216,11 @@ const App = ({
         onQuickLookExchange={handleQuickLookExchange}
         onQuickLookWallet={handleQuickLookWallet}
         onQuickLookBroker={handleQuickLookStockBroker}
+        onAddCustomAsset={() => setAddOtherRequest((request) => request + 1)}
       />
       <MobileOthers
         others={others}
+        addRequest={addOtherRequest}
         hideEmpty={exchanges.length + wallets.length + stockBrokers.length + others.length === 0}
         onSave={(index, value) => {
           if (index === null) handleAddOther(value);

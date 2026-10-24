@@ -90,6 +90,18 @@ it("uses a switch to toggle a saved alert on iPhone", async () => {
   expect(setAlertRuleEnabled).toHaveBeenCalledWith(7, false);
 });
 
+it("shows the goal progress ring beside the bar on iPhone", async () => {
+  vi.mocked(isIOS).mockReturnValue(true);
+  vi.mocked(listAlertRules).mockResolvedValue([savedRule]);
+  vi.mocked(loadAlertEvaluationData).mockResolvedValue({
+    snapshots: [{ at: "2025-01-02T00:00:00.000Z", assets: [{ assetType: "crypto", symbol: "BTC", value: 50, price: 50, wallet: "wallet-a" }] }],
+    prices: {}, excludedSymbols: [],
+  });
+  render(<GoalsAlerts />);
+  expect(await screen.findByRole("img", { name: /Portfolio value goal.*50%/ })).toBeInTheDocument();
+  expect(screen.getByRole("progressbar", { name: "Progress toward Portfolio value goal" })).toBeInTheDocument();
+});
+
 it("keeps the iPhone rule editor open when the initial rule query finishes", async () => {
   vi.mocked(isIOS).mockReturnValue(true);
   let finishRules!: (rules: AlertRule[]) => void;

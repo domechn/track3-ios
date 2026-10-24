@@ -64,9 +64,9 @@ describe("GeneralSettings", () => {
   it("opens a pushed currency picker with the selected value in the row", () => {
     vi.mocked(isIOS).mockReturnValue(true);
     render(<GeneralSettings {...baseProps} />);
-    expect(screen.getByRole("button", { name: /Base Currency.*USD/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Base Currency.*USD/ }));
-    expect(screen.getByRole("dialog", { name: "Base Currency" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Base currency.*USD/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Base currency.*USD/ }));
+    expect(screen.getByRole("dialog", { name: "Base currency" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /EUR - Euro/ }));
     expect(baseProps.onPreferCurrencyChange).toHaveBeenCalledWith("EUR");
     vi.mocked(isIOS).mockReturnValue(false);

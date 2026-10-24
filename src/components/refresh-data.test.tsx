@@ -143,7 +143,34 @@ describe("RefreshData — currency rates refresh ordering", () => {
     await waitFor(() => expect(screen.getAllByRole("group", { name: "Vault" })).toHaveLength(2));
     const rows = screen.getAllByRole("group", { name: "Vault" });
     expect(rows[0]).toHaveTextContent("2.0s");
-    expect(rows[1]).toHaveTextContent("Waiting…");
+    expect(rows[1]).toHaveTextContent("Refreshing portfolio");
+    expect(rows[1]).not.toHaveTextContent("Waiting…");
+  });
+
+  it("gives each in-progress source one clear state", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(getConfiguration).mockResolvedValue({} as never);
+    vi.mocked(listPortfolioSources).mockReturnValue([{ sourceId: "cex:0", label: "Main exchange" }]);
+    vi.mocked(refreshAllData).mockImplementationOnce(() => new Promise(() => {}));
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    const row = await screen.findByRole("group", { name: "Main exchange" });
+    expect(row).toHaveTextContent("Refreshing portfolio");
+    expect(row).not.toHaveTextContent("Waiting…");
+  });
+
+  it("keeps the result summary visible on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    vi.mocked(refreshAllData).mockResolvedValueOnce({
+      failedSources: [], requiresDataSourceAction: false, usedLastKnownData: true,
+      persisted: true, sourceResults: [],
+      sourceStatuses: [{ sourceId: "btc:0", label: "BTC wallet 1", status: "failed" }],
+    } as never);
+    render(<RefreshData loading={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Source status" });
+    await waitFor(() => expect(dialog).toHaveTextContent("Failed sources (1 of 1)"));
+    expect(dialog.querySelector("p.sr-only")).toBeNull();
   });
 
   it("hides results from the previous run while an iPhone refresh is pending", async () => {

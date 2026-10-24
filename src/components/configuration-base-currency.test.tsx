@@ -119,6 +119,12 @@ describe("Configuration base currency initialization", () => {
   it("keeps custom holdings reachable on the iPhone sources page", async () => {
     vi.mocked(isIOS).mockReturnValue(true);
     window.location.hash = "#/settings/configuration?section=sources";
+    vi.mocked(getConfiguration).mockResolvedValue({
+      configs: { groupUSD: false, hideInactive: false },
+      exchanges: [{ name: "binance", initParams: { apiKey: "saved-key", secret: "saved-secret" }, active: true }],
+      stockConfig: { brokers: [] },
+      others: [],
+    } as never);
     render(<Configuration />);
     expect(await screen.findByRole("button", { name: "Add symbol" })).toBeInTheDocument();
     vi.mocked(isIOS).mockReturnValue(false);

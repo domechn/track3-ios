@@ -149,6 +149,23 @@ describe("Rebalance page", () => {
     expect(await screen.findByText(/Sell 0.66666667 BTC/)).toBeInTheDocument();
     expect(screen.getByText(/Buy 1 ETH/)).toBeInTheDocument();
   });
+  it("shows signed values for buy and sell suggestions on iPhone", async () => {
+    vi.mocked(isIOS).mockReturnValue(true);
+    setNarrowTouch();
+    vi.mocked(getRebalanceProfile).mockResolvedValue({
+      targets: [
+        { kind: "asset", assetType: "crypto", symbol: "BTC", percent: 50 },
+        { kind: "asset", assetType: "crypto", symbol: "ETH", percent: 50 },
+      ],
+      tolerancePercent: 0,
+    });
+    render(<Rebalance currency={currency} />);
+    const trades = await screen.findAllByText(/^[+−][0-9]/);
+    expect(trades.map((trade) => trade.textContent)).toEqual(["−20 USD", "+20 USD"]);
+    expect(trades[0]).toHaveClass("ios-d3-trade-value");
+    expect(trades[0].closest(".ios-d3-sell")).toBeInTheDocument();
+    expect(trades[1].closest(".ios-d3-buy")).toBeInTheDocument();
+  });
   it("leads with AI setup and opens manual setup for an empty profile", async () => {
     render(<Rebalance currency={currency} />);
     expect(await screen.findByText("Let the assistant set this up")).toBeInTheDocument();

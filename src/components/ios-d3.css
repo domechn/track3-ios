@@ -1,10 +1,9 @@
 /* Phone feature screens use the D1 semantic palette and grouped surfaces. */
 @media (max-width: 950px) and (pointer: coarse) {
   #app-main-content:has(.ios-d3-chat) .mobile-route-heading { display: none; }
-  #app-top-bar.mobile-topbar-back .ios-d3-pushed-title { position: absolute; top: var(--mobile-safe-top); left: 50%; display: grid; height: 56px; place-items: center; transform: translateX(-50%); font-size: 17px; font-weight: 600; pointer-events: none; }
   #app-top-bar .ios-d3-pushed-title { display: none; }
-  #app-top-bar.mobile-topbar-back:has(.mobile-compact-title) .ios-d3-pushed-title { display: none; }
-  #app-top-bar.mobile-topbar-back:has(.ios-d3-pushed-title) .mobile-compact-title { position: absolute; top: var(--mobile-safe-top); left: 50%; display: grid; width: auto; max-width: calc(100% - 140px); height: 56px; margin: 0; place-items: center; transform: translateX(-50%); text-align: center; }
+  #app-top-bar.mobile-topbar-back:has(.mobile-compact-title) .ios-d3-pushed-title { position: absolute; top: var(--mobile-safe-top); left: 50%; display: grid; max-width: calc(100% - 140px); height: 56px; overflow: hidden; place-items: center; transform: translateX(-50%); font-size: 17px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+  #app-top-bar.mobile-topbar-back:has(.ios-d3-pushed-title) .mobile-compact-title { display: none; }
   .app-layout:has(.ios-d3-chat) #app-top-bar.mobile-topbar-root:not(.mobile-topbar-collapsed) { position: relative; height: calc(56px + var(--mobile-safe-top)); border-bottom: .5px solid var(--ios-separator); background: hsl(var(--card) / .97); backdrop-filter: blur(18px); }
   .ios-d3-large-title { margin: 0 0 20px; font-size: 34px; line-height: 1.12; font-weight: 700; letter-spacing: -.035em; }
   .ios-d3-section-heading, .ios-d3-settings .mobile-inset-heading { margin: 0 12px 8px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.3; font-weight: 500; }
@@ -62,6 +61,7 @@
   .ios-d3-editor-nav { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; margin: -16px -20px 0; padding: 16px 20px 8px; background: hsl(var(--background) / .94); backdrop-filter: blur(18px); }
   .ios-d3-editor-nav > button:last-child { justify-self: end; }
   .ios-d3-editor-nav button { padding-left: 0; color: hsl(var(--primary)); font-size: 17px; }
+  .ios-d3-other-editor .ios-d3-editor-nav { display: flex; justify-content: flex-start; }
   .ios-d3-editor-intro { display: flex; align-items: center; gap: 16px; }
   .ios-d3-editor-intro h2 { font-size: 28px; line-height: 1.15; letter-spacing: -.03em; }
   .ios-d3-source-editor > label { display: block; margin: 10px 12px 0; color: hsl(var(--muted-foreground)); font-size: 13px; }
@@ -130,13 +130,14 @@
   .ios-d3-picker-group button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 56px; padding: 10px 16px; text-align: left; font-size: 17px; }
   .ios-d3-picker-group button + button { border-top: .5px solid var(--ios-separator); }
   .ios-d3-picker-group button span { color: hsl(var(--primary)); font-size: 20px; }
+  #app-main-content .ios-d3-sync-settings > .glass:first-child { overflow: visible; background: transparent; }
+  .ios-d3-sync-settings > .glass:first-child > div:nth-child(2) { padding: 0; }
   .ios-d3-sync-settings > .glass:first-child > div:first-child h3 { display: none; }
-  .ios-d3-sync-settings > .glass:first-child .grid { display: block; overflow: hidden; border-radius: 12px; background: hsl(var(--secondary)); }
-  .ios-d3-sync-settings > .glass:first-child .grid > div { display: flex; align-items: center; min-height: 56px; gap: 10px; margin: 0; padding: 6px 12px; }
+  .ios-d3-sync-settings > .glass:first-child .grid { display: block; overflow: hidden; border-radius: 14px; background: hsl(var(--card)); }
+  .ios-d3-sync-settings > .glass:first-child .grid > div { display: block; min-height: 66px; margin: 0; padding: 10px 16px; }
   .ios-d3-sync-settings > .glass:first-child .grid > div + div { border-top: .5px solid var(--ios-separator); }
-  .ios-d3-sync-settings > .glass:first-child .grid label { width: 44%; flex: none; white-space: nowrap; font-size: 13px; }
-  .ios-d3-sync-settings > .glass:first-child .grid input { width: 56%; min-width: 0; border: 0; background: transparent; text-align: right; font-size: 16px; }
-  .ios-d3-sync-settings > .glass:first-child .grid input:focus { text-align: left; }
+  .ios-d3-sync-settings > .glass:first-child .grid label { display: block; margin-bottom: 4px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+  .ios-d3-sync-settings > .glass:first-child .grid input { width: 100%; min-width: 0; min-height: 44px; height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; text-align: left; font-size: 16px; }
   .ios-d3-settings-page:has([id="sync-passphrase"]) button { font-size: 16px; }
   .ios-d3-settings-page .ios-d3-settings-content button { font-size: 16px; }
   .ios-d3-settings-note { margin: 8px 12px 0; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.4; }
@@ -144,7 +145,7 @@
   .ios-d3-backup-actions .ios-d3-backup-import-section + .mobile-inset-section { margin-top: 26px; }
   .ios-d3-backup-actions .ios-d3-import-note { display: block; margin: 8px 12px 0; }
   .ios-d3-backup-actions .ios-d3-backup-folder-actions { flex-wrap: wrap; }
-  .ios-d3-backup-folder-actions > button:first-child { min-width: 0; flex: 1 1 180px; white-space: normal; }
+  .ios-d3-backup-folder-actions > button:first-child { min-width: 0; flex: 1 1 180px; white-space: nowrap; }
   .ios-d3-backup-folder-actions > *:last-child { flex: 0 0 auto; }
   .ios-d3-backup-actions .mobile-inset-group, .ios-d3-system-settings .mobile-inset-group { border-radius: 14px; }
   .ios-d3-setting-switch-row, .ios-d3-data-action-row, .ios-d3-license-field { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 56px; gap: 12px; padding: 8px 16px; background: hsl(var(--card)); font-size: 17px; text-align: left; }
@@ -158,8 +159,8 @@
   .ios-d3-data-settings .ios-d3-lock-setting > div:first-child { padding: 8px 0 16px; }
   .ios-d3-lock-setting .ios-d3-setting-switch-row { padding-top: 0; }
   .ios-d3-lock-setting p { padding: 0 16px; }
-  .ios-d3-data-settings dl { overflow: hidden; border-radius: 12px; background: hsl(var(--secondary)); }
-  .ios-d3-data-settings dl > div { min-height: 48px; align-items: center; padding: 8px 12px; }
+  .ios-d3-data-settings dl { overflow: hidden; background: transparent; }
+  .ios-d3-data-settings dl > div { min-height: 48px; align-items: center; padding: 8px 0; }
   .ios-d3-data-settings dl > div + div { border-top: .5px solid var(--ios-separator); }
   .ios-d3-data-settings dl dd { max-width: 52%; text-align: right; }
   .ios-d3-data-settings .glass button { box-shadow: none; }
@@ -239,8 +240,8 @@
   .ios-d3-goal-editor-nav { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
   .ios-d3-goal-editor-nav h2 { font-size: 17px; font-weight: 600; }
   .ios-d3-goal-editor-nav h2 { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
-  .ios-d3-goal-editor .ios-d3-goal-editor-nav > button, .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:hover { color: hsl(var(--primary)); background: transparent; }
-  .ios-d3-goal-editor-nav .ios-d3-goal-nav-save { color: hsl(var(--primary)); font-size: 17px; font-weight: 600; }
+  .ios-d3-goal-editor .ios-d3-goal-editor-nav > button, .ios-d3-goal-editor .ios-d3-goal-editor-nav > button:hover { color: hsl(var(--primary)); background: transparent; font-size: 17px; font-weight: 400; }
+  .ios-d3-goal-editor .ios-d3-goal-editor-nav > .ios-d3-goal-nav-save { font-weight: 600; }
   .ios-d3-goal-editor #goal-rule-editor .ios-d3-goal-editor-heading { display: none; }
   .ios-d3-goal-editor #goal-rule-editor { background: transparent; }
   .ios-d3-goal-editor #goal-rule-editor .ios-d3-goal-editor-content { padding: 16px 0; }
@@ -274,8 +275,8 @@
   .ios-d3-trade-description .ios-d3-trade-symbol { color: hsl(var(--foreground)); font-size: 17px; }
   .ios-d3-trade-description > span { display: block; color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
   .ios-d3-trade .ios-d3-trade-value { flex: 0 1 auto; min-width: 0; max-width: 55%; text-align: right; white-space: normal; overflow-wrap: anywhere; }
-  .ios-d3-buy p { color: var(--ios-gain); }
-  .ios-d3-sell p { color: var(--ios-loss); }
+  .ios-d3-buy .ios-d3-trade-value { color: var(--ios-gain); }
+  .ios-d3-sell .ios-d3-trade-value { color: var(--ios-loss); }
   .ios-d3-rebalance ul[aria-label] li { border: 0; border-radius: 12px; background: hsl(var(--secondary)); }
 
   .ios-d3-chat .glass { border: 0; border-radius: 0; box-shadow: none; }
@@ -283,7 +284,8 @@
   .ios-d3-chat-header :is(button, a) { pointer-events: auto; }
   .ios-d3-chat-header-primary { width: auto; min-width: 0; gap: 4px; }
   #app-top-bar .ios-d3-chat-header-identity, #app-top-bar .ios-d3-chat-header-model { display: none; }
-  .ios-d3-chat-header h3 { position: absolute; left: 50%; transform: translateX(-50%); display: block; font-size: 17px; font-weight: 600; }
+  .ios-d3-chat-header h3 { position: absolute; top: 50%; left: 50%; display: block; margin: 0; transform: translate(-50%, -50%); font-size: 17px; font-weight: 600; }
+  #app-top-bar:has(.ios-d3-chat-header) .mobile-compact-title { display: none; }
   #app-top-bar .ios-d3-chat-header-usage { display: none; }
   .ios-d3-chat-header-settings { display: grid; flex: none; width: 44px; height: 44px; min-height: 44px; place-items: center; padding: 0; }
   .ios-d3-chat-header-settings svg { width: 20px; height: 20px; }
@@ -346,7 +348,10 @@
   .ios-d3-refresh-sheet button { min-height: 44px; box-shadow: none; }
   .ios-d3-refresh-sheet .ios-d3-refresh-status-list { max-height: none; overflow: hidden; border-radius: 14px; background: hsl(var(--card)); }
   .ios-d3-refresh-status-list [data-source-status-row] + [data-source-status-row] { border-top: .5px solid var(--ios-separator); }
-  .ios-d3-refresh-row-main { display: flex; min-width: 0; flex: 1; align-items: center; gap: 12px; }
+  .ios-d3-refresh-row { display: grid; grid-template-columns: minmax(0, 1fr) 40px 60px; align-items: center; gap: 8px; }
+  .ios-d3-refresh-row-main { display: flex; min-width: 0; align-items: center; gap: 12px; }
+  .ios-d3-refresh-row > .ios-d3-refresh-row-duration { grid-column: 2; text-align: right; }
+  .ios-d3-refresh-row > button { grid-column: 3; padding-inline: 8px; }
   .ios-d3-refresh-row-content { min-width: 0; flex: 1; }
   .ios-d3-refresh-row-title { font-size: 15px; font-weight: 600; }
   .ios-d3-refresh-row-duration { white-space: nowrap; font-size: 13px; font-variant-numeric: tabular-nums; }

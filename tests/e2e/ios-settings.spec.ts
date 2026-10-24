@@ -175,7 +175,7 @@ for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 812 });
     await installTauriBridge(page);
     for (const [path, title, content] of [
-      ["/settings/configuration?section=currency", "Currency", "Base Currency"],
+      ["/settings/configuration?section=currency", "Currency", "Base currency"],
       ["/settings/appearance?section=theme", "Appearance", "Follow system"],
       ["/settings/data?section=blacklist", "Blacklist", "Token Blacklist"],
       ["/settings/systemInfo?section=pro", "Pro and license", "Pro Status"],
@@ -257,7 +257,7 @@ test("collapsed rebalance header shows its full title at 375px", async ({ page }
   await expect(page.getByText("Trade options", { exact: true })).toBeAttached();
   await page.evaluate(() => window.scrollTo(0, 180));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(64);
-  const title = page.locator("#app-top-bar .mobile-compact-title");
+  const title = page.locator("#app-top-bar .ios-d3-pushed-title");
   await expect(title).toBeVisible();
   expect(await title.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });

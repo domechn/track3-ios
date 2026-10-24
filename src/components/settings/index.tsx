@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Outlet,
   Navigate,
@@ -110,6 +112,8 @@ const App = () => {
   const { theme } = useTheme();
   const haptic = useHaptics();
   const lo = useLocation();
+  const [topBar, setTopBar] = useState<HTMLElement | null>(null);
+  useEffect(() => setTopBar(document.getElementById("app-top-bar")), []);
   if (isIOS()) {
     const isHub = lo.pathname === "/settings";
     const title = mobileSettings.find((item) =>
@@ -117,6 +121,9 @@ const App = () => {
       mobileSettings.find((item) => item.href.split("?")[0] === lo.pathname)?.key;
     return (
       <div className="ios-d3-settings mx-auto w-full max-w-2xl min-w-0 space-y-5 pb-6">
+        {topBar && createPortal(
+          <span className="ios-d3-pushed-title">{t(title ?? "settings.title")}</span>,
+          topBar)}
         {isHub ? (
           <>
             <h1 className="ios-d3-large-title px-1 pt-2">{t("settings.title")}</h1>

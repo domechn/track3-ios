@@ -60,6 +60,13 @@ describe("mobile data sources", () => {
     expect(screen.getByRole("button", { name: "OKX" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
   });
+  it("starts provider selection without a preselected exchange", () => {
+    render(<MobileSources {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add exchange" }));
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Binance" })).toHaveAttribute("aria-pressed", "false");
+    expect(document.querySelector(".ios-d3-editor-intro .ios-d3-source-avatar")).toBeNull();
+  });
 
   it("reveals a secret only while its reveal control is held", () => {
     render(<MobileSources {...props} />);
@@ -91,6 +98,14 @@ describe("mobile data sources", () => {
     expect(screen.queryByRole("region", { name: "Exchanges" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add source" }));
     expect(screen.getByRole("button", { name: "Add exchange" })).toBeInTheDocument();
+  });
+
+  it("offers custom assets in the first-source picker", () => {
+    const addCustomAsset = vi.fn();
+    render(<MobileSources {...props} exchanges={[]} onAddCustomAsset={addCustomAsset} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add source" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add custom asset" }));
+    expect(addCustomAsset).toHaveBeenCalledOnce();
   });
 
   it("opens visible credential inputs as soon as a provider is selected", () => {

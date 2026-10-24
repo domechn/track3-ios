@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useTranslation } from "@/i18n";
 import { maskSensitive, truncateAddress } from "@/utils/attach-to";
 import { redactSecrets } from "@/middlelayers/security/redact";
-import { CheckIcon, ChevronRightIcon, DotsHorizontalIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, DotsHorizontalIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { ActionSheet, useHaptics } from "@/components/mobile";
 import { ConfirmSheet, ModalPage } from "@/components/mobile/overlays";
 import { Switch } from "@/components/ui/switch";
@@ -29,6 +29,7 @@ export type MobileSourcesProps = {
   onToggleExchange: (value: ExchangeRow) => void;
   onToggleWallet: (value: WalletRow) => void;
   onToggleBroker: (value: StockBrokerRow) => void;
+  onAddCustomAsset?: () => void;
   isPro?: boolean;
   onQuickLookExchange?: (value: ExchangeRow) => void;
   onQuickLookWallet?: (value: WalletRow) => void;
@@ -194,7 +195,13 @@ export function MobileSources(props: MobileSourcesProps) {
         </section>
       ))}
       {kindPickerOpen && <ActionSheet open onOpenChange={setKindPickerOpen} title={t("mobile.sources.addSource")}
-        actions={sections.map(({ kind, add }) => ({ label: add, onClick: () => { setKindPickerOpen(false); start(kind); } }))} />}
+        actions={[
+          ...sections.map(({ kind, add }) => ({ label: add, onClick: () => { setKindPickerOpen(false); start(kind); } })),
+          ...(props.onAddCustomAsset ? [{ label: t("mobile.others.add"), onClick: () => {
+            setKindPickerOpen(false);
+            props.onAddCustomAsset?.();
+          } }] : []),
+        ]} />}
       {menu && <ActionSheet open onOpenChange={(open) => { if (!open) setMenu(undefined); }}
         title={menu.name} actions={[
           ...(props.isPro ? [{
@@ -211,16 +218,16 @@ export function MobileSources(props: MobileSourcesProps) {
       {editor && <ModalPage title={t("mobile.sources.edit")} onDismiss={close}>
         <div className="ios-d3-source-editor mx-auto max-w-xl space-y-6">
           <div className="ios-d3-editor-nav flex items-center justify-between">
-            {editor.step === 2 && !editor.original
-              ? <Button variant="ghost" className="min-h-11" onClick={() => setEditor({ ...editor, step: 1 })}>{t("common.back")}</Button>
+            {!editor.original
+              ? <Button variant="ghost" className="min-h-11" onClick={() => editor.step === 2 ? setEditor({ ...editor, step: 1 }) : close()}>{t("common.back")}</Button>
               : <span />}
             <span className="text-sm text-muted-foreground">{editor.step} / 2</span>
             <Button variant="ghost" className="min-h-11" onClick={close}>{t("common.cancel")}</Button>
           </div>
           <div className="ios-d3-editor-intro">
-            <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
+            {editor.step === 2 && <span className="ios-d3-source-avatar ios-d3-source-avatar-large" aria-hidden="true">
               {getWalletLogo(editor.draft.type) !== UnknownLogo && <img src={getWalletLogo(editor.draft.type)} alt="" />}{getWalletLogo(editor.draft.type) === UnknownLogo && editor.draft.type.slice(0, 2).toUpperCase()}
-            </span>
+            </span>}
             <div><h2 className="text-3xl font-bold">{editor.step === 2 ? providerOptions.find((option) => option.value === editor.draft.type)?.label ?? editor.draft.type : editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</h2>
             {editor.step === 2 && <p className="text-sm text-muted-foreground">{editor.original ? t("mobile.sources.edit") : sections.find((section) => section.kind === editor.kind)?.add}</p>}</div>
           </div>
@@ -228,13 +235,13 @@ export function MobileSources(props: MobileSourcesProps) {
             <Label htmlFor="mobile-provider-search">{t("config.formType")}</Label>
             <Input id="mobile-provider-search" type="search" className="ios-d3-provider-search min-h-12" placeholder={t("mobile.sources.searchProvider")} value={providerQuery} onChange={(event) => setProviderQuery(event.target.value)} />
             <div className="ios-d3-provider-list" role="group" aria-label={t("config.formType")}>
-              {providerOptions.filter((option) => option.label.toLowerCase().includes(providerQuery.toLowerCase())).map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={editor.draft.type === option.value} onClick={() => {
+              {providerOptions.filter((option) => option.label.toLowerCase().includes(providerQuery.toLowerCase())).map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={false} onClick={() => {
               const type = option.value;
               if (editor.kind === "exchange" && type !== editor.draft.type) {
                 const { password: _password, passphrase: _passphrase, ...rest } = editor.draft as ExchangeRow;
                 setEditor({ ...editor, step: 2, draft: { ...rest, type } });
               } else setEditor({ ...editor, step: 2, draft: { ...editor.draft, type } });
-            }}><SourceAvatar type={option.value} /><span>{option.label}</span>{editor.draft.type === option.value ? <CheckIcon aria-hidden="true" /> : <ChevronRightIcon aria-hidden="true" />}</button>)}
+            }}><SourceAvatar type={option.value} /><span>{option.label}</span><ChevronRightIcon aria-hidden="true" /></button>)}
             </div>
           </> : <>
             <div className="ios-d3-credential-group">
@@ -279,12 +286,12 @@ function Field({ id, label, value, onChange, secret = false, onPaste, readOnly =
     <Label htmlFor={id}>{label}</Label>
     <div className="ios-d3-field-control flex gap-2">
       <Input id={id} value={value} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} type={secret && !revealed ? "password" : "text"} placeholder={t(id === "mobile-alias" ? "mobile.sources.optional" : "mobile.sources.fieldRequired")} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} aria-invalid={invalid || undefined} aria-describedby={invalid ? `${id}-error` : undefined} className="min-h-12 min-w-0 flex-1 text-base" />
+      {onPaste && <Button variant="outline" className="min-h-12" onClick={onPaste}>{t("mobile.sources.paste")}</Button>}
       {secret && <button type="button" className="ios-d3-reveal" aria-label={`${t("mobile.sources.holdReveal")} ${label}`}
         onPointerDown={() => setRevealed(true)} onPointerUp={() => setRevealed(false)}
         onPointerCancel={() => setRevealed(false)} onPointerLeave={() => setRevealed(false)}
         onBlur={() => setRevealed(false)} onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") setRevealed(true); }}
         onKeyUp={() => setRevealed(false)}><EyeOpenIcon aria-hidden="true" /></button>}
-      {onPaste && <Button variant="outline" className="min-h-12" onClick={onPaste}>{t("mobile.sources.paste")}</Button>}
     </div>
     {error && <p id={`${id}-error`} role="alert" className="px-4 text-sm text-destructive">{error}</p>}
   </div>;

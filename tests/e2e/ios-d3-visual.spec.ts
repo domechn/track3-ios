@@ -53,6 +53,10 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
       await page.goto(`/#${route}`);
       await expect(page.locator("#app-main-content h1")).toHaveText(title);
       await capture(page, phone.name, theme, name);
+      if (name === "currency") {
+        await expect(page.getByRole("button", { name: /Base currency.*USD/ })).toBeVisible();
+        await expect(page.getByRole("button", { name: /Count of results/ })).toBeVisible();
+      }
       if (name === "backup") {
         const folderActions = page.locator(".ios-d3-backup-folder-actions");
         await folderActions.evaluate((element) => element.scrollIntoView({ block: "center" }));
@@ -61,6 +65,11 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
           const bounds = await button.boundingBox();
           expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(card!.x + card!.width);
         }
+        const folderLabel = await folderActions.getByRole("button", { name: "Use Documents folder" }).evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { height: element.getBoundingClientRect().height, lineHeight: Number.parseFloat(style.lineHeight) };
+        });
+        expect(folderLabel.height).toBeLessThan(folderLabel.lineHeight * 2 + 18);
         await capture(page, phone.name, theme, "backup-folder");
       }
     }
@@ -71,21 +80,29 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Close" }).click();
     await page.getByRole("button", { name: "Add exchange" }).click();
     await expect(page.getByRole("dialog", { name: "Edit data source" })).toBeVisible();
+    await expect(page.locator(".ios-d3-editor-intro .ios-d3-source-avatar")).toHaveCount(0);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-provider.png` });
     await page.getByRole("button", { name: "Binance" }).click();
     await expect(page.getByRole("textbox", { name: "API key" })).toHaveAttribute("placeholder", "Required");
     await expect(page.locator(".ios-d3-editor-intro")).toContainText("Binance");
+    const paste = await page.getByRole("button", { name: "Paste", exact: true }).last().boundingBox();
+    const reveal = await page.getByRole("button", { name: "Hold to reveal API secret" }).boundingBox();
+    expect(reveal!.x).toBeGreaterThan(paste!.x);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-credentials.png` });
     await page.getByRole("dialog", { name: "Edit data source" }).getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("button", { name: "Add symbol" }).click();
+    const cancel = await page.getByRole("dialog", { name: "Add custom asset" }).getByRole("button", { name: "Cancel" }).boundingBox();
+    expect(cancel!.x).toBeLessThan(60);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-custom-asset-editor.png` });
-    await page.getByRole("dialog", { name: "Edit custom asset" }).getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("dialog", { name: "Add custom asset" }).getByRole("button", { name: "Cancel" }).click();
 
     await page.goto("/#/more");
     await capture(page, phone.name, theme, "more");
     await page.goto("/#/goals");
     await page.getByRole("button", { name: "Add alert" }).click();
     const saveRule = await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Save rule" }).boundingBox();
+    const cancelRule = await page.getByRole("dialog", { name: "Add alert" }).getByRole("button", { name: "Cancel" }).evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+    expect(cancelRule).toBeGreaterThanOrEqual(17);
     const goalNav = await page.locator(".ios-d3-goal-editor-nav").boundingBox();
     expect(saveRule!.y + saveRule!.height).toBeLessThanOrEqual(goalNav!.y + goalNav!.height);
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-goal-editor.png` });
@@ -120,6 +137,11 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.locator(".ios-d3-target").first().scrollIntoViewIfNeeded();
     await capture(page, phone.name, theme, "rebalance-targets");
     await page.locator(".ios-d3-trade").first().scrollIntoViewIfNeeded();
+    const buy = page.locator(".ios-d3-buy .ios-d3-trade-value").first();
+    const sell = page.locator(".ios-d3-sell .ios-d3-trade-value").first();
+    await expect(buy).toContainText(/^\+[0-9]/);
+    await expect(sell).toContainText(/^−[0-9]/);
+    expect(await buy.evaluate((element) => getComputedStyle(element).color)).not.toBe(await sell.evaluate((element) => getComputedStyle(element).color));
     const tradeSymbol = page.locator(".ios-d3-trade .ios-d3-trade-symbol").first();
     const symbolBounds = await tradeSymbol.boundingBox();
     const tradeBounds = await page.locator(".ios-d3-trade").first().boundingBox();
@@ -165,12 +187,14 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByRole("alertdialog", { name: "Source status" })).toBeVisible();
     await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
+    await expect(page.locator(".ios-d3-refresh-sheet [data-source-status-row]").first()).not.toContainText("Waiting…");
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh.png` });
     await expect(page.locator(".ios-d3-refresh-sheet [role='progressbar']")).toHaveCount(0, { timeout: 90_000 });
     if (!await page.getByRole("alertdialog", { name: "Source status" }).isVisible()) {
       await page.getByRole("button", { name: "Source status" }).click();
     }
     await expect(page.locator("[data-source-status-row]").first()).toBeVisible();
+    await expect(page.locator(".ios-d3-refresh-sheet p.sr-only")).toHaveCount(0);
     await expect(page.locator(".ios-d3-toast-viewport")).toHaveCount(1);
     await expect(page.locator(".ios-d3-toast-viewport")).toBeHidden();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-refresh-results.png` });
@@ -189,9 +213,11 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-first-launch.png` });
     await page.getByRole("button", { name: "Add your first source" }).click();
     await expect(page.getByRole("list", { name: "Getting started" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add symbol" })).toHaveCount(0);
     await capture(page, phone.name, theme, "onboarding");
     await page.getByRole("button", { name: "Add source" }).click();
     await expect(page.getByRole("button", { name: "Add exchange" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add custom asset" })).toBeVisible();
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-source-kind-picker.png` });
   });
 
@@ -206,3 +232,17 @@ for (const phone of phones) for (const theme of ["light", "dark"] as const) {
     await page.screenshot({ path: `test-results/mobile/d3-${phone.name}-${theme}-startup-lock.png` });
   });
 }
+
+test("D3 pushed titles replace the large title after scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await installTauriBridge(page, undefined, false, true, false, false, true, false, false, true, true);
+  await page.goto("/#/settings/data?section=backup");
+  await expect(page.getByRole("heading", { name: "Backup", level: 1 })).toBeVisible();
+  await expect(page.locator("#app-top-bar .ios-d3-pushed-title")).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await expect(page.locator("#app-top-bar .ios-d3-pushed-title")).toHaveText("Backup");
+  await expect(page.locator("#app-top-bar .ios-d3-pushed-title")).toBeVisible();
+  const compact = await page.locator("#app-top-bar .ios-d3-pushed-title").boundingBox();
+  const topBar = await page.locator("#app-top-bar").boundingBox();
+  expect(Math.abs(compact!.x + compact!.width / 2 - topBar!.width / 2)).toBeLessThan(2);
+});

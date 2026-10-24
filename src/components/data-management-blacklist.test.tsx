@@ -132,10 +132,10 @@ describe("Data Management", () => {
     mocks.getAutoBackupDirectory.mockResolvedValue("/Documents/Track3");
     try {
       render(<DataManagement />);
-      await waitFor(() => expect(screen.getByText(/Last Backup At:/)).toBeVisible());
-      expect(screen.getByText(/Last Import At:/)).toBeVisible();
-      expect(screen.getByText(/Last Backup At:/).parentElement).toHaveTextContent("2024-4-16");
-      expect(screen.getByText(/Last Import At:/).parentElement).toHaveTextContent("2024-4-15");
+      await waitFor(() => expect(screen.getByText("Last backup")).toBeVisible());
+      expect(screen.getByText("Last import")).toBeVisible();
+      expect(screen.getByText("Last backup").parentElement).toHaveTextContent("2024-4-16");
+      expect(screen.getByText("Last import").parentElement).toHaveTextContent("2024-4-15");
     } finally {
       vi.mocked(isIOS).mockReturnValue(false);
       window.location.hash = "";
