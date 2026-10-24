@@ -3,14 +3,23 @@
 The earlier S1–S5 sections record their handoff results. The current state
 for this worktree is D1 below.
 
+## D1 second reviewer pass
+
+- Corrected the Overview range cutoff to milliseconds and added a phone browser check that switches to 1W and verifies the chart start and hero change.
+- Raised the compact and tab bar fills for readable overlap even when browser blur is unavailable. The loading skeleton now aligns with loaded content; the browser backup indicator clears the tab bar.
+- The P&L axis uses Chart.js grace, the scrub chip measures its width before clamping, source rows show type, alias, and logo, and the review fixture uses distinct Bitcoin, Solana, Coinbase, and IBKR sources. Long treemap labels wrap on the narrow phone.
+- Pushed page titles appear in the compact bar only after scrolling. Mobile exports now include `Button`, `Switch`, and `MobileNavigation`; More rows have icons. The desktop skeleton pulse and desktop mover selection are restored.
+- A broader 62 test phone run initially found one clipped wallet label at 320 px; the wrap fix passed the targeted check. Final local checks passed: frontend and browser TypeScript checks, 1,817 Vitest tests in 221 files, and all 87 tests across the iPhone browser suites. The suite wrote 123 PNGs under `test-results/mobile/`, including light and dark route captures. Browser captures were reviewed at 320 and 390 px. Simulator blur remains unverified.
+
 ## D1 reviewer closeout
 
 - CI run `40073503815` on `43e6b9f` passed the iPhone flows but failed 35
   desktop browser checks, mainly from shared accent contrast and the enlarged
   Switch. Its Rust pure tests were skipped. This worktree scopes the iOS
   palette, fonts, Card and Switch to the phone layout and restores the desktop
-  defaults. The local desktop browser command now passes 77/77 checks,
-  including accessibility and density. No later CI result exists yet.
+  defaults. The local desktop browser command passed 77/77 checks,
+  including accessibility and density. Later CI run `40076457752` on
+  `b9f40ec` passed web and iOS jobs before the second reviewer pass.
 - Final local checks for this reviewer pass: frontend and browser test
   TypeScript checks passed; Vitest passed 1,815 tests in 221 files; the
   iPhone Playwright command passed 85/85. These runs do not validate a signed
@@ -38,8 +47,7 @@ for this worktree is D1 below.
   uses it for iPhone SE and iPhone 14 captures and adds dark Overview captures.
   The viewport suite adds light and dark performance and mover captures.
   The completed phone run writes 123 PNGs under `test-results/mobile/`.
-  The 320 and 390 px scroll checks pass locally. The previous CI failure has
-  not yet been checked in a new CI run.
+  The 320 and 390 px scroll checks passed locally before the second reviewer pass.
 - Local checks in this closeout: `tsc --noEmit` passed, 1,815 Vitest tests in
   221 files passed, and all 84 phone Playwright tests passed. Browser captures
   were inspected at 320 and 390 px. These checks do not verify signed-device

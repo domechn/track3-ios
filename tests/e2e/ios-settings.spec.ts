@@ -39,6 +39,7 @@ test("More opens every iPhone settings section through the Settings hub", async 
   }
   await sections.getByRole("link", { name: "Language" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Language" })).toBeVisible();
+  await expect(page.locator("#app-top-bar .mobile-compact-title")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(1);
   await page.locator("#app-top-bar").getByRole("button", { name: "Back" }).click();

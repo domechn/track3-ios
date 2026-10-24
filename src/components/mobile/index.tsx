@@ -6,8 +6,10 @@ import { useTranslation } from "@/i18n";
 import { iosHaptic } from "@/utils/ios-native";
 import { isIOS } from "@/utils/platform";
 import "./mobile.css";
-export { AnimatedAmount, DeltaPill, EmptyState, IconButton, MobileCard, MobileSkeleton, Pill, SectionHeader } from "./design";
+export { AnimatedAmount, Button, DeltaPill, EmptyState, IconButton, MobileCard, MobileSkeleton, Pill, SectionHeader } from "./design";
 export { MobileIcon } from "./icons";
+export { MobileNavigation } from "./navigation";
+export { Switch } from "@/components/ui/switch";
 
 export const MOBILE_MEDIA_QUERY = "(max-width: 950px) and (pointer: coarse)";
 

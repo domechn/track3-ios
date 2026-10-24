@@ -67,6 +67,7 @@ import { ToastAction } from "@/components/ui/toast";
 import { markIOSReady } from "@/utils/ios-ready";
 import { InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
+import { MobileIcon, type MobileIconName } from "@/components/mobile/icons";
 import { useAlertBadge } from "@/components/use-alert-badge";
 import { MobileHeaderTotal } from "@/components/mobile/header-total";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
@@ -357,7 +358,7 @@ function Layout({
           dateRange={dateRange}
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
-          compactTitle={mobile && (headerCollapsed || canGoBack) ? routeTitle(location.pathname, t) : undefined}
+          compactTitle={mobile && headerCollapsed ? routeTitle(location.pathname, t) : undefined}
           overview={location.pathname === "/overview"}
           onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
@@ -415,14 +416,16 @@ function Layout({
 function MoreHub() {
   const { t } = useTranslation();
   const unread = useOutletContext<number>();
-  const items = [
-    { href: "#/rebalance", label: t("nav.rebalance") },
-    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined },
-    { href: "#/assistant", label: t("nav.assistant") },
-    { href: "#/settings", label: t("nav.settings") },
+  const items: { href: string; label: string; value?: string; icon: MobileIconName }[] = [
+    { href: "#/rebalance", label: t("nav.rebalance"), icon: "rebalance" },
+    { href: "#/goals", label: t("nav.goals"), value: unread > 0 ? String(unread) : undefined, icon: "goals" },
+    { href: "#/assistant", label: t("nav.assistant"), icon: "assistant" },
+    { href: "#/settings", label: t("nav.settings"), icon: "settings" },
   ];
   return <div className="mobile-more-hub"><InsetGroup>
-    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>{item.label}</ListRow>)}
+    {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>
+      <MobileIcon name={item.icon} />{item.label}
+    </ListRow>)}
   </InsetGroup></div>;
 }
 

@@ -162,8 +162,7 @@ const App = ({
         border: { display: !isMobile },
       },
       y: {
-        min: isMobile ? Math.min(0, ...plottedPNL.map((point) => point.change)) * 1.08 : undefined,
-        max: isMobile ? Math.max(0, ...plottedPNL.map((point) => point.change)) * 1.08 : undefined,
+        grace: isMobile ? "8%" : undefined,
         title: {
           display: false,
           text: currency.currency,

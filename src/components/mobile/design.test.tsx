@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AnimatedAmount, DeltaPill, EmptyState, IconButton, MobileCard, Pill, SectionHeader } from "./index";
+import { AnimatedAmount, Button, DeltaPill, EmptyState, IconButton, MobileCard, MobileNavigation, Pill, SectionHeader, Switch } from "./index";
 
 describe("phone design components", () => {
   it("gives gain and loss amounts distinct readable labels", () => {
@@ -35,6 +35,16 @@ describe("phone design components", () => {
     expect(screen.getByText("Holdings")).toHaveClass("mobile-card");
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("exports a pressable primary button and an accessible switch", () => {
+    const click = vi.fn();
+    render(<><Button onClick={click}>Continue</Button><Switch aria-label="Notifications" /></>);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(click).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("switch", { name: "Notifications" }));
+    expect(screen.getByRole("switch", { name: "Notifications" })).toHaveAttribute("aria-checked", "true");
+    expect(MobileNavigation).toBeTypeOf("function");
   });
 
   it("shows the final amount immediately when motion is reduced", () => {

@@ -70,6 +70,8 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.locator(".overview-source-row")).toHaveCount(3);
     await expect(page.locator(".overview-source-row").first()).toContainText("$");
     await expect(page.locator(".overview-source-row").first()).toContainText("%");
+    await expect(page.locator(".overview-source-row").first()).toContainText(/BTC-|Coinbase-|IBKR-/);
+    await expect(page.locator(".overview-source-row img").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Next token holdings page" })).toBeVisible();
     await expect(page.locator(".mobile-hero-value")).not.toContainText("$42,000.00");
     await expect(page.locator(".mobile-hero-dates")).toContainText("Aug 24");
@@ -105,6 +107,41 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
     await expect(page.locator(".mobile-more-hub .mobile-inset-heading")).toHaveCount(0);
+    await expect(page.locator(".mobile-more-hub .mobile-list-label svg")).toHaveCount(4);
+  } finally {
+    await context.close();
+  }
+});
+
+test("scrolled bars keep text behind them quiet when blur is unavailable", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.locator(".mobile-allocation-row")).toHaveCount(5);
+    await page.evaluate(() => window.scrollTo(0, 700));
+    await expect(page.locator("#app-top-bar")).toHaveClass(/mobile-topbar-collapsed/);
+    for (const selector of ["#app-top-bar", ".mobile-tab-bar"]) {
+      const color = await page.locator(selector).evaluate((node) => getComputedStyle(node).backgroundColor);
+      expect(Number(color.match(/[\d.]+\)$/)?.[0].slice(0, -1))).toBeGreaterThanOrEqual(0.94);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test("Overview range chips change the chart start and hero delta", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.locator(".mobile-hero-dates")).toContainText("Aug 24");
+    const allDelta = await page.locator(".mobile-hero-change").textContent();
+    await page.getByRole("radio", { name: "1W" }).click();
+    await expect(page.locator(".mobile-hero-dates")).toContainText("Oct 15");
+    await expect.poll(() => page.locator(".mobile-hero-change").textContent()).not.toBe(allDelta);
   } finally {
     await context.close();
   }
@@ -127,6 +164,8 @@ test("touching the trend reveals a readable value chip", async ({ browser }) => 
     const firstX = (await chip.boundingBox())!.x;
     await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
     await expect.poll(async () => (await chip.boundingBox())?.x).toBeGreaterThan(firstX + 25);
+    await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
+    await expect.poll(async () => (await chip.boundingBox())!.x + (await chip.boundingBox())!.width).toBeLessThanOrEqual(374);
     mkdirSync("test-results/mobile", { recursive: true });
     await page.screenshot({ path: "test-results/mobile/390x844-overview-scrub.png" });
   } finally {
@@ -142,6 +181,12 @@ test("Overview skeleton reserves the first paint", async ({ browser }) => {
     await page.goto("/#/overview");
     await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false");
     await expect(page.locator(".overview-skeleton")).toBeVisible();
+    expect((await page.locator(".overview-skeleton").boundingBox())?.x).toBe(16);
+    await expect(page.locator(".overview-loading")).toHaveCSS("border-radius", "0px");
+    const backup = page.locator(".auto-backup-browser-indicator");
+    await expect(backup).toBeVisible();
+    expect((await backup.boundingBox())!.y + (await backup.boundingBox())!.height)
+      .toBeLessThanOrEqual((await page.locator(".mobile-tab-bar").boundingBox())!.y - 8);
     mkdirSync("test-results/mobile", { recursive: true });
     await page.screenshot({ path: "test-results/mobile/390x844-overview-loading.png" });
   } finally {

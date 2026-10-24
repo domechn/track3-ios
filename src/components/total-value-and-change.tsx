@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   AssetChangeData,
   CurrencyRateDetail,
@@ -205,6 +205,11 @@ const App = ({
   const [scrubPosition, setScrubPosition] = useState<{ x: number; y: number; top: number; bottom: number } | null>(null);
   const lastScrub = useRef<number | null>(null);
   const [chartWidth, setChartWidth] = useState(600);
+  const chartChipRef = useRef<HTMLDivElement>(null);
+  const [chartChipWidth, setChartChipWidth] = useState(0);
+  useLayoutEffect(() => {
+    if (chartChipRef.current) setChartChipWidth(chartChipRef.current.getBoundingClientRect().width);
+  });
   const loadGenRef = useRef(0);
   const rangeKey = useMemo(
     () => `${dateRange.start.getTime()}-${dateRange.end.getTime()}`,
@@ -626,8 +631,8 @@ const App = ({
                 style={{ left: scrubPosition.x, top: scrubPosition.top, height: scrubPosition.bottom - scrubPosition.top }} />
               <div className="mobile-chart-point" aria-hidden="true"
                 style={{ left: scrubPosition.x, top: scrubPosition.y }} />
-              <div className="mobile-chart-chip" aria-hidden="true"
-                style={{ left: Math.max(75, Math.min(chartWidth - 75, scrubPosition.x)) }}>
+              <div ref={chartChipRef} className="mobile-chart-chip" aria-hidden="true"
+                style={{ left: Math.max(chartChipWidth / 2 + 4, Math.min(chartWidth - chartChipWidth / 2 - 4, scrubPosition.x)) }}>
                 {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })
                   .format(new Date(plottedTimestamps[scrubIndex]))} · {showPercentageInChart
                   ? `${lineValues[plottedIndices[scrubIndex]]?.toFixed(2)}%`

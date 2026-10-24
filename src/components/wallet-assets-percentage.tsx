@@ -48,7 +48,7 @@ import {
 
 const chartName = "wallet-assets-percentage";
 
-function getWalletDisplayName(item: {
+export function getWalletDisplayName(item: {
   wallet: string;
   walletType?: string;
   walletAlias?: string;

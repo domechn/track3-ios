@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import initSqlJs from "sql.js";
+import md5 from "md5";
 import { FakeS3, S3Error } from "../../src/middlelayers/sync/object-store";
 
 const schemaFiles = [
@@ -48,14 +49,27 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
   if (richPortfolio && !emptyPortfolio) {
     db.run("DELETE FROM assets_v2");
     db.run("INSERT INTO configuration (id, data) VALUES (6, '60')");
+    const bitcoinAddress = "bc1q-demo-cold-storage";
+    const solanaAddress = "demo-solana-wallet";
+    const coinbaseIdentity = "coinbase-demo-key";
+    const ibkrIdentity = "ibkr:demo-query";
+    db.run("UPDATE configuration SET data = ? WHERE id = 11", [
+      `btc:\n  addresses:\n    - address: ${bitcoinAddress}\n      alias: Cold storage\nsol:\n  addresses:\n    - address: ${solanaAddress}\n      alias: Solana wallet\nerc20: {addresses: []}\ndoge: {addresses: []}\ntrc20: {addresses: []}\nton: {addresses: []}\nsui: {addresses: []}\n`,
+    ]);
+    db.run("INSERT INTO configuration (id, data) VALUES (10, ?)", [
+      "!ent:e2e:exchanges:\n  - name: coinbase\n    alias: Main exchange\n    initParams:\n      apiKey: demo-key\n      secret: demo-secret\n",
+    ]);
+    db.run("INSERT INTO configuration (id, data) VALUES (20, ?)", [
+      "!ent:e2e:brokers:\n  - name: ibkr\n    alias: Brokerage\n    initParams:\n      token: demo-token\n      queryId: demo-query\n",
+    ]);
     const holdings = [
-      { symbol: "BTC", type: "crypto", wallet: "BTC", amount: 0.36, base: 28_000 },
-      { symbol: "ETH", type: "crypto", wallet: "Coinbase", amount: 3.8, base: 12_000 },
-      { symbol: "AAPL", type: "stock", wallet: "ibkr", amount: 43, base: 9_000 },
-      { symbol: "SOL", type: "crypto", wallet: "BTC", amount: 42, base: 7_000 },
-      { symbol: "USDC", type: "crypto", wallet: "Coinbase", amount: 6_400, base: 6_400 },
-      { symbol: "AVAX", type: "crypto", wallet: "Coinbase", amount: 81, base: 3_000 },
-      { symbol: "LINK", type: "crypto", wallet: "BTC", amount: 90, base: 1_600 },
+      { symbol: "BTC", type: "crypto", wallet: md5(bitcoinAddress), amount: 0.36, base: 28_000 },
+      { symbol: "ETH", type: "crypto", wallet: md5(coinbaseIdentity), amount: 3.8, base: 12_000 },
+      { symbol: "AAPL", type: "stock", wallet: md5(ibkrIdentity), amount: 43, base: 9_000 },
+      { symbol: "SOL", type: "crypto", wallet: md5(solanaAddress), amount: 42, base: 7_000 },
+      { symbol: "USDC", type: "crypto", wallet: md5(coinbaseIdentity), amount: 6_400, base: 6_400 },
+      { symbol: "AVAX", type: "crypto", wallet: md5(coinbaseIdentity), amount: 81, base: 3_000 },
+      { symbol: "LINK", type: "crypto", wallet: md5(coinbaseIdentity), amount: 90, base: 1_600 },
     ];
     for (let day = 0; day < 60; day++) {
       const uuid = `demo-${String(day).padStart(2, "0")}`;

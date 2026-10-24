@@ -34,7 +34,7 @@
 .mobile-list-label { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .mobile-list-value { min-width: 0; color: hsl(var(--muted-foreground)); overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .mobile-swipe-actions { transition: none; } }
-.mobile-tab-bar { position: fixed; inset: auto 0 0; z-index: 40; display: none; justify-content: space-around; height: calc(3.8rem + env(safe-area-inset-bottom)); padding: .2rem env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); border-top: .5px solid var(--ios-separator); background: hsl(var(--card) / .86); backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px); }
+.mobile-tab-bar { position: fixed; inset: auto 0 0; z-index: 40; display: none; justify-content: space-around; height: calc(3.8rem + env(safe-area-inset-bottom)); padding: .2rem env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); border-top: .5px solid var(--ios-separator); background: hsl(var(--card) / .97); backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px); }
 .mobile-tab { position: relative; display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 2.75rem; gap: .08rem; color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 500; transition: transform 180ms var(--ios-motion), opacity 180ms var(--ios-motion); }
 .mobile-tab:active { transform: scale(.97); opacity: .7; }
 .mobile-tab[aria-current="page"] { color: hsl(var(--primary)); }
@@ -62,6 +62,7 @@
 .mobile-empty-state p { max-width: 18rem; margin: .5rem 0 1.5rem; color: hsl(var(--muted-foreground)); font-size: 15px; }
 @media (prefers-reduced-motion: reduce) { .mobile-tab, .mobile-icon-button, .mobile-primary-button { transition: none; } .mobile-skeleton { animation: none; } }
 @media (max-width: 950px) and (pointer: coarse) { .mobile-tab-bar { display: flex; } }
+@media (max-width: 950px) and (pointer: coarse) { .fixed.auto-backup-browser-indicator { bottom: calc(5rem + env(safe-area-inset-bottom)); } }
 .date-picker-mobile { display: none; }
 .mobile-date-input { min-height: 2.75rem; width: 100%; border: 1px solid hsl(var(--border)); border-radius: .6rem; padding: .5rem .75rem; background: hsl(var(--card)); color: hsl(var(--foreground)); font-size: 1rem; }
 .mobile-date-snapshots { display: grid; gap: .5rem; }

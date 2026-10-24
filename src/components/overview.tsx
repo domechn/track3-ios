@@ -29,7 +29,8 @@ import InsightsCard from "./insights-card";
 import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
 import type { WalletAssetsPercentageData } from "@/middlelayers/types";
 import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
-import { insertEllipsis } from "@/utils/string";
+import { getWalletLogo } from "@/lib/utils";
+import { getWalletDisplayName } from "./wallet-assets-percentage";
 
 const MAIN_COMPONENT_COUNT = 4;
 
@@ -47,12 +48,13 @@ function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
   return <>
     <SectionHeader>{t("overview.sources")}</SectionHeader>
     <MobileCard className="overview-source-teaser">
-      {sources.map((source) => <ListRow key={source.wallet} className="overview-source-row" href="#/wallets"
+      {sources.map((source) => <ListRow key={`${source.wallet}-${source.walletType ?? "none"}`} className="overview-source-row" href="#/wallets"
         value={<span className="overview-source-value ios-money">
           <strong>{currency.symbol + prettyNumberToLocaleString(currencyWrapper(currency)(source.value))}</strong>
           <span>{source.percentage.toFixed(1)}%</span>
         </span>}>
-        {source.walletAlias ?? insertEllipsis(source.wallet, 18)}
+        {source.walletType && <img src={getWalletLogo(source.walletType)} alt="" aria-hidden="true" />}
+        {getWalletDisplayName(source)}
       </ListRow>)}
       <ListRow href="#/settings/configuration">{t("overview.manageSources")}</ListRow>
     </MobileCard>

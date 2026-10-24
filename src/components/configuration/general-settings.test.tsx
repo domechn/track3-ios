@@ -54,7 +54,7 @@ describe("GeneralSettings", () => {
       <GeneralSettings {...baseProps} preferCurrencyLoading={true} />,
     );
 
-    expect(container.querySelector(".mobile-skeleton")).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
   });
 
   it("shows exchange rate text when non-USD currency is selected", () => {

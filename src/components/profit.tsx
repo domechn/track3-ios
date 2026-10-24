@@ -126,12 +126,12 @@ const App = ({
   }, [coinsProfit]);
 
   const topProfitData = useMemo(
-    () => coinsProfit.filter((coin) => coin.value > 0).slice(-5).reverse(),
-    [coinsProfit],
+    () => (isMobile ? coinsProfit.filter((coin) => coin.value > 0) : coinsProfit).slice(-5).reverse(),
+    [coinsProfit, isMobile],
   );
   const topLossData = useMemo(
-    () => coinsProfit.filter((coin) => coin.value < 0).slice(0, 5),
-    [coinsProfit],
+    () => (isMobile ? coinsProfit.filter((coin) => coin.value < 0) : coinsProfit).slice(0, 5),
+    [coinsProfit, isMobile],
   );
 
   const totalToneClass = useMemo(

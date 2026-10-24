@@ -82,7 +82,7 @@ describe("SessionSidebar", () => {
         onPin={onPin}
       />,
     );
-    const skeletons = container.querySelectorAll(".mobile-skeleton");
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThanOrEqual(4);
   });
 

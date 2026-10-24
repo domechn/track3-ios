@@ -33,7 +33,7 @@ export default function AutoBackupIndicator({
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="auto-backup-browser-indicator fixed bottom-4 right-4 z-50">
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>

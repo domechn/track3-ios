@@ -34,6 +34,10 @@ export function IconButton({ label, className, children, ...props }: PropsWithCh
   </button>;
 }
 
+export function Button({ className, children, ...props }: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement>>) {
+  return <button type="button" className={cn("mobile-primary-button", className)} {...props}>{children}</button>;
+}
+
 export function MobileSkeleton({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cn("mobile-skeleton", className)} />;
 }
@@ -73,6 +77,6 @@ export function EmptyState({ title, description, action, onAction, illustrationL
     </svg>
     <h2>{title}</h2>
     <p>{description}</p>
-    <button type="button" className="mobile-primary-button" onClick={onAction}>{action}</button>
+    <Button onClick={onAction}>{action}</Button>
   </div>;
 }
