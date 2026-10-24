@@ -16,7 +16,7 @@ import {
 } from "@/middlelayers/charts";
 import { timeToDateStr } from "@/utils/date";
 import {
-  chartColors,
+  getChartPalette,
   glassScaleOptions,
   glassTooltip,
 } from "@/utils/chart-theme";
@@ -24,11 +24,16 @@ import { formatAssetLabel, getAssetLogoKey } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
+import { useTheme } from "@/components/common/theme";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "Coins Percentage Overview";
 
 const App = ({ dateRange }: { dateRange: TDateRange }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
+  const chartColors = getChartPalette(isMobile, resolvedTheme);
   const wsize = useWindowSize();
   const [topN, setTopN] = useState<AssetReference[]>([]);
   const [chartWidth, setChartWidth] = useState(600);
@@ -109,7 +114,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
       key: "others",
     };
     return [...topNCurrent, othersRow].sort((a, b) => b.current - a.current);
-  }, [assetsPercentageChangeData, topN, t]);
+  }, [assetsPercentageChangeData, topN, t, chartColors]);
 
   const options = useMemo(
     () => ({
@@ -251,7 +256,7 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
       labels: plottedIndices.map((point) => preparedData.labels[point]),
       datasets: [...topNDatasets, othersDataset],
     };
-  }, [preparedData, plottedIndices, topN, t]);
+  }, [preparedData, plottedIndices, topN, t, chartColors]);
 
   return (
     <div>

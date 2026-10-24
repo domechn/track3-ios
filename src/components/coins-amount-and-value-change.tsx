@@ -18,7 +18,7 @@ import {
 import { ChartResizeContext } from "@/App";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import {
-  chartColors,
+  getChartPalette,
   createGradientFill,
   glassScaleOptions,
   glassTooltip,
@@ -28,6 +28,8 @@ import { formatAssetLabel } from "@/utils/assets";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
+import { useTheme } from "@/components/common/theme";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "Trend of Coin";
 
@@ -43,6 +45,9 @@ const App = ({
   assetType?: AssetType;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
+  const chartColors = getChartPalette(isMobile, resolvedTheme);
   const wsize = useWindowSize();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);

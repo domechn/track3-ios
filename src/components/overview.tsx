@@ -34,7 +34,7 @@ import { getWalletDisplayName } from "./wallet-assets-percentage";
 
 const MAIN_COMPONENT_COUNT = 4;
 
-function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
+export function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
   const { t } = useTranslation();
   const version = useDataChangedVersion();
   const [sources, setSources] = useState<WalletAssetsPercentageData>([]);
@@ -42,9 +42,12 @@ function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
     let active = true;
     void WALLET_ANALYZER.queryWalletAssetsPercentage().then((rows) => {
       if (active) setSources(rows.slice(0, 3));
+    }).catch(() => {
+      if (active) setSources([]);
     });
     return () => { active = false; };
   }, [version]);
+  if (sources.length === 0) return null;
   return <>
     <SectionHeader>{t("overview.sources")}</SectionHeader>
     <MobileCard className="overview-source-teaser">
@@ -54,7 +57,10 @@ function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
           <span>{source.percentage.toFixed(1)}%</span>
         </span>}>
         {source.walletType && <img src={getWalletLogo(source.walletType)} alt="" aria-hidden="true" />}
-        {getWalletDisplayName(source)}
+        <span className="overview-source-name">
+          <strong>{source.walletAlias || getWalletDisplayName(source)}</strong>
+          {source.walletType && <span>{source.walletType}</span>}
+        </span>
       </ListRow>)}
       <ListRow href="#/settings/configuration">{t("overview.manageSources")}</ListRow>
     </MobileCard>
@@ -113,7 +119,7 @@ const App = ({
                   quoteColor={quoteColor}
                 />
               </FadeUp>
-              <FadeUp className="col-span-2 h-full md:col-span-1">
+              <FadeUp className={`col-span-2 md:col-span-1 overview-pnl-section${isMobile ? "" : " h-full"}`}>
                 {isMobile && <SectionHeader>{t("overview.performance")}</SectionHeader>}
                 <PNL
                   currency={currency}
@@ -168,12 +174,36 @@ const App = ({
             aria-atomic="true"
           >
             {isMobile ? <div className="overview-skeleton" aria-hidden="true">
-              <MobileSkeleton className="h-4 w-24" />
-              <MobileSkeleton className="mt-4 h-14 w-64 max-w-full" />
-              <MobileSkeleton className="mt-3 h-7 w-36 rounded-full" />
-              <MobileSkeleton className="mt-9 h-44 w-full" />
-              <MobileSkeleton className="mt-4 h-11 w-full" />
-              <span className="sr-only">{t("loading.overview")}</span>
+              <div className="overview-skeleton-hero">
+                <MobileSkeleton className="h-4 w-24" />
+                <MobileSkeleton className="mt-4 h-14 w-64 max-w-full" />
+                <MobileSkeleton className="mt-3 h-7 w-36 rounded-full" />
+                <MobileSkeleton className="mt-9 h-44 w-full" />
+                <MobileSkeleton className="mt-4 h-11 w-full" />
+              </div>
+              <div>
+                <MobileSkeleton className="mb-3 h-4 w-28" />
+                <div className="overview-skeleton-card">
+                  <div className="grid grid-cols-3 gap-3"><MobileSkeleton className="h-16" /><MobileSkeleton className="h-16" /><MobileSkeleton className="h-16" /></div>
+                  <MobileSkeleton className="mt-6 h-36 w-full" />
+                </div>
+              </div>
+              <div>
+                <MobileSkeleton className="mb-3 h-4 w-24" />
+                <div className="overview-skeleton-card">
+                  <MobileSkeleton className="mx-auto h-44 w-44 rounded-full" />
+                  <MobileSkeleton className="mt-7 h-14 w-full" />
+                  <MobileSkeleton className="mt-3 h-14 w-full" />
+                </div>
+              </div>
+              <div>
+                <MobileSkeleton className="mb-3 h-4 w-28" />
+                <div className="overview-skeleton-card">
+                  <MobileSkeleton className="h-11 w-full" />
+                  <MobileSkeleton className="mt-5 h-14 w-full" />
+                  <MobileSkeleton className="mt-3 h-14 w-full" />
+                </div>
+              </div>
             </div> : <div className="glass-subtle flex max-w-sm flex-col items-center gap-3 rounded-xl px-5 py-4 text-center">
               <div className="h-2 w-24 rounded-full bg-primary/20">
                 <div className="h-full w-1/2 animate-pulse rounded-full bg-primary/70 motion-reduce:animate-none" />

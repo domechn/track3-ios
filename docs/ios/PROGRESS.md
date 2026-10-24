@@ -3,6 +3,14 @@
 The earlier S1–S5 sections record their handoff results. The current state
 for this worktree is D1 below.
 
+## D1 third reviewer pass
+
+- Fixed the phone P&L card overflow and restored even section spacing. The chart now draws to the 18 px card gutter, with localized dates below the canvas. Phone metric values use the system font.
+- Applied the phone font to portal overlays. Source rows show a one-line alias above the source type; at 320 px they omit row chevrons to preserve alias width. The source teaser hides when its query is empty or fails.
+- Restored the original eight-color desktop chart palette and desktop P&L bar colors. Phone charts use the muted palette, with a distinct sixth color; phone P&L bars update on a live theme change. The Overview CSS targets component classes rather than Tailwind classes or child positions.
+- Replaced the blank loading area with a flat hero skeleton and grouped section skeletons. Percent and BTC controls now show switch tracks, and the movers badge uses the same gain/loss pill as the hero.
+- Final local checks: frontend and browser-test TypeScript passed, Vitest passed 1,824 tests in 224 files, and the four phone Playwright suites passed 148/148. The browser run regenerated 123 PNGs in `test-results/mobile/`; the 320 px dark P&L and source screenshots were inspected. No iOS simulator or physical device run was performed in this pass.
+
 ## D1 second reviewer pass
 
 - Corrected the Overview range cutoff to milliseconds and added a phone browser check that switches to 1W and verifies the chart start and hero change.

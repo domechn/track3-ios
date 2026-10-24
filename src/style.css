@@ -62,7 +62,7 @@
     --ios-chart-3: #79aaa5;
     --ios-chart-4: #b39ac4;
     --ios-chart-5: #c4aa89;
-    --ios-chart-6: #8e94a8;
+    --ios-chart-6: #bf8491;
     --ios-motion: cubic-bezier(.2,.8,.2,1);
 
     --glass-blur: 12px;
@@ -114,7 +114,7 @@
     --ios-chart-3: #79b6ac;
     --ios-chart-4: #b9a3cb;
     --ios-chart-5: #bda887;
-    --ios-chart-6: #929bb1;
+    --ios-chart-6: #d295a2;
 
     --glass-bg: rgba(15, 23, 42, 0.5);
     --glass-border: rgba(255, 255, 255, 0.08);
@@ -156,7 +156,7 @@
   }
 
   @media (max-width: 950px) and (pointer: coarse) {
-    body { font-size: 17px; background-image: none; }
+    body { font-family: -apple-system, "SF Pro Text", "SF Pro Display", system-ui, sans-serif; font-size: 17px; background-image: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {

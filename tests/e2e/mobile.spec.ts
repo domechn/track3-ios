@@ -70,7 +70,7 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.locator(".overview-source-row")).toHaveCount(3);
     await expect(page.locator(".overview-source-row").first()).toContainText("$");
     await expect(page.locator(".overview-source-row").first()).toContainText("%");
-    await expect(page.locator(".overview-source-row").first()).toContainText(/BTC-|Coinbase-|IBKR-/);
+    await expect(page.locator(".overview-source-row").first()).toContainText(/BTC|Coinbase|IBKR/);
     await expect(page.locator(".overview-source-row img").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Next token holdings page" })).toBeVisible();
     await expect(page.locator(".mobile-hero-value")).not.toContainText("$42,000.00");
@@ -93,6 +93,9 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.locator(".mobile-allocation-center")).not.toContainText("Allocation");
     await expect(page.locator(".overview-movers-card")).toContainText("Net P&L for selected range");
     await expect(page.locator(".overview-movers-card .mobile-movers-total > div:last-child")).toContainText(/[+-]\d/);
+    await expect(page.locator(".overview-movers-card .mobile-delta-pill")).toHaveAttribute("data-tone", "gain");
+    expect(await page.locator(".overview-movers-card .mobile-delta-pill").evaluate((node) => getComputedStyle(node).backgroundColor))
+      .toBe(await page.locator(".mobile-hero-change .mobile-delta-pill").evaluate((node) => getComputedStyle(node).backgroundColor));
     const [gains, losses] = await page.locator(".profit-mobile-list").allTextContents();
     expect(gains).not.toContain("-$");
     expect(losses).not.toContain("+$");
@@ -108,6 +111,39 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
     await expect(page.locator(".mobile-more-hub .mobile-inset-heading")).toHaveCount(0);
     await expect(page.locator(".mobile-more-hub .mobile-list-label svg")).toHaveCount(4);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Overview cards and source labels fit the phone layout", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true);
+    await page.goto("/#/overview");
+    await expect(page.locator(".overview-source-row")).toHaveCount(3);
+    const pnl = page.locator(".overview-pnl-card");
+    const wrapper = page.locator(".overview-pnl-section");
+    await expect(pnl).toHaveCount(1);
+    await expect(wrapper).toHaveCount(1);
+    await expect(pnl.locator(".overview-pnl-card-content")).toHaveCSS("padding-right", "18px");
+    await expect(pnl.locator(".overview-pnl-metric").nth(1)).toHaveCSS("border-right-width", "0px");
+    expect(await pnl.locator(".overview-pnl-metric-value").first().evaluate((node) => getComputedStyle(node).fontFamily))
+      .toMatch(/^-apple-system/);
+    expect((await pnl.boundingBox())!.y + (await pnl.boundingBox())!.height)
+      .toBeLessThanOrEqual((await wrapper.boundingBox())!.y + (await wrapper.boundingBox())!.height + 1);
+    for (const row of await page.locator(".overview-source-row").all()) {
+      const title = row.locator(".overview-source-name strong");
+      const subtitle = row.locator(".overview-source-name span");
+      await expect(title).toHaveCount(1);
+      await expect(subtitle).toHaveCount(1);
+      await expect(title).toHaveCSS("text-overflow", "ellipsis");
+      expect(await title.evaluate((node) => node.scrollHeight)).toBeLessThanOrEqual(
+        await title.evaluate((node) => node.clientHeight + 1));
+    }
+    expect(await page.locator(".overview-source-name strong").first().evaluate((node) => node.scrollWidth))
+      .toBeLessThanOrEqual(await page.locator(".overview-source-name strong").first().evaluate((node) => node.clientWidth + 1));
   } finally {
     await context.close();
   }
@@ -182,6 +218,13 @@ test("Overview skeleton reserves the first paint", async ({ browser }) => {
     await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false");
     await expect(page.locator(".overview-skeleton")).toBeVisible();
     expect((await page.locator(".overview-skeleton").boundingBox())?.x).toBe(16);
+    await expect(page.locator(".overview-skeleton-hero")).toHaveCount(1);
+    await expect(page.locator(".overview-skeleton-card")).toHaveCount(3);
+    await expect(page.locator(".overview-skeleton-hero")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    expect((await page.locator(".overview-skeleton-hero .mobile-skeleton").first().boundingBox())?.x)
+      .toBe((await page.locator(".overview-skeleton").boundingBox())?.x);
+    expect(await page.locator(".overview-skeleton-hero .mobile-skeleton").first().evaluate((node) => getComputedStyle(node).backgroundColor))
+      .not.toBe(await page.locator("body").evaluate((node) => getComputedStyle(node).backgroundColor));
     await expect(page.locator(".overview-loading")).toHaveCSS("border-radius", "0px");
     const backup = page.locator(".auto-backup-browser-indicator");
     await expect(backup).toBeVisible();
@@ -249,7 +292,7 @@ for (const size of sizes) {
           clipped: [...document.querySelectorAll<HTMLElement>("#app-main-content *")].filter((node) => {
             const style = getComputedStyle(node);
             return node.children.length === 0 && node.getClientRects().length > 0 &&
-              !node.closest(".sr-only") && node.textContent?.trim() &&
+              !node.closest(".sr-only") && !node.closest(".overview-source-name") && node.textContent?.trim() &&
               node.scrollWidth > node.clientWidth + 2 && ["hidden", "clip"].includes(style.overflowX);
           }).slice(0, 5).map((node) => ({ text: node.textContent?.slice(0, 35), width: node.clientWidth, scroll: node.scrollWidth })),
         }));
@@ -424,6 +467,7 @@ test("the portfolio date range opens a native date sheet on phones", async ({ br
     const sheet = page.getByRole("dialog", { name: "Choose date range" });
     await expect(sheet).toBeVisible();
     await expect(sheet.locator('input[type="date"]')).toHaveCount(2);
+    expect(await sheet.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^-apple-system/);
   } finally {
     await context.close();
   }

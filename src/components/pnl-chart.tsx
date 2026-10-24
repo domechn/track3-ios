@@ -20,6 +20,7 @@ import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
 import { useTranslation } from "@/i18n";
 import { useIsMobile } from "@/components/mobile";
+import { useTheme } from "@/components/common/theme";
 
 const chartName = "PNL of Asset";
 
@@ -36,6 +37,7 @@ const App = ({
 }) => {
   const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
+  const { resolvedTheme } = useTheme();
   const { needResize } = useContext(ChartResizeContext);
   const [pnlChartData, setPnlChartData] = useState<PNLChartData>([]);
   const [chartWidth, setChartWidth] = useState(600);
@@ -129,11 +131,13 @@ const App = ({
     },
     scales: {
       x: {
+        display: !isMobile,
         title: {
           display: false,
         },
         ticks: {
           ...glassScaleOptions.ticks,
+          display: !isMobile,
           maxRotation: 0,
           minRotation: 0,
           align: "center",
@@ -194,9 +198,12 @@ const App = ({
 
   function pnlBackgroundColor(val: "positive" | "negative"): string {
     const c = positiveNegativeColor(val === "positive" ? 1 : -1, quoteColor);
+    if (!isMobile) {
+      return c === "green" ? "rgba(16,185,129,0.8)" : "rgba(244,63,94,0.8)";
+    }
     return c === "green"
-      ? document.documentElement.classList.contains("dark") ? "#30d158" : "#34c759"
-      : document.documentElement.classList.contains("dark") ? "#ff453a" : "#ff3b30";
+      ? resolvedTheme === "dark" ? "#30d158" : "#34c759"
+      : resolvedTheme === "dark" ? "#ff453a" : "#ff3b30";
   }
 
   function lineData() {
@@ -227,10 +234,18 @@ const App = ({
 
   return (
     <div className={className}>
-      <Bar role="img" aria-label={t("pnl.chartSummary")
-        .replace("{count}", String(pnlChanges.length))
-        .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
-        options={options as any} data={lineData()} />
+      <div className="overview-pnl-plot">
+        <Bar role="img" aria-label={t("pnl.chartSummary")
+          .replace("{count}", String(pnlChanges.length))
+          .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
+          options={options as any} data={lineData()} />
+      </div>
+      {isMobile && plottedPNL.length > 0 && <div className="overview-pnl-dates" aria-hidden="true">
+        <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { month: "short", day: "numeric" }).format(new Date(pnlChartData[0].timestamp))}</span>
+        <span>{new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+          { month: "short", day: "numeric" }).format(new Date(plottedPNL[plottedPNL.length - 1].timestamp))}</span>
+      </div>}
       {plottedPNL.length > 0 && <table className="sr-only" aria-label={t("pnl.chartData")}>
         <thead><tr><th scope="col">{t("profitMetrics.date")}</th><th scope="col">{t("history.change")}</th></tr></thead>
         <tbody>{plottedPNL.map(({ change, timestamp }, index) => <tr key={`${timestamp}-${index}`}>

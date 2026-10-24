@@ -43,6 +43,7 @@
 .mobile-tab-badge { position: absolute; top: -.4rem; left: .9rem; border-radius: 1rem; padding: .1rem .28rem; background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); font-size: .65rem; }
 .mobile-card { min-width: 0; border-radius: 1rem; background: hsl(var(--card)); padding: 1.25rem; }
 .mobile-hero-tool-label { display: none; }
+.mobile-hero-tool-toggle { display: none; }
 .mobile-section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 .25rem .5rem; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.3; }
 .mobile-section-header h2 { font: inherit; }
 .mobile-icon-button { display: inline-grid; width: 44px; height: 44px; flex: none; place-items: center; border-radius: 50%; color: hsl(var(--primary)); transition: transform 180ms var(--ios-motion), opacity 180ms var(--ios-motion); }

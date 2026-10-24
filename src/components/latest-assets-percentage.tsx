@@ -30,7 +30,7 @@ import {
 import { ChartResizeContext } from "@/App";
 import { offsetHoveredItemWrapper } from "@/utils/legend";
 import { ChartJSOrUndefined } from "react-chartjs-2/dist/types";
-import { chartColors, darkChartColors, glassTooltip } from "@/utils/chart-theme";
+import { getChartPalette, glassTooltip } from "@/utils/chart-theme";
 import { useTheme } from "@/components/common/theme";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import AssetLabel from "@/components/common/asset-label";
@@ -56,8 +56,8 @@ const App = ({
 }) => {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
-  const palette = resolvedTheme === "dark" ? darkChartColors : chartColors;
   const isMobile = useIsMobile();
+  const palette = getChartPalette(isMobile, resolvedTheme);
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const [dataPage, setDataPage] = useState<number>(0);

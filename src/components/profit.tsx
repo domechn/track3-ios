@@ -31,7 +31,7 @@ import {
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import ProfitAttribution from "./profit-attribution";
-import { ListRow, SegmentedControl, useIsMobile } from "./mobile";
+import { DeltaPill, ListRow, SegmentedControl, useIsMobile } from "./mobile";
 
 function getToneBadgeClass(value: number, quoteColor: QuoteColor) {
   const tone = positiveNegativeColor(value, quoteColor);
@@ -142,6 +142,9 @@ const App = ({
     () => getToneBadgeClass(profit, quoteColor),
     [profit, quoteColor],
   );
+  const totalPercentageLabel = profitPercentage === undefined
+    ? `${t("common.infinity")}%`
+    : `${profitPercentage < 0 ? "" : "+"}${prettyNumberKeepNDigitsAfterDecimalPoint(profitPercentage, 2)}%`;
   const positiveCount = useMemo(
     () => coinsProfit.filter((coin) => coin.value > 0).length,
     [coinsProfit],
@@ -321,13 +324,11 @@ const App = ({
               {t("profit.netPnl")}
             </div>
           </div>
-          <div
-            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${totalToneBadgeClass}`}
-          >
-            {profitPercentage === undefined
-              ? t("common.infinity")
-              : `${profitPercentage < 0 ? "" : "+"}${prettyNumberKeepNDigitsAfterDecimalPoint(profitPercentage, 2)}`}
-            %
+          <div>
+            {isMobile ? <DeltaPill value={profit} quoteColor={quoteColor}>{totalPercentageLabel}</DeltaPill>
+              : <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${totalToneBadgeClass}`}>
+                {totalPercentageLabel}
+              </span>}
           </div>
         </div>
         </>}

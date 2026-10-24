@@ -113,29 +113,29 @@ const App = ({
   }
 
   return (
-    <div className="h-full">
-      <Card className="flex h-full flex-col">
-        <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-2${isMobile ? " hidden" : ""}`}>
+    <div className={isMobile ? "" : "h-full"}>
+      <Card className={`flex flex-col overview-pnl-card${isMobile ? "" : " h-full"}`}>
+        <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-2 overview-pnl-card-header${isMobile ? " hidden" : ""}`}>
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("pnl.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-1 flex-col">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <CardContent className="flex flex-1 flex-col overview-pnl-card-content">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 overview-pnl-metrics">
             <div
-              className="flex min-h-[88px] flex-col items-center justify-center border-b border-border/50 pb-3 sm:min-h-0 sm:border-b-0 sm:border-r sm:pb-0"
+              className="flex min-h-[88px] flex-col items-center justify-center border-b border-border/50 pb-3 sm:min-h-0 sm:border-b-0 sm:border-r sm:pb-0 overview-pnl-metric"
               title={formatTimestampData(pnlTableData.todayPNL?.timestamp)}
             >
               <div className="text-xs text-muted-foreground">{t("pnl.last")}</div>
               <div
-                className={`text-xl font-semibold font-mono tracking-tight tabular-nums ${getPNLTextColor(
+                className={`text-xl font-semibold ${isMobile ? "" : "font-mono"} tracking-tight tabular-nums overview-pnl-metric-value ${getPNLTextColor(
                   pnlTableData.todayPNL?.value,
                 )}`}
               >
                 {formatPNLPercentage(pnlTableData.todayPNL?.value)}
               </div>
               <p
-                className={`text-xs tabular-nums ${getPNLTextColor(
+                className={`text-xs tabular-nums overview-pnl-metric-amount ${getPNLTextColor(
                   pnlTableData.todayPNL?.value,
                 )}`}
               >
@@ -143,19 +143,19 @@ const App = ({
               </p>
             </div>
             <div
-              className="flex min-h-[88px] flex-col items-center justify-center border-b border-border/50 pb-3 sm:min-h-0 sm:border-b-0 sm:border-r sm:pb-0"
+              className="flex min-h-[88px] flex-col items-center justify-center border-b border-border/50 pb-3 sm:min-h-0 sm:border-b-0 sm:border-r sm:pb-0 overview-pnl-metric"
               title={formatTimestampData(pnlTableData.sevenTPnl?.timestamp)}
             >
               <div className="text-xs text-muted-foreground">{t("pnl.7T")}</div>
               <div
-                className={`text-xl font-semibold font-mono tracking-tight tabular-nums ${getPNLTextColor(
+                className={`text-xl font-semibold ${isMobile ? "" : "font-mono"} tracking-tight tabular-nums overview-pnl-metric-value ${getPNLTextColor(
                   pnlTableData.sevenTPnl?.value,
                 )}`}
               >
                 {formatPNLPercentage(pnlTableData.sevenTPnl?.value)}
               </div>
               <p
-                className={`text-xs tabular-nums ${getPNLTextColor(
+                className={`text-xs tabular-nums overview-pnl-metric-amount ${getPNLTextColor(
                   pnlTableData.sevenTPnl?.value,
                 )}`}
               >
@@ -163,19 +163,19 @@ const App = ({
               </p>
             </div>
             <div
-              className="flex min-h-[88px] flex-col items-center justify-center"
+              className="flex min-h-[88px] flex-col items-center justify-center overview-pnl-metric"
               title={formatTimestampData(pnlTableData.thirtyPNL?.timestamp)}
             >
               <div className="text-xs text-muted-foreground">{t("pnl.30T")}</div>
               <div
-                className={`text-xl font-semibold font-mono tracking-tight tabular-nums ${getPNLTextColor(
+                className={`text-xl font-semibold ${isMobile ? "" : "font-mono"} tracking-tight tabular-nums overview-pnl-metric-value ${getPNLTextColor(
                   pnlTableData.thirtyPNL?.value,
                 )}`}
               >
                 {formatPNLPercentage(pnlTableData.thirtyPNL?.value)}
               </div>
               <p
-                className={`text-xs tabular-nums ${getPNLTextColor(
+                className={`text-xs tabular-nums overview-pnl-metric-amount ${getPNLTextColor(
                   pnlTableData.thirtyPNL?.value,
                 )}`}
               >

@@ -25,8 +25,7 @@ import bluebird from "bluebird";
 import { ChartResizeContext } from "@/App";
 import { positiveNegativeTextClass } from "@/utils/color";
 import {
-  chartColors,
-  darkChartColors,
+  getChartPalette,
   createGradientFill,
   glassScaleOptions,
   glassTooltip,
@@ -180,11 +179,12 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { resolvedTheme } = useTheme();
-  const lineColor = resolvedTheme === "dark" ? darkChartColors[0].main : chartColors[0].main;
   const { t, locale } = useTranslation();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
   const isMobile = useIsMobile();
+  const palette = getChartPalette(isMobile, resolvedTheme);
+  const lineColor = palette[0].main;
   const haptic = useHaptics();
 
   const [totalValueData, setTotalValueData] = useState<TotalValueData>({
@@ -522,7 +522,7 @@ const App = ({
             const { chart } = context;
             const { ctx, chartArea } = chart;
             if (!chartArea) {
-              return chartColors[0].bg;
+              return palette[0].bg;
             }
             return createGradientFill(ctx, chartArea, lineColor);
           },
@@ -534,7 +534,7 @@ const App = ({
         },
       ],
     };
-  }, [plottedTimestamps, plottedIndices, lineValues, lineColor]);
+  }, [plottedTimestamps, plottedIndices, lineValues, lineColor, palette]);
 
   return (
     <div className="h-full overview-total">
@@ -574,6 +574,7 @@ const App = ({
                 ></path>
               </svg>
               <span className="mobile-hero-tool-label">{t("overview.percentChart")}</span>
+              <span className="mobile-hero-tool-toggle" aria-hidden="true"><span /></span>
             </Button>
             <Button
               type="button"
@@ -602,6 +603,7 @@ const App = ({
                 ></path>
               </svg>
               <span className="mobile-hero-tool-label">{t("overview.btcBase")}</span>
+              <span className="mobile-hero-tool-toggle" aria-hidden="true"><span /></span>
             </Button>
           </div>
         </CardHeader>
