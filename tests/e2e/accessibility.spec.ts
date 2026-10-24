@@ -100,7 +100,7 @@ test("navigation follows visual order and shows a keyboard focus ring", async ({
   await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeAttached();
   const skip = page.getByRole("link", { name: "Skip to main content" });
   const overview = page.getByRole("link", { name: "Overview" });
-  const summary = page.getByRole("link", { name: "Summary" });
+  const summary = page.getByRole("link", { name: "Analytics" });
   await page.keyboard.press("Tab");
   await expect(skip).toBeFocused();
   expect(await skip.evaluate((node) => getComputedStyle(node).boxShadow)).not.toBe("none");
@@ -165,11 +165,12 @@ async function checkAttributionAccessibility(page: Page, width: number) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await installTauriBridge(page);
     await page.goto("/#/summary");
-    await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeAttached();
+    await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeAttached();
     await page.getByRole("radio", { name: "Attribution" }).click();
     if (await page.evaluate(() => matchMedia("(max-width: 950px) and (pointer: coarse)").matches)) {
       await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("aria-checked", "true");
-      await expect(page.locator(".mobile-record-list").first()).toBeVisible();
+      await expect(page.getByRole("figure", { name: "Top attribution contributors and detractors" })
+        .getByRole("listitem").first()).toBeVisible();
     } else {
       await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("data-state", "checked");
       await expect(page.getByText("Attribution details")).toBeAttached();
@@ -483,6 +484,7 @@ test("cost basis details render as phone records", async ({ page }) => {
 
 test("summary detail dialog fits and passes axe", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriBridge(page);
   await page.goto("/#/summary");
   await page.getByRole("button", { name: "2", exact: true }).click();

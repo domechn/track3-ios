@@ -17,10 +17,31 @@ import AISetupCard from "./common/ai-setup-card";
 import { ASSISTANT_APP_ACTION_EVENT, COST_BASIS_SETTINGS_KEY } from "@/middlelayers/ai/actions/page-settings";
 import { CostCharts, FinanceChartSkeleton } from "./finance-charts";
 import type { QuoteColor } from "@/middlelayers/types";
-import { MobileRecordList, useIsMobile } from "./mobile";
+import { MobileRecordList, useIsMobile, type MobileRecord } from "./mobile";
+import { ChevronDownIcon } from "@radix-ui/react-icons";
 
 const methods: CostBasisMethod[] = ["FIFO", "LIFO", "HIFO", "AVERAGE"];
 const pageSize = 50;
+
+function CostLotList({ records, empty }: { records: MobileRecord[]; empty: string }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return <div className="mobile-record-list cost-lot-list">
+    {records.length === 0 && <div className="mobile-list-row text-muted-foreground">{empty}</div>}
+    {records.map((record) => <div key={record.id} className="cost-lot">
+      <button type="button" className="mobile-list-row" aria-expanded={openId === record.id}
+        onClick={() => setOpenId(openId === record.id ? null : record.id)}>
+        <span className="mobile-list-label">{record.title}</span>
+        <span className="mobile-list-value">{record.subtitle}</span>
+        <ChevronDownIcon className="cost-lot-chevron" aria-hidden="true" />
+      </button>
+      {openId === record.id && <dl className="mobile-record-fields cost-lot-fields">
+        {record.fields.map((field, index) => <div key={`${field.label}-${index}`} className="mobile-record-field">
+          <dt>{field.label}</dt><dd>{field.value}</dd>
+        </div>)}
+      </dl>}
+    </div>)}
+  </div>;
+}
 
 function PageControls({
   label, page, count, onPageChange,
@@ -157,6 +178,10 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
   }
 
   const money = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const gain = (value: number) => <span className="cost-gain ios-money"
+    data-tone={value === 0 ? "neutral" : (value > 0) === (quoteColor === "green-up-red-down") ? "gain" : "loss"}>
+    {value > 0 ? "+" : value < 0 ? "−" : ""}{Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </span>;
   const qty = (value: number) => value !== 0 && Math.abs(value) < 1e-8
     ? String(value) : value.toLocaleString(undefined, { maximumFractionDigits: 8 });
   const aiSetup = <AISetupCard page="cost-basis"
@@ -235,11 +260,12 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
           <PageControls label={t("cost.warnings")} page={pages.warnings} count={report.warnings.length}
             onPageChange={(page) => setPages((previous) => ({ ...previous, warnings: page }))} />
         </CardContent></Card>}
-        {isMobile && <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className="rounded-lg border bg-card">
-          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium">{t("aiSetup.details")}</summary>
-          <div className="space-y-4 p-3">
+        {isMobile && <div className="cost-details rounded-lg border bg-card">
+          <button type="button" className="cost-details-toggle" aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen(!detailsOpen)}>{t("aiSetup.details")}<ChevronDownIcon aria-hidden="true" /></button>
+          {detailsOpen && <div className="space-y-4 p-3">
             <section><h2 className="mb-2 font-semibold">{t("cost.byAsset")}</h2>
-              <MobileRecordList records={report.assets.slice(pages.assets * pageSize, (pages.assets + 1) * pageSize).map((asset) => ({
+              <MobileRecordList empty={t("common.noData")} records={report.assets.slice(pages.assets * pageSize, (pages.assets + 1) * pageSize).map((asset) => ({
                 id: `${asset.assetType}:${asset.symbol}`, title: asset.symbol, subtitle: money(asset.gainLoss),
                 fields: [
                   { label: t("cost.proceeds"), value: money(asset.proceeds) },
@@ -251,15 +277,15 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
                 onPageChange={(page) => setPages((previous) => ({ ...previous, assets: page }))} />
             </section>
             <section><h2 className="mb-2 font-semibold">{t("cost.realized")}</h2>
-              <MobileRecordList records={report.disposals.slice(pages.disposals * pageSize, (pages.disposals + 1) * pageSize).map((row, index) => ({
-                id: `${row.eventId}:${row.lotId}:${index}`, title: row.symbol, subtitle: money(row.gainLoss),
+              <CostLotList empty={t("common.noData")} records={report.disposals.slice(pages.disposals * pageSize, (pages.disposals + 1) * pageSize).map((row, index) => ({
+                id: `${row.eventId}:${row.lotId}:${index}`, title: row.symbol, subtitle: gain(row.gainLoss),
                 fields: [
                   { label: t("cost.acquired"), value: format(new Date(row.acquiredAt), "yyyy-MM-dd") },
                   { label: t("cost.disposed"), value: format(new Date(row.disposedAt), "yyyy-MM-dd") },
                   { label: t("cost.quantity"), value: qty(row.amount) },
                   { label: t("cost.proceeds"), value: money(row.proceeds) },
                   { label: t("cost.costBasis"), value: money(row.costBasis) },
-                  { label: t("cost.gainLoss"), value: money(row.gainLoss) },
+                  { label: t("cost.gainLoss"), value: gain(row.gainLoss) },
                   { label: t("cost.term"), value: t(`cost.term.${row.term}`) },
                   { label: t("cost.lot"), value: row.lotId },
                 ],
@@ -268,22 +294,22 @@ export default function CostBasisPage({ quoteColor = "green-up-red-down" }: { qu
                 onPageChange={(page) => setPages((previous) => ({ ...previous, disposals: page }))} />
             </section>
             <section><h2 className="mb-2 font-semibold">{t("cost.unrealized")}</h2>
-              <MobileRecordList records={report.unrealized.slice(pages.unrealized * pageSize, (pages.unrealized + 1) * pageSize).map((asset) => ({
-                id: `${asset.assetType}:${asset.symbol}:${asset.id}`, title: asset.symbol, subtitle: money(asset.gainLoss),
+              <CostLotList empty={t("common.noData")} records={report.unrealized.slice(pages.unrealized * pageSize, (pages.unrealized + 1) * pageSize).map((asset) => ({
+                id: `${asset.assetType}:${asset.symbol}:${asset.id}`, title: asset.symbol, subtitle: gain(asset.gainLoss),
                 fields: [
                   { label: t("cost.lot"), value: asset.id },
                   { label: t("cost.acquired"), value: format(new Date(asset.acquiredAt), "yyyy-MM-dd") },
                   { label: t("cost.quantity"), value: qty(asset.amount) },
                   { label: t("cost.costBasis"), value: money(asset.costBasis) },
                   { label: t("cost.marketValue"), value: money(asset.marketValue) },
-                  { label: t("cost.gainLoss"), value: money(asset.gainLoss) },
+                  { label: t("cost.gainLoss"), value: gain(asset.gainLoss) },
                 ],
               }))} />
               <PageControls label={t("cost.unrealized")} page={pages.unrealized} count={report.unrealized.length}
                 onPageChange={(page) => setPages((previous) => ({ ...previous, unrealized: page }))} />
             </section>
-          </div>
-        </details>}
+          </div>}
+        </div>}
         {!isMobile && <details open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)} className="rounded-lg border bg-card">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">{t("aiSetup.details")}</summary>
         <Card>

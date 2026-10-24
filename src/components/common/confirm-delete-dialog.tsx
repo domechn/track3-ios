@@ -22,6 +22,8 @@ type ConfirmDeleteDialogProps = {
   children?: ReactNode;
   cancelLabel: string;
   actions: { label: string; onClick: () => void; disabled?: boolean }[];
+  contentClassName?: string;
+  overlayClassName?: string;
 };
 
 export default function ConfirmDeleteDialog({
@@ -33,6 +35,8 @@ export default function ConfirmDeleteDialog({
   children,
   cancelLabel,
   actions,
+  contentClassName,
+  overlayClassName,
 }: ConfirmDeleteDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const controlled = open !== undefined;
@@ -56,7 +60,8 @@ export default function ConfirmDeleteDialog({
         </AlertDialogTrigger>
       )}
       <AlertDialogContent
-        overlayProps={{ onClick: stopPropagation, "data-testid": "delete-dialog-overlay" } as React.ComponentPropsWithoutRef<typeof AlertDialogContent>["overlayProps"]}
+        className={contentClassName}
+        overlayProps={{ onClick: stopPropagation, className: overlayClassName, "data-testid": "delete-dialog-overlay" } as React.ComponentPropsWithoutRef<typeof AlertDialogContent>["overlayProps"]}
         onClick={stopPropagation}
         onKeyDown={(event) => event.stopPropagation()}
       >

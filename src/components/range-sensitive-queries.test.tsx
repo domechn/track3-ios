@@ -15,16 +15,16 @@ vi.mock("react-chartjs-2", async () => {
   return {
     Line: ({ data }: { data: { datasets: { data: number[] }[] } }) =>
       <div data-testid="line-chart" data-values={JSON.stringify(data.datasets.map(({ data }) => data))} />,
-    Bar: ({
-      data,
-    }: {
+    Bar: React.forwardRef<HTMLDivElement, {
       data: { datasets: { data: (number | undefined)[] }[] };
-    }) => (
+    }>(({
+      data,
+    }, _ref) => (
       <div
         data-testid="bar-chart"
         data-values={JSON.stringify(data.datasets.map(({ data }) => data))}
       />
-    ),
+    )),
     Doughnut: React.forwardRef<HTMLDivElement>((_props, _ref) => (
       <div data-testid="doughnut-chart" />
     )),
@@ -677,7 +677,7 @@ describe("Range-sensitive component queries", () => {
         "BTC",
         "crypto",
       );
-      expect(queryLastAssetsBySymbol).toHaveBeenLastCalledWith(
+      expect(queryLastAssetsBySymbol).toHaveBeenCalledWith(
         "BTC",
         rangeB,
         "crypto",

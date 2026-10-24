@@ -260,13 +260,13 @@ const App = ({ dateRange }: { dateRange: TDateRange }) => {
 
   return (
     <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Card className="position-changes-card">
+        <CardHeader className="position-changes-header flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("assetsPercentage.title")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="position-changes-content space-y-2">
           <div
             data-testid="assets-percentage-legend"
             className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs"

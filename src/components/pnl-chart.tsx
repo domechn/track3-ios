@@ -16,6 +16,7 @@ import { glassScaleOptions, glassTooltip } from "@/utils/chart-theme";
 import { timeToDateStr } from "@/utils/date";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
+import type { Chart as ChartJS } from "chart.js";
 import { useDataChangedVersion } from "@/contexts/data-changed";
 import { downsampleIndices } from "@/middlelayers/chart-downsample";
 import { useTranslation } from "@/i18n";
@@ -23,6 +24,11 @@ import { useHaptics, useIsMobile } from "@/components/mobile";
 import { useTheme } from "@/components/common/theme";
 
 const chartName = "PNL of Asset";
+
+export function indexForPnlPixel(scale: { getValueForPixel: (pixel: number) => number | undefined }, pixel: number, count: number): number {
+  const value = scale.getValueForPixel(pixel);
+  return Math.max(0, Math.min(count - 1, Math.round(value ?? 0)));
+}
 
 const App = ({
   currency,
@@ -39,6 +45,7 @@ const App = ({
   const isMobile = useIsMobile();
   const haptic = useHaptics();
   const lastScrubIndex = useRef<number | null>(null);
+  const chartRef = useRef<ChartJS<"bar", (number | undefined)[]> | null>(null);
   const [scrub, setScrub] = useState<{ index: number; left: number } | null>(null);
   const { resolvedTheme } = useTheme();
   const { needResize } = useContext(ChartResizeContext);
@@ -68,6 +75,14 @@ const App = ({
       timestamp: pnlChartData[index + 1].timestamp,
     }));
   }, [pnlChanges, pnlChartData, chartWidth, currency]);
+  const mobileAxis = useMemo(() => {
+    const values = plottedPNL.map((point) => point.change);
+    const min = Math.min(0, ...values);
+    const max = Math.max(0, ...values);
+    if (min === max) return {};
+    const step = 10 ** Math.floor(Math.log10((max - min) / 3));
+    return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step };
+  }, [plottedPNL]);
 
   const rangeKey = useMemo(
     () => `${dateRange.start.getTime()}-${dateRange.end.getTime()}`,
@@ -118,6 +133,7 @@ const App = ({
       },
       tooltip: {
         ...glassTooltip,
+        enabled: !isMobile,
         callbacks: {
           label: (context: { parsed: { y?: number } }) => {
             const yv = context.parsed.y;
@@ -169,7 +185,7 @@ const App = ({
         border: { display: !isMobile },
       },
       y: {
-        grace: isMobile ? "8%" : undefined,
+        ...(isMobile ? mobileAxis : {}),
         title: {
           display: false,
           text: currency.currency,
@@ -178,7 +194,7 @@ const App = ({
         ticks: {
           ...glassScaleOptions.ticks,
           precision: 2,
-          maxTicksLimit: 4,
+          maxTicksLimit: isMobile ? 5 : 4,
           callback: (value: any) => {
             return value === 0 ? "0" : simplifyNumber(value);
           },
@@ -237,9 +253,13 @@ const App = ({
 
   function showScrub(clientX: number, element: HTMLDivElement) {
     if (!isMobile || !plottedPNL.length) return;
+    const chart = chartRef.current;
+    if (!chart?.scales.x) return;
     const bounds = element.getBoundingClientRect();
     const x = Math.max(0, Math.min(bounds.width, clientX - bounds.left));
-    const index = Math.min(plottedPNL.length - 1, Math.floor(x / bounds.width * plottedPNL.length));
+    const canvasBounds = chart.canvas.getBoundingClientRect();
+    const canvasX = (clientX - canvasBounds.left) * chart.width / canvasBounds.width;
+    const index = indexForPnlPixel(chart.scales.x, canvasX, plottedPNL.length);
     if (index !== lastScrubIndex.current) haptic("selection");
     lastScrubIndex.current = index;
     setScrub({ index, left: Math.max(62, Math.min(bounds.width - 62, x)) });
@@ -255,7 +275,7 @@ const App = ({
       <div className="overview-pnl-plot" onPointerMove={(event) => showScrub(event.clientX, event.currentTarget)}
         onPointerLeave={clearScrub} onTouchMove={(event) => showScrub(event.touches[0].clientX, event.currentTarget)}
         onTouchEnd={clearScrub} onTouchCancel={clearScrub}>
-        <Bar role="img" aria-label={t("pnl.chartSummary")
+        <Bar ref={chartRef} role="img" aria-label={t("pnl.chartSummary")
           .replace("{count}", String(pnlChanges.length))
           .replace("{net}", `${currency.symbol}${currencyWrapper(currency)(pnlChanges.reduce((sum, change) => sum + change, 0)).toFixed(2)}`)}
           options={options as any} data={lineData()} />

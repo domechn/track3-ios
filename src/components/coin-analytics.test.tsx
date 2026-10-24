@@ -295,6 +295,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -355,6 +356,24 @@ const secondTransaction: Transaction = {
   txnType: "deposit",
   txnCreatedAt: "2024-04-16T00:00:00.000Z",
 };
+
+it("shows a compact phone identity, 24h price change, and an unbroken transaction date", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+    matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }) as unknown as MediaQueryList);
+  mocks.queryTransactionsBySymbolAndDateRange.mockResolvedValue([transaction]);
+  mocks.queryLastAssetsBySymbol.mockResolvedValueOnce({
+    symbol: "BTC", assetType: "crypto", amount: 1, value: 100, price: 100,
+  }).mockResolvedValueOnce({
+    symbol: "BTC", assetType: "crypto", amount: 1, value: 80, price: 80,
+  });
+  renderCoinAnalysis();
+  const hero = document.querySelector(".coin-detail-hero")!;
+  await waitFor(() => expect(hero).toHaveTextContent("+25.00%"));
+  expect(hero).toHaveTextContent("BTC");
+  expect(hero).toHaveTextContent("24h");
+  expect(document.querySelector(".coin-mobile-transactions")).toHaveTextContent("BTC · Apr 15, 2024");
+});
 
 const hkdCurrency = {
   currency: "HKD",

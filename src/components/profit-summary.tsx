@@ -26,7 +26,7 @@ import PNLChart from "@/components/pnl-chart";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { Button } from "./ui/button";
-import { useIsMobile } from "./mobile";
+import { SegmentedControl, useIsMobile } from "./mobile";
 
 type SummaryType = "month" | "year";
 
@@ -76,6 +76,7 @@ const App = ({
   const [selectedYear, setSelectedYear] = useState(dateRange.end.getFullYear());
   const [summaryType, setSummaryType] = useState<SummaryType>("month");
   const [clickedMonth, setClickedMonth] = useState<number | null>(null);
+  const [monthChartRange, setMonthChartRange] = useState<"week" | "month">("month");
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { reportLoaded } = useContext(OverviewLoadingContext);
@@ -256,6 +257,7 @@ const App = ({
   // month starts from 0
   function onMonthClick(month: number) {
     setClickedMonth(month);
+    setMonthChartRange("month");
   }
 
   function onMonthDetailClick() {
@@ -310,6 +312,7 @@ const App = ({
           month,
           label: getMonthAbbreviation(month + 1),
           total: p.total,
+          hasData: Boolean(p.lastRecordDate),
           key: `m-profit-summary-${p.monthFirstDate.getTime()}`,
         };
       })
@@ -317,6 +320,7 @@ const App = ({
       month: number;
       label: string;
       total: number;
+      hasData: boolean;
       key: string;
     }[];
   }, [monthlyProfitsMap, selectedYear]);
@@ -365,13 +369,22 @@ const App = ({
                 .replace("{month}", getMonthAbbreviation(clickedMonthDateRange.start.getMonth() + 1))
                 .replace("{year}", String(clickedMonthDateRange.start.getFullYear()))}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={onMonthDetailClick}>
+            <Button type="button" variant={isMobile ? "ghost" : "outline"} size="sm" onClick={onMonthDetailClick}>
               {t("common.back")}
             </Button>
           </div>
+          {isMobile && <SegmentedControl value={monthChartRange} onChange={setMonthChartRange}
+            label={t("pnl.title")} options={[
+              { value: "week", label: t("comparison.7D") },
+              { value: "month", label: t("comparison.1M") },
+            ]} />}
           <PNLChart
             currency={currency}
-            dateRange={clickedMonthDateRange}
+            dateRange={isMobile && monthChartRange === "week" ? {
+              start: new Date(Math.max(clickedMonthDateRange.start.getTime(),
+                clickedMonthDateRange.end.getTime() - 6 * 24 * 60 * 60 * 1000)),
+              end: clickedMonthDateRange.end,
+            } : clickedMonthDateRange}
             quoteColor={quoteColor}
           />
         </div>
@@ -397,7 +410,7 @@ const App = ({
                 getToneClass(item.total, quoteColor)
               )}
             >
-              {renderAmount(item.total)}
+              {item.hasData ? renderAmount(item.total) : "—"}
             </div>
           </button>
         ))}
@@ -461,10 +474,11 @@ const App = ({
                 </SelectContent>
               </Select>
             )}
-            <ButtonGroup value={summaryType} onValueChange={onSummaryTypeChange}>
+            {isMobile ? <SegmentedControl value={summaryType} onChange={onSummaryTypeChange} label={t("profitSummary.title")}
+              options={[{ value: "month", label: t("profitSummary.month") }, { value: "year", label: t("profitSummary.year") }]} /> : <ButtonGroup value={summaryType} onValueChange={onSummaryTypeChange}>
               <ButtonGroupItem value="month">{t("profitSummary.month")}</ButtonGroupItem>
               <ButtonGroupItem value="year">{t("profitSummary.year")}</ButtonGroupItem>
-            </ButtonGroup>
+            </ButtonGroup>}
           </div>
         </div>
       </CardHeader>

@@ -13,14 +13,15 @@ vi.mock("@/middlelayers/charts", () => ({
 
 const barProps = vi.hoisted(() => ({ current: null as null | {
   data: { datasets: { backgroundColor: string }[] };
-  options: { scales: { x: { ticks: { display?: boolean } } } };
+  options: { plugins: { tooltip: { enabled: boolean } }; scales: { x: { ticks: { display?: boolean } }; y: { min?: number; max?: number } } };
 } }));
-vi.mock("react-chartjs-2", () => ({
-  Bar: (props: typeof barProps.current) => {
+vi.mock("react-chartjs-2", async () => {
+  const { forwardRef } = await import("react");
+  return { Bar: forwardRef<HTMLCanvasElement, NonNullable<typeof barProps.current>>((props, _ref) => {
     barProps.current = props;
     return <canvas />;
-  },
-}));
+  }) };
+});
 
 function ThemeToggle() {
   const { setTheme } = useTheme();
@@ -67,4 +68,22 @@ it("places phone P&L dates below the plot so bars can use its full width", async
   expect(barProps.current?.options.scales.x.ticks.display).toBe(false);
   expect(screen.getByText(/Apr 15/)).toBeInTheDocument();
   expect(screen.getByText(/Apr 16/)).toBeInTheDocument();
+});
+
+it("keeps phone P&L scale close to the actual loss and gain", async () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList);
+  vi.mocked(queryPNLChartValue).mockResolvedValue([
+    { timestamp: 1713139200000, totalValue: 10000 },
+    { timestamp: 1713225600000, totalValue: 4500 },
+    { timestamp: 1713312000000, totalValue: 11600 },
+  ]);
+  renderChart();
+  await waitFor(() => expect(barProps.current?.options.scales.y.min).toBe(-6000));
+  expect(barProps.current?.options.scales.y.max).toBe(8000);
+});
+
+it("uses only the readable scrub chip on phones and keeps the desktop tooltip", () => {
+  vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: query.includes("pointer: coarse"), addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList);
+  renderChart();
+  expect(barProps.current?.options.plugins.tooltip.enabled).toBe(false);
 });

@@ -68,6 +68,8 @@ import { markIOSReady } from "@/utils/ios-ready";
 import { BottomSheet, InsetGroup, ListRow, MobilePage, PullToRefresh, useIsMobile } from "@/components/mobile";
 import TopCoinsRank from "../top-coins-rank";
 import ProfitSummary from "../profit-summary";
+import LatestAssetsPercentage from "../latest-assets-percentage";
+import AssetsPercentageChange from "../assets-percentage-change";
 import "./data-screens.css";
 import { MobileNavigation, routeTitle, tabForPath, tabRoots } from "@/components/mobile/navigation";
 import { MobileIcon, type MobileIconName } from "@/components/mobile/icons";
@@ -436,19 +438,20 @@ function AnalyticsHub({ currency, dateRange, quoteColor }: {
   currency: CurrencyRateDetail; dateRange: { start: Date; end: Date }; quoteColor: QuoteColor;
 }) {
   const { t } = useTranslation();
-  const [sheet, setSheet] = useState<"rank" | "profit" | null>(null);
-  const items: { label: string; detail: string; icon: MobileIconName; href?: string; sheet?: "rank" | "profit" }[] = [
-    { href: "#/overview", label: t("overview.allocation"), detail: t("analytics.allocationDetail"), icon: "overview" },
-    { sheet: "rank", label: t("analytics.rank"), detail: t("analytics.rankDetail"), icon: "analytics" },
-    { href: "#/wallets", label: t("nav.wallets"), detail: t("analytics.walletsDetail"), icon: "settings" },
-    { href: "#/comparison", label: t("nav.comparison"), detail: t("analytics.comparisonDetail"), icon: "history" },
-    { sheet: "profit", label: t("analytics.profit"), detail: t("analytics.profitDetail"), icon: "goals" },
-    { href: "#/cost-basis", label: t("nav.costBasis"), detail: t("analytics.costDetail"), icon: "rebalance" },
+  const [sheet, setSheet] = useState<"allocation" | "rank" | "profit" | "positions" | null>(null);
+  const items: { label: string; detail: string; icon: "allocation" | "rank" | "wallets" | "comparison" | "profit" | "positions" | "cost"; href?: string; sheet?: "allocation" | "rank" | "profit" | "positions" }[] = [
+    { sheet: "allocation", label: t("overview.allocation"), detail: t("analytics.allocationDetail"), icon: "allocation" },
+    { sheet: "rank", label: t("analytics.rank"), detail: t("analytics.rankDetail"), icon: "rank" },
+    { href: "#/wallets", label: t("nav.wallets"), detail: t("analytics.walletsDetail"), icon: "wallets" },
+    { href: "#/comparison", label: t("nav.comparison"), detail: t("analytics.comparisonDetail"), icon: "comparison" },
+    { sheet: "profit", label: t("analytics.profit"), detail: t("analytics.profitDetail"), icon: "profit" },
+    { sheet: "positions", label: t("analytics.positionChanges"), detail: t("analytics.positionChangesDetail"), icon: "positions" },
+    { href: "#/cost-basis", label: t("nav.costBasis"), detail: t("analytics.costDetail"), icon: "cost" },
   ];
   return <div className="mobile-analytics-hub">
     <div className="analytics-tile-grid">
       {items.map((item) => {
-        const content = <><span className="analytics-tile-icon"><MobileIcon name={item.icon} /></span>
+        const content = <><span className="analytics-tile-icon"><AnalyticsTileIcon name={item.icon} /></span>
           <strong>{item.label}</strong><small>{item.detail}</small></>;
         return item.href
           ? <a className="analytics-tile" key={item.label} href={item.href}>{content}</a>
@@ -456,12 +459,30 @@ function AnalyticsHub({ currency, dateRange, quoteColor }: {
       })}
     </div>
     <BottomSheet open={sheet !== null} onOpenChange={(open) => { if (!open) setSheet(null); }}
-      title={sheet === "rank" ? t("topCoinsRank.title") : t("profitSummary.title")}
+      title={sheet === "allocation" ? t("overview.allocation")
+        : sheet === "rank" ? t("topCoinsRank.title")
+        : sheet === "positions" ? t("analytics.positionChanges") : t("profitSummary.title")}
       detents={["large"]} initialDetent="large">
-      {sheet === "rank" && <div className="d2-rank-sheet"><TopCoinsRank dateRange={dateRange} /></div>}
+      {sheet === "allocation" && <div className="d2-allocation-sheet"><LatestAssetsPercentage dateRange={dateRange} currency={currency} /></div>}
+      {sheet === "rank" && <div className="d2-rank-sheet"><TopCoinsRank dateRange={dateRange} currency={currency} /></div>}
       {sheet === "profit" && <div className="d2-profit-sheet"><ProfitSummary dateRange={dateRange} currency={currency} quoteColor={quoteColor} /></div>}
+      {sheet === "positions" && <div className="d2-positions-sheet"><AssetsPercentageChange dateRange={dateRange} /></div>}
     </BottomSheet>
   </div>;
+}
+
+function AnalyticsTileIcon({ name }: { name: "allocation" | "rank" | "wallets" | "comparison" | "profit" | "positions" | "cost" }) {
+  const paths = {
+    allocation: <><circle cx="12" cy="12" r="8" /><path d="M12 4v8l6.5 4.5" /></>,
+    rank: <><path d="M4 20h16M6 16h3v4H6zM11 11h3v9h-3zM16 6h3v14h-3z" /></>,
+    wallets: <><rect x="3" y="6" width="18" height="14" rx="3" /><path d="M3 9V6a2 2 0 0 1 2-2h13M15 13h6" /></>,
+    comparison: <><path d="M4 6h14M4 11h9M4 16h12M18 4l3 2-3 2M16 14l3 2-3 2" /></>,
+    profit: <><path d="M4 18l5-6 4 3 7-9M15 6h5v5" /></>,
+    positions: <><path d="M4 18V9M9 18V5M14 18v-7M19 18V7M3 20h18" /></>,
+    cost: <><path d="M7 4h10l3 3v13H4V4h3zM8 10h8M8 14h8M8 18h5" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
 type AppRoutesProps = {

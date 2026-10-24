@@ -24,7 +24,7 @@ beforeEach(() => vi.clearAllMocks());
 function view() { return <ProfitAttribution currency={currency} dateRange={range} quoteColor="red-up-green-down" />; }
 
 describe("profit attribution", () => {
-  it("opens grouped attribution fields in a phone detail sheet", async () => {
+  it("expands grouped attribution fields beneath the phone rank", async () => {
     const previousMatchMedia = window.matchMedia;
     window.matchMedia = (query: string) => ({
       matches: query.includes("max-width: 950px"), media: query, onchange: null,
@@ -36,9 +36,10 @@ describe("profit attribution", () => {
       render(view());
       expect(await screen.findByText("Top contributors")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: /BTC/ }));
-      const dialog = screen.getByRole("dialog", { name: "BTC" });
-      expect(within(dialog).getByText("Quantity change")).toBeInTheDocument();
-      expect(within(dialog).getByText("+€200.00")).toBeInTheDocument();
+      const row = screen.getByRole("button", { name: /BTC/ }).closest("li")!;
+      expect(within(row).getByText("Quantity change")).toBeInTheDocument();
+      expect(within(row).getByText("+€200.00")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     } finally {
       window.matchMedia = previousMatchMedia;
     }
@@ -143,7 +144,8 @@ describe("profit attribution", () => {
     });
     render(view());
     const figure = await screen.findByRole("figure");
-    expect(within(figure).getAllByText("No market change")).toHaveLength(2);
+    expect(within(figure).getByText("No market change")).toBeInTheDocument();
+    expect(within(figure).getByText("No losses in this period")).toBeInTheDocument();
   });
 
   it("renders stock attribution with the selected Chinese label", async () => {

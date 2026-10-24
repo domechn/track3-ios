@@ -179,6 +179,20 @@ describe("Comparison page", () => {
     expect(icon).toHaveClass("text-current");
   });
 
+  it("shows one neutral marker for an unchanged asset metric", async () => {
+    vi.mocked(queryAllDataDates).mockResolvedValue([
+      { id: 1, date: "2024-04-16" },
+      { id: 2, date: "2024-04-15" },
+    ] as never);
+    vi.mocked(queryCoinDataByUUID).mockResolvedValue([
+      { symbol: "USDC", assetType: "crypto", amount: 100, value: 100, price: 1 },
+    ]);
+    render(<Comparison currency={usdCurrency} quoteColor="green-up-red-down" />);
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    const change = document.querySelector(".comparison-metric-row > :nth-child(3)");
+    expect(change).toHaveTextContent(/^—$/);
+  });
+
   it("uses date picker buttons for the base and head dates instead of select comboboxes", async () => {
     vi.mocked(queryAllDataDates).mockResolvedValue([
       { id: 1, date: "2024-04-16" },

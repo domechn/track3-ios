@@ -103,8 +103,8 @@ const App = ({
       </CardHeader>
       <CardContent>
         <div className="mt-2">
-          <div className="space-y-3">
-            <div className="space-y-1 pb-2 border-b border-border/40">
+          <div className="ath-metrics space-y-3">
+            <div className="ath-current-metric space-y-1 pb-2 border-b border-border/40">
               <div className="text-[11px] text-muted-foreground">
                 {t("ath.currentValue")}
               </div>

@@ -651,11 +651,12 @@ const App = ({
                           (detailUrlFn ? "cursor-pointer" : "cursor-default")
                         }
                         style={{
-                          background: tileBackground(
+                          background: isMobile ? `var(--ios-chart-${item.category === "cex" ? 1 : item.category === "onchain" ? 3 : item.category === "broker" ? 4 : 6})` : tileBackground(
                             item.category,
                             rank,
                             total,
                           ),
+                          color: isMobile ? "var(--d2-tile-ink)" : undefined,
                           padding: "6px 8px",
                         }}
                       >
@@ -669,7 +670,7 @@ const App = ({
                               <span className="mono text-[11px] tabular-nums">
                                 {item.wallet.percentage.toFixed(2)}%
                               </span>
-                              <span className="text-[9px] uppercase tracking-wider opacity-80">
+                              <span className="wallet-tile-category text-[11px] uppercase">
                                 {t(
                                   WALLET_CATEGORY_BASE_COLORS[item.category]
                                     .labelKey,

@@ -38,7 +38,7 @@ import { Button } from "./ui/button";
 import { ButtonGroup, ButtonGroupItem } from "./ui/button-group";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
-import { MobileRecordList, useIsMobile } from "./mobile";
+import { MobileRecordList, SegmentedControl, useIsMobile } from "./mobile";
 
 type SortMode = "changeValue" | "changePercentage" | "absChange";
 type PageSize = "20" | "50" | "100";
@@ -219,13 +219,17 @@ const App = ({
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("walletValueChanges.title")}
           </CardTitle>
-          <div className="text-xs text-muted-foreground">
+          {isMobile ? <div className="wallet-change-summary">
+            <span>{t("walletValueChanges.count").replace("{n}", String(rows.length))}</span>
+            <span data-tone="gain">{t("walletValueChanges.upCount").replace("{n}", String(summary.up))}</span>
+            <span data-tone="loss">{t("walletValueChanges.downCount").replace("{n}", String(summary.down))}</span>
+          </div> : <div className="text-xs text-muted-foreground">
             {t("walletValueChanges.totalLabel")
               .replace("{n}", String(rows.length))
               .replace("{up}", String(summary.up))
               .replace("{down}", String(summary.down))
               .replace("{flat}", String(summary.flat))}
-          </div>
+          </div>}
         </div>
         <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
           <Input
@@ -235,6 +239,16 @@ const App = ({
             className="md:w-[320px]"
           />
           <div className="flex flex-wrap gap-2">
+            {isMobile ? <>
+              <SegmentedControl value={sortMode} onChange={setSortMode} label={t("walletValueChanges.title")}
+                options={[
+                  { value: "changeValue", label: t("walletValueChanges.sortByValue") },
+                  { value: "changePercentage", label: t("walletValueChanges.sortByPercent") },
+                  { value: "absChange", label: t("walletValueChanges.sortByVolatility") },
+                ]} />
+              <SegmentedControl value={pageSize} onChange={setPageSize} label={t("history.rowsLabel")}
+                options={(["20", "50", "100"] as const).map((value) => ({ value, label: value }))} />
+            </> : <>
             <ButtonGroup
               value={sortMode}
               onValueChange={(v) => setSortMode(v as SortMode)}
@@ -257,6 +271,7 @@ const App = ({
               <ButtonGroupItem value="50">50</ButtonGroupItem>
               <ButtonGroupItem value="100">100</ButtonGroupItem>
             </ButtonGroup>
+            </>}
           </div>
         </div>
       </CardHeader>
@@ -266,7 +281,8 @@ const App = ({
           const airdropUrl = getWalletAirdropUrl(row.wallet, row.walletType);
           const change = `${row.changeValue < 0 ? "-" : row.changeValue > 0 ? "+" : ""}${currency.symbol}${prettyNumberToLocaleString(currencyWrapper(currency)(Math.abs(row.changeValue)))}`;
           return {
-            id: `${row.wallet}-${row.walletType}`, title: row.walletAliasText, subtitle: change,
+            id: `${row.wallet}-${row.walletType}`, title: row.walletAliasText,
+            subtitle: <span className={getToneClass(row.changeValue, quoteColor)}>{change}</span>,
             fields: [
               { label: t("walletValueChanges.col.type"), value: row.walletTypeText },
               { label: t("walletValueChanges.col.alias"), value: row.walletAliasText },
@@ -377,19 +393,20 @@ const App = ({
           </div>
         )}
 
-        {sortedRows.length > 0 && (
+        {sortedRows.length > 0 && (!isMobile || pageCount > 1) && (
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div>
+            {!isMobile && <div>
               {t("walletValueChanges.showing")
                 .replace("{start}", String(loadedRangeStart))
                 .replace("{end}", String(loadedRangeEnd))
                 .replace("{total}", String(sortedRows.length))}
-            </div>
+            </div>}
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant={isMobile ? "ghost" : "outline"}
                 size="sm"
                 disabled={safePage === 0}
+                aria-label={t("walletValueChanges.prev")}
                 onClick={() => setDataPage((prev) => Math.max(0, prev - 1))}
               >
                 {t("walletValueChanges.prev")}
@@ -398,9 +415,10 @@ const App = ({
                 {safePage + 1} / {pageCount}
               </span>
               <Button
-                variant="outline"
+                variant={isMobile ? "ghost" : "outline"}
                 size="sm"
                 disabled={safePage >= pageCount - 1}
+                aria-label={t("walletValueChanges.next")}
                 onClick={() =>
                   setDataPage((prev) => Math.min(pageCount - 1, prev + 1))
                 }

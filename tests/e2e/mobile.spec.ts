@@ -26,15 +26,21 @@ test("data screens expose grouped history and analytics destinations", async ({ 
 
     await page.goto("/#/summary");
     await expect(page.locator(".mobile-analytics-hub")).toBeVisible();
-    await expect(page.locator(".analytics-tile")).toHaveCount(6);
+    await expect(page.locator(".analytics-tile")).toHaveCount(7);
+    await page.locator(".analytics-tile").getByText("Allocation", { exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Allocation" }).locator("canvas")).toBeVisible();
+    await page.getByRole("dialog", { name: "Allocation" }).getByRole("button", { name: "Close" }).click();
+    await page.locator(".analytics-tile").getByText("Position changes", { exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "Position changes" }).locator("canvas")).toBeVisible();
+    await page.getByRole("dialog", { name: "Position changes" }).getByRole("button", { name: "Close" }).click();
     await expect(page.locator(".analytics-tile[href='#/wallets']")).toBeVisible();
     await expect(page.locator(".analytics-tile[href='#/comparison']")).toBeVisible();
     await expect(page.locator(".analytics-tile[href='#/cost-basis']")).toBeVisible();
     await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
     const monthCards = page.getByRole("dialog", { name: "Profit Summary" }).locator(".profit-summary-card .grid > button");
     await expect(monthCards.first()).toContainText("Oct");
-    await expect(monthCards.nth(1)).toContainText("$0.0");
-    await expect(monthCards.nth(1)).not.toContainText("+");
+    await expect(monthCards.nth(3)).toContainText("—");
+    await expect(monthCards.nth(3)).not.toContainText("+");
     await page.getByRole("dialog", { name: "Profit Summary" }).getByRole("button", { name: "Close" }).click();
     const hero = (await page.locator(".d2-summary .ath-current-value").boundingBox())!;
     const tab = (await page.locator(".mobile-tab-bar").boundingBox())!;
@@ -112,7 +118,13 @@ for (const width of [375, 390]) {
         await capture("profit-summary");
         await page.locator(".d2-summary .profit-summary-card").getByRole("button", { name: /^Oct / }).click();
         await expect(page.locator(".d2-summary .profit-summary-card .overview-pnl-plot canvas")).toBeVisible();
+        await page.locator(".d2-summary .profit-summary-card").getByRole("radio", { name: "7D" }).click();
         await capture("pnl");
+        const pnlPlot = page.locator(".d2-summary .profit-summary-card .overview-pnl-plot");
+        const pnlBox = (await pnlPlot.boundingBox())!;
+        await page.mouse.move(pnlBox.x + pnlBox.width * .65, pnlBox.y + pnlBox.height / 2);
+        await expect(pnlPlot.locator(".pnl-scrub-chip")).toBeVisible();
+        await capture("pnl-scrub");
         await page.locator(".d2-summary").getByRole("radio", { name: "Attribution" }).click();
         await expect(page.locator(".d2-summary .attribution-total")).toHaveCount(4);
         await page.locator(".d2-summary figure[aria-label]").scrollIntoViewIfNeeded();
@@ -120,6 +132,8 @@ for (const width of [375, 390]) {
         await page.locator(".analytics-tile").getByText("Top coins").click();
         const rank = page.getByRole("dialog", { name: "Top Coins Rank" });
         await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toBeVisible();
+        await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toContainText("%");
+        await expect(rank.locator(".top-coins-rank-mobile .mobile-list-row").first()).toContainText("$");
         await capture("top-coins");
         await rank.getByRole("button", { name: "Close" }).click();
         await page.locator(".analytics-tile").getByText("Returns", { exact: true }).click();
@@ -142,8 +156,10 @@ for (const width of [375, 390]) {
         await expect(page.getByText("Gain/loss", { exact: true })).toBeVisible();
         await page.getByText("Details", { exact: true }).click();
         await expect(page.locator(".d2-cost .mobile-record-list").first()).toBeVisible();
-        await page.locator(".d2-cost .mobile-record-list").nth(1).locator(".mobile-list-row").first().click();
-        await expect(page.getByRole("dialog", { name: "BTC" })).toContainText("Acquired");
+        const lot = page.locator(".d2-cost .cost-lot-list").first().locator(".cost-lot").first();
+        await lot.locator("button").click();
+        await expect(lot).toContainText("Acquired");
+        await expect(lot.locator("button")).toHaveAttribute("aria-expanded", "true");
         await capture("cost-lots");
 
         await page.goto("/#/coins/BTC");
@@ -407,7 +423,7 @@ for (const size of sizes) {
         }
         await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
         const routeHeading: Record<string, string> = {
-          overview: "Overview", history: "History", summary: "Summary", wallets: "Wallets",
+          overview: "Overview", history: "History", summary: "Analytics", wallets: "Wallets",
           comparison: "Comparison", "cost-basis": "Cost basis", "coins/BTC": "Bitcoin",
         };
         if (routeHeading[route] && !route.startsWith("coins/")) {
@@ -557,6 +573,17 @@ test("history snapshots use touch rows and a detail sheet", async ({ browser }) 
     const detail = page.getByRole("dialog", { name: /historical data detail/i });
     await expect(detail).toBeVisible();
     await expect.poll(async () => (await detail.boundingBox())?.x).toBe(0);
+    await expect(detail.locator(".mobile-sheet-handle")).toBeVisible();
+    await expect(detail.locator(".history-mobile-asset .history-mobile-delete")).toHaveCount(0);
+    const asset = detail.locator(".history-mobile-asset").first();
+    const bounds = (await asset.boundingBox())!;
+    await asset.dispatchEvent("pointerdown", { clientX: bounds.x + bounds.width - 15, clientY: bounds.y + bounds.height / 2 });
+    await asset.dispatchEvent("pointerup", { clientX: bounds.x + bounds.width - 95, clientY: bounds.y + bounds.height / 2 });
+    await expect(asset.locator(".mobile-swipe-actions-revealed")).toBeVisible();
+    await asset.getByRole("button", { name: "Delete" }).click();
+    const confirm = page.getByRole("alertdialog");
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole("button", { name: "Cancel" }).click();
     await detail.getByRole("button", { name: "Close" }).click();
     await expect(row).toBeVisible();
   } finally {
@@ -611,6 +638,13 @@ test("history pagination controls stay together at phone width", async ({ browse
     expect(previous).not.toBeNull();
     expect(next).not.toBeNull();
     expect(Math.abs((next!.y + next!.height / 2) - (previous!.y + previous!.height / 2))).toBeLessThan(2);
+    await page.evaluate(() => localStorage.setItem("track3-ui-locale", "zh"));
+    await page.reload();
+    await expect(page.locator(".history-rows-trigger, .history-page-trigger")).toHaveCount(2);
+    for (const trigger of await page.locator(".history-rows-trigger, .history-page-trigger").all()) {
+      const box = (await trigger.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
   } finally {
     await context.close();
   }

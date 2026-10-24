@@ -82,7 +82,7 @@ for (const phone of phones) {
     for (const [route, title] of [
       ["overview", "Overview"],
       ["history", "History"],
-      ["summary", "Summary"],
+      ["summary", "Analytics"],
       ["wallets", "Wallets"],
       ["comparison", "Comparison"],
       ["cost-basis", "Cost basis"],

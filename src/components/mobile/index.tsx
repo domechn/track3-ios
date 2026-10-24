@@ -64,13 +64,14 @@ export function MobilePage({
 }
 
 export function BottomSheet({
-  open, onOpenChange, title, children, detents = ["medium", "large"], initialDetent,
+  open, onOpenChange, title, children, detents = ["medium", "large"], initialDetent, className,
 }: React.PropsWithChildren<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   detents?: Array<"medium" | "large">;
   initialDetent?: "medium" | "large";
+  className?: string;
 }>) {
   const { t } = useTranslation();
   const [detent, setDetent] = useState<"medium" | "large">(initialDetent ?? detents[0] ?? "medium");
@@ -131,7 +132,7 @@ export function BottomSheet({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="mobile-sheet-backdrop" />
-        <Dialog.Content className={cn("mobile-sheet", `mobile-sheet-${detent}`)} aria-describedby={undefined}
+        <Dialog.Content className={cn("mobile-sheet", `mobile-sheet-${detent}`, className)} aria-describedby={undefined}
           style={{ ...(viewport ? { bottom: viewport.bottom, maxHeight: viewport.height } : {}), height: dragHeight }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
@@ -173,7 +174,7 @@ export function ActionSheet({ open, onOpenChange, title, actions }: {
   );
 }
 
-export function SwipeableRow({ children, actions, className }: React.PropsWithChildren<{ actions: SheetAction[]; className?: string }>) {
+export function SwipeableRow({ children, actions, className, allowImmediateAction = false }: React.PropsWithChildren<{ actions: SheetAction[]; className?: string; allowImmediateAction?: boolean }>) {
   const [revealed, setRevealed] = useState(false);
   const haptic = useHaptics();
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -196,6 +197,7 @@ export function SwipeableRow({ children, actions, className }: React.PropsWithCh
   return <div data-swipeable-row className={cn("mobile-swipe-row", className)}
     onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
     onClickCapture={(event) => {
+      if (allowImmediateAction && (event.target as Element).closest(".mobile-swipe-actions")) return;
       if (!suppressClick.current) return;
       suppressClick.current = false;
       event.preventDefault();
@@ -298,10 +300,11 @@ export type MobileRecord = {
   actions?: SheetAction[];
 };
 
-export function MobileRecordList({ records, className }: { records: MobileRecord[]; className?: string }) {
+export function MobileRecordList({ records, className, empty }: { records: MobileRecord[]; className?: string; empty?: React.ReactNode }) {
   const [selected, setSelected] = useState<string | null>(null);
   const record = records.find((item) => item.id === selected);
   return <div className={cn("mobile-record-list", className)}>
+    {records.length === 0 && empty && <div className="mobile-list-row text-muted-foreground">{empty}</div>}
     {records.map((item) => <ListRow key={item.id} onClick={() => setSelected(item.id)} value={item.subtitle}>
       {item.title}
     </ListRow>)}

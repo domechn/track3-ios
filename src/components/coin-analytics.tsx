@@ -214,7 +214,7 @@ const App = ({
   const { symbol } = useParams() as { symbol: string };
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const pageSize = 20;
   const LOAD_COUNT = 3; // loadSymbolData, CoinsAmountAndValueChange, WalletAssetsPercentage
@@ -241,6 +241,7 @@ const App = ({
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [lastAsset, setLastAsset] = useState<Asset | undefined>();
+  const [previousPrice, setPreviousPrice] = useState<number>();
 
   const [buyAmount, setBuyAmount] = useState<number>(0);
   const [sellAmount, setSellAmount] = useState<number>(0);
@@ -443,6 +444,8 @@ const App = ({
   );
   const buyAmountStr = useMemo(() => prettyAmount(buyAmount), [buyAmount]);
   const lastPrice = useMemo(() => lastAsset?.price || 0, [lastAsset]);
+  const change24h = previousPrice && lastPrice
+    ? (lastPrice - previousPrice) / previousPrice * 100 : undefined;
   const lastPriceStr = useMemo(
     () =>
       currency.symbol +
@@ -526,7 +529,7 @@ const App = ({
     const gen = loadGenRef.current;
 
     // fetch all data before setting any state to avoid multiple re-renders
-    const [txns, tp, la, ama, lp] = await Promise.all([
+    const [txns, tp, la, ama, lp, previous] = await Promise.all([
       queryTransactionsBySymbolAndDateRange(
         s,
         selectedRange,
@@ -536,6 +539,10 @@ const App = ({
       queryLastAssetsBySymbol(s, selectedRange, selectedAssetType),
       queryAssetMaxAmountBySymbol(s, selectedRange, selectedAssetType),
       getLogoPath(s, selectedAssetType),
+      queryLastAssetsBySymbol(s, {
+        start: new Date(0),
+        end: new Date(selectedRange.end.getTime() - 24 * 60 * 60 * 1000),
+      }, selectedAssetType),
     ]);
 
     // ignore stale results if symbol/dateRange changed while loading
@@ -543,6 +550,7 @@ const App = ({
 
     setTransactions(txns);
     setLastAsset(la);
+    setPreviousPrice(previous?.price);
     setMaxPosition(ama);
     setLogo(lp);
 
@@ -781,7 +789,8 @@ const App = ({
           </div>
           {isMobile && <MobileRecordList className="coin-mobile-transactions"
             records={historicalData.slice(dataPage * pageSize, (dataPage + 1) * pageSize).map((act) => ({
-              id: String(act.id), title: `${symbol} · ${timeToDateStr(new Date(act.txnCreatedAt).getTime(), true)}`,
+              id: String(act.id), title: `${symbol} · ${new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US",
+                { year: "numeric", month: "short", day: "numeric" }).format(new Date(act.txnCreatedAt))}`,
               subtitle: getValueStr(act),
               fields: [
                 { label: t("coin.col.amount"), value: getAmountStr(act) },
@@ -889,11 +898,12 @@ const App = ({
         {isMobile && <div className="coin-detail-hero">
           <div className="coin-detail-identity">
             <img src={resolveAssetLogoSrc({ symbol, assetType }, logo)} alt="" />
+            <span>{symbol}</span>
           </div>
           <p className="coin-detail-price ios-money">{lastPriceStr}</p>
           <div className="coin-detail-change">
-            <DeltaPill value={profit}>{profitPercentage === undefined ? "—" : `${profitPercentage > 0 ? "+" : ""}${profitRate}%`}</DeltaPill>
-            <span>{t("coin.periodReturn")}</span>
+            <DeltaPill value={change24h ?? 0}>{change24h === undefined ? "—" : `${change24h > 0 ? "+" : ""}${change24h.toFixed(2)}%`}</DeltaPill>
+            <span>{t("coin.change24h")}</span>
           </div>
         </div>}
         <StaggerContainer className="space-y-4">
@@ -921,8 +931,8 @@ const App = ({
               transactionMutationKey(updateTxnId, "type"),
             )}
           />
-          <div className="grid gap-4 grid-cols-6">
-            <FadeUp className="col-span-6 md:col-span-2 sm:col-span-3">
+          <div className="coin-metric-grid grid gap-4 grid-cols-6">
+            <FadeUp className="coin-symbol-metric col-span-6 md:col-span-2 sm:col-span-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -1088,7 +1098,7 @@ const App = ({
                   <div className="text-xl font-semibold tracking-tight overflow-hidden whitespace-nowrap overflow-ellipsis">
                     {breakEvenPriceStr}
                   </div>
-                  <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
+                  <div className="coin-breakeven-subtitle text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
                     <div>{t("coin.lastPrice")}</div>
                     <div>{lastPriceStr}</div>
                   </div>
@@ -1122,7 +1132,7 @@ const App = ({
                     {positionsStr}
                   </div>
                   <div className="text-xs text-muted-foreground overflow-hidden whitespace-nowrap overflow-ellipsis flex space-x-1">
-                    <div>{t("coin.maxPositions")}</div>
+                    <div>{t(isMobile ? "coin.maxShort" : "coin.maxPositions")}</div>
                     <div>{maxPositionsStr}</div>
                   </div>
                 </CardContent>
