@@ -326,7 +326,7 @@ const App = ({
           >
             {profitPercentage === undefined
               ? t("common.infinity")
-              : prettyNumberKeepNDigitsAfterDecimalPoint(profitPercentage, 2)}
+              : `${profitPercentage < 0 ? "" : "+"}${prettyNumberKeepNDigitsAfterDecimalPoint(profitPercentage, 2)}`}
             %
           </div>
         </div>

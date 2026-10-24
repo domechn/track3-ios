@@ -5,6 +5,25 @@ for this worktree is D1 below.
 
 ## D1 reviewer closeout
 
+- CI run `40073503815` on `43e6b9f` passed the iPhone flows but failed 35
+  desktop browser checks, mainly from shared accent contrast and the enlarged
+  Switch. Its Rust pure tests were skipped. This worktree scopes the iOS
+  palette, fonts, Card and Switch to the phone layout and restores the desktop
+  defaults. The local desktop browser command now passes 77/77 checks,
+  including accessibility and density. No later CI result exists yet.
+- Final local checks for this reviewer pass: frontend and browser test
+  TypeScript checks passed; Vitest passed 1,815 tests in 221 files; the
+  iPhone Playwright command passed 85/85. These runs do not validate a signed
+  physical device.
+- Overview review fixes remove the empty chart tick lane, align the plot to
+  the content gutter, place date labels closer to the chart, and move the
+  touch value chip with a crosshair and point marker. Root tabs no longer have
+  a second Track3 bar. First launch hides date and refresh controls until a
+  source is configured; More never shows them. Source balances and shares now
+  preview the largest three sources.
+  P&L copy uses one spelling, signed movers, and grouped allocation quantities.
+  The phone screenshots now include touch scrub and loading states. The local
+  phone browser command passes 85/85 checks.
 - CI run `40070631313` failed two phone viewport checks because the responsive
   P&L chart grew its unbounded flex container. The phone chart now has a fixed
   172 px height. A browser check verifies that the canvas stays that height
@@ -18,7 +37,7 @@ for this worktree is D1 below.
 - The screenshot fixture now follows a varied 60-day trend. The parity suite
   uses it for iPhone SE and iPhone 14 captures and adds dark Overview captures.
   The viewport suite adds light and dark performance and mover captures.
-  The completed phone run writes 121 PNGs under `test-results/mobile/`.
+  The completed phone run writes 123 PNGs under `test-results/mobile/`.
   The 320 and 390 px scroll checks pass locally. The previous CI failure has
   not yet been checked in a new CI run.
 - Local checks in this closeout: `tsc --noEmit` passed, 1,815 Vitest tests in
@@ -31,7 +50,7 @@ for this worktree is D1 below.
 - Added [DESIGN.md](DESIGN.md) with the phone color, type, spacing, motion,
   chart, and component rules. Shared phone primitives now expose grouped
   cards and rows, a delta pill, icon button, number animation, skeleton,
-  and an illustrated empty state. Global typography uses system fonts; light
+  and an illustrated empty state. Phone typography uses system fonts; light
   and dark tokens use grouped white and true-black surfaces with one blue
   accent.
 - The phone shell has a blurred tab bar and compact bar, unified navigation
@@ -41,7 +60,7 @@ for this worktree is D1 below.
   still takes precedence.
 - Overview now presents a large value, a range-filtered trend with touch
   value chip, restrained allocation chart and asset rows, P&L, movers,
-  insight, and source links. Loading uses a reserved skeleton layout.
+  insight, and source balances. Loading uses a reserved skeleton layout.
   The mock screenshot portfolio has seven assets, 60 daily snapshots across
   two months, both positive and negative movers, and a saved insight.
   The 7D and 30D P&L labels replace the old 7T and 30T wording; their

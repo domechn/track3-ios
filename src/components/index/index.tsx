@@ -42,6 +42,7 @@ import {
   getInitialQueryDateRange,
   getQuoteColor,
   getDefaultCurrencyRate,
+  getConfiguration,
 } from "@/middlelayers/configuration";
 import React from "react";
 import { Progress } from "../ui/progress";
@@ -146,15 +147,31 @@ function TopBar({
   const { t } = useTranslation();
   const [refreshButtonLoading, setRefreshButtonLoading] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
+  const [configuredSource, setConfiguredSource] = useState(false);
+  useEffect(() => {
+    if (!mobile || !overview || availableDates.length > 0) return;
+    let active = true;
+    void getConfiguration().then((config) => {
+      if (!active) return;
+      const chains = ["erc20", "sol", "btc", "doge", "trc20", "ton", "sui"] as const;
+      setConfiguredSource(Boolean(
+        config?.others?.length || config?.exchanges?.some((exchange) => exchange.active !== false) ||
+        config?.stockConfig?.brokers?.some((broker) => broker.active !== false) ||
+        chains.some((chain) => config?.[chain]?.addresses?.some((address) =>
+          typeof address === "string" || address.active !== false)),
+      ));
+    }).catch(() => { if (active) setConfiguredSource(false); });
+    return () => { active = false; };
+  }, [mobile, overview, availableDates.length]);
+  const showActions = !mobile || (overview && (availableDates.length > 0 || configuredSource));
 
   return (
-    <div id="app-top-bar" className="sticky top-0 z-10 glass-subtle border-b relative">
+    <div id="app-top-bar" className={`sticky top-0 z-10 glass-subtle border-b relative${mobile ? ` mobile-topbar ${onBack ? " mobile-topbar-back" : " mobile-topbar-root"}${compactTitle && !onBack ? " mobile-topbar-collapsed" : ""}` : ""}`}>
       <div className="flex h-12 items-center px-4">
         {mobile && onBack && <button type="button" className="mobile-back mobile-header-back"
           onClick={onBack} aria-label={t("common.back", "Back")}>
           <ChevronLeftIcon aria-hidden="true" />{t("common.back", "Back")}
         </button>}
-        {mobile && !compactTitle && !onBack && <span className="mobile-nav-brand">Track3</span>}
         {compactTitle && <span className={`mobile-compact-title${overview ? " mobile-overview-compact-title" : ""}`}>{compactTitle}</span>}
         {(!mobile || compactTitle) && !(mobile && onBack && compactTitle) &&
           <MobileHeaderTotal currency={currentCurrency} live={isProUser}
@@ -168,12 +185,12 @@ function TopBar({
           </div>
         )}
         <div className="ml-auto flex items-center space-x-3">
-          <DatePicker
+          {(!mobile || (overview && availableDates.length > 0)) && <DatePicker
             availableDates={availableDates}
             value={dateRange}
             onDateChange={onDatePickerValueChange}
-          />
-          <TooltipProvider>
+          />}
+          {showActions && <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div>
@@ -205,7 +222,7 @@ function TopBar({
                 </p>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
+          </TooltipProvider>}
         </div>
       </div>
       {refreshProgress > 0 && refreshButtonLoading && (
@@ -340,7 +357,7 @@ function Layout({
           dateRange={dateRange}
           onDatePickerValueChange={onDatePickerValueChange}
           lastRefreshAt={lastRefreshAt}
-          compactTitle={headerCollapsed ? routeTitle(location.pathname, t) : undefined}
+          compactTitle={mobile && (headerCollapsed || canGoBack) ? routeTitle(location.pathname, t) : undefined}
           overview={location.pathname === "/overview"}
           onBack={canGoBack ? () => navigate(backPath) : undefined}
           onRefreshSuccess={onRefreshSuccess}
@@ -404,7 +421,7 @@ function MoreHub() {
     { href: "#/assistant", label: t("nav.assistant") },
     { href: "#/settings", label: t("nav.settings") },
   ];
-  return <div className="mobile-more-hub"><InsetGroup title={t("nav.more", "More")}>
+  return <div className="mobile-more-hub"><InsetGroup>
     {items.map((item) => <ListRow key={item.href} href={item.href} value={item.value}>{item.label}</ListRow>)}
   </InsetGroup></div>;
 }

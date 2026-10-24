@@ -15,6 +15,7 @@ import { positiveNegativeTextClass } from "@/utils/color";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useDataChangedVersion } from "@/contexts/data-changed";
+import { useIsMobile } from "@/components/mobile";
 
 const chartName = "PNL of Asset";
 
@@ -28,6 +29,7 @@ const App = ({
   quoteColor: QuoteColor;
 }) => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { needResize } = useContext(ChartResizeContext);
   const { reportLoaded } = useContext(OverviewLoadingContext);
 
@@ -113,7 +115,7 @@ const App = ({
   return (
     <div className="h-full">
       <Card className="flex h-full flex-col">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-2${isMobile ? " hidden" : ""}`}>
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {t("pnl.title")}
           </CardTitle>

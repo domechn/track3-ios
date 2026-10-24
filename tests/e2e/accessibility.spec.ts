@@ -167,10 +167,11 @@ async function checkAttributionAccessibility(page: Page, width: number) {
     await page.goto("/#/summary");
     await expect(page.getByRole("heading", { name: "Summary", exact: true })).toBeAttached();
     await page.getByRole("radio", { name: "Attribution" }).click();
-    await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("data-state", "checked");
     if (await page.evaluate(() => matchMedia("(max-width: 950px) and (pointer: coarse)").matches)) {
+      await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("aria-checked", "true");
       await expect(page.locator(".mobile-record-list").first()).toBeVisible();
     } else {
+      await expect(page.getByRole("radio", { name: "Attribution" })).toHaveAttribute("data-state", "checked");
       await expect(page.getByText("Attribution details")).toBeAttached();
     }
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
@@ -217,12 +218,13 @@ test("expanded Overview content passes axe with its percentage rows visible", as
 
 test("assistant with pinned and recent sessions passes axe", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 740 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await installTauriBridge(page, undefined, true);
   await page.goto("/#/assistant");
   await expect(page.getByText("Pinned portfolio review")).toBeVisible();
   await expect(page.getByText("Recent portfolio review")).toBeVisible();
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.map((node) => node.target.join(" ")).join(", ")}`)).toEqual([]);
+  expect(results.violations.map(({ id, nodes }) => `${id}: ${nodes.map((node) => `${node.target.join(" ")} ${node.failureSummary}`).join(", ")}`)).toEqual([]);
 });
 
 test("small muted text in assistant sessions and expanded Overview meets AA contrast", async ({ page }) => {

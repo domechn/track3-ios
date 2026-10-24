@@ -9,7 +9,7 @@ const schemaFiles = [
   "currency_rates", "configuration",
 ];
 
-export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false) {
+export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewContent = false, seedRebalanceProfile = false, emptyPortfolio = false, seedLockedSync = false, richPortfolio = false, slowOverview = false) {
   const SQL = await initSqlJs({
     locateFile: () => resolve("node_modules/sql.js/dist/sql-wasm.wasm"),
   });
@@ -40,7 +40,11 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       `!ent:e2e:${JSON.stringify({ enabled: true, endpoint: "https://s3.example.test", bucket: "track3", region: "us-east-1", accessKeyId: "e2e-access", secretAccessKey: "e2e-secret" })}`,
     ]);
   }
-  if (emptyPortfolio) db.run("DELETE FROM assets_v2");
+  if (emptyPortfolio) {
+    db.run("DELETE FROM assets_v2");
+    db.run("UPDATE configuration SET data = ? WHERE id = 12",
+      ["configs:\n  groupUSD: false\nothers: []\n"]);
+  }
   if (richPortfolio && !emptyPortfolio) {
     db.run("DELETE FROM assets_v2");
     db.run("INSERT INTO configuration (id, data) VALUES (6, '60')");
@@ -161,7 +165,10 @@ export async function installTauriBridge(page: Page, s3?: FakeS3, seedReviewCont
       return null;
     }
     if (cmd === "plugin:sql|load") return args.db;
-    if (cmd === "plugin:sql|select") return select(args.query, args.values);
+    if (cmd === "plugin:sql|select") {
+      if (slowOverview && /assets_v2/i.test(args.query)) await new Promise((resolve) => setTimeout(resolve, 1000));
+      return select(args.query, args.values);
+    }
     if (cmd === "plugin:sql|execute") return execute(args.query, args.values);
     if (cmd === "delete_sync_snapshot") {
       // Mirrors the Rust command: remove the snapshot's rows from every snapshot-scoped table.

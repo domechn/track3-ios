@@ -18,16 +18,46 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible";
 import { Button } from "./ui/button";
-import { CaretSortIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import AssetsPercentageChange from "./assets-percentage-change";
 import { StaggerContainer, FadeUp } from "./motion";
 import { OverviewLoadingContext } from "@/contexts/overview-loading";
 import { useTranslation } from "@/i18n";
 import { useIsMobile } from "./mobile";
-import { EmptyState, ListRow, MobileCard, MobileSkeleton, SectionHeader } from "./mobile";
+import { ListRow, MobileCard, MobileSkeleton, SectionHeader } from "./mobile";
 import InsightsCard from "./insights-card";
+import { WALLET_ANALYZER } from "@/middlelayers/charts-refresh";
+import type { WalletAssetsPercentageData } from "@/middlelayers/types";
+import { currencyWrapper, prettyNumberToLocaleString } from "@/utils/currency";
+import { insertEllipsis } from "@/utils/string";
 
 const MAIN_COMPONENT_COUNT = 4;
+
+function OverviewSourceTeaser({ currency }: { currency: CurrencyRateDetail }) {
+  const { t } = useTranslation();
+  const version = useDataChangedVersion();
+  const [sources, setSources] = useState<WalletAssetsPercentageData>([]);
+  useLayoutEffect(() => {
+    let active = true;
+    void WALLET_ANALYZER.queryWalletAssetsPercentage().then((rows) => {
+      if (active) setSources(rows.slice(0, 3));
+    });
+    return () => { active = false; };
+  }, [version]);
+  return <>
+    <SectionHeader>{t("overview.sources")}</SectionHeader>
+    <MobileCard className="overview-source-teaser">
+      {sources.map((source) => <ListRow key={source.wallet} className="overview-source-row" href="#/wallets"
+        value={<span className="overview-source-value ios-money">
+          <strong>{currency.symbol + prettyNumberToLocaleString(currencyWrapper(currency)(source.value))}</strong>
+          <span>{source.percentage.toFixed(1)}%</span>
+        </span>}>
+        {source.walletAlias ?? insertEllipsis(source.wallet, 18)}
+      </ListRow>)}
+      <ListRow href="#/settings/configuration">{t("overview.manageSources")}</ListRow>
+    </MobileCard>
+  </>;
+}
 
 const App = ({
   currency,
@@ -40,7 +70,6 @@ const App = ({
 }) => {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const [noData, setNoData] = useState(false);
   const [isShowMore, setIsShowMore] = useState<boolean>(false);
   const [pageLoading, setPageLoading] = useState(true);
   const loadedCountRef = useRef(0);
@@ -51,7 +80,6 @@ const App = ({
   const dataChangedVersion = useDataChangedVersion();
   useLayoutEffect(() => {
     setPageLoading(true);
-    setNoData(false);
     loadedCountRef.current = 0;
   }, [rangeKey, dataChangedVersion]);
 
@@ -73,11 +101,7 @@ const App = ({
     <OverviewLoadingContext.Provider value={loadingContextValue}>
       <div className="relative min-h-[400px]" aria-busy={pageLoading}>
         {!isMobile && <h1 className="sr-only">{t("overview.h1")}</h1>}
-        {isMobile && noData && !pageLoading
-          ? <EmptyState title={t("overview.emptyTitle")} description={t("overview.emptyDescription")}
-              illustrationLabel={t("overview.emptyIllustration")}
-              action={t("overview.addFirstSource")} onAction={() => { window.location.hash = "#/settings/configuration"; }} />
-          : <Collapsible open={isShowMore} onOpenChange={setIsShowMore}>
+        <Collapsible open={isShowMore} onOpenChange={setIsShowMore}>
           <StaggerContainer className="space-y-3 overview-sections">
             <div className="grid gap-5 grid-cols-2 overview-main-grid">
               <FadeUp className="col-span-2 h-full md:col-span-1">
@@ -85,7 +109,6 @@ const App = ({
                   currency={currency}
                   dateRange={dateRange}
                   quoteColor={quoteColor}
-                  onEmptyChange={setNoData}
                 />
               </FadeUp>
               <FadeUp className="col-span-2 h-full md:col-span-1">
@@ -114,21 +137,15 @@ const App = ({
             </FadeUp>
             {isMobile && <FadeUp><MobileCard className="overview-more-disclosure">
               <CollapsibleTrigger asChild>
-                <button type="button" className="mobile-list-row" aria-label={isShowMore ? t("common.showLess") : t("common.showMore")}>
+                <button type="button" className="mobile-list-row" aria-label={`${isShowMore ? t("common.showLess") : t("common.showMore")}: ${isShowMore ? t("overview.lessAnalytics") : t("overview.moreAnalytics")}`}>
                   <span className="mobile-list-label">{isShowMore ? t("overview.lessAnalytics") : t("overview.moreAnalytics")}</span>
-                  <CaretSortIcon aria-hidden="true" />
+                  {isShowMore ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
                 </button>
               </CollapsibleTrigger>
             </MobileCard></FadeUp>}
             {isMobile && <CollapsibleContent>{moreContent}</CollapsibleContent>}
             {isMobile && <FadeUp><InsightsCard currency={currency} overview /></FadeUp>}
-            {isMobile && <FadeUp>
-              <SectionHeader>{t("overview.sources")}</SectionHeader>
-              <MobileCard className="overview-source-teaser">
-                <ListRow href="#/wallets">{t("overview.viewBreakdown")}</ListRow>
-                <ListRow href="#/settings/configuration">{t("overview.manageSources")}</ListRow>
-              </MobileCard>
-            </FadeUp>}
+            {isMobile && <FadeUp><OverviewSourceTeaser currency={currency} /></FadeUp>}
           </StaggerContainer>
           {!isMobile && <CollapsibleTrigger asChild className="my-3 w-full">
             <Button
@@ -136,11 +153,11 @@ const App = ({
               className="text-muted-foreground hover:text-foreground border-t border-border/40 rounded-none hover:bg-muted/50"
             >
               {isShowMore ? t("common.showLess") : t("common.showMore")}
-              <CaretSortIcon className="ml-1 h-4 w-4" />
+              {isShowMore ? <ChevronUpIcon className="ml-1 h-4 w-4" /> : <ChevronDownIcon className="ml-1 h-4 w-4" />}
             </Button>
           </CollapsibleTrigger>}
           {!isMobile && <CollapsibleContent>{moreContent}</CollapsibleContent>}
-        </Collapsible>}
+        </Collapsible>
         {pageLoading && (
           <div
             className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/65 px-4 backdrop-blur-md overview-loading"

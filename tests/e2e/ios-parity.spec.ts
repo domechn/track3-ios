@@ -36,10 +36,13 @@ test("the phone shell applies top and side safe-area insets once", async ({ page
   const positions = await page.evaluate(() => {
     const root = document.documentElement;
     const header = document.querySelector<HTMLElement>("#app-top-bar")!;
-    const toolbar = header.firstElementChild as HTMLElement;
     const main = document.querySelector<HTMLElement>("#app-main-content")!;
+    const title = main.querySelector<HTMLElement>(".mobile-large-title")!;
+    const refresh = header.querySelector<HTMLElement>('button[aria-label="Refresh"]')!;
     const originalHeaderHeight = header.getBoundingClientRect().height;
     const originalContentTop = main.getBoundingClientRect().top;
+    const originalTitleTop = title.getBoundingClientRect().top;
+    const originalRefreshTop = refresh.getBoundingClientRect().top;
     root.style.setProperty("--mobile-safe-top", "47px");
     root.style.setProperty("--mobile-safe-left", "59px");
     root.style.setProperty("--mobile-safe-right", "59px");
@@ -51,18 +54,22 @@ test("the phone shell applies top and side safe-area insets once", async ({ page
       contentRight: innerWidth - main.getBoundingClientRect().right,
       headerHeightDelta: header.getBoundingClientRect().height - originalHeaderHeight,
       contentTopDelta: main.getBoundingClientRect().top - originalContentTop,
-      toolbarPaddingLeft: parseFloat(getComputedStyle(toolbar).paddingLeft),
+      titleTopDelta: title.getBoundingClientRect().top - originalTitleTop,
+      refreshTopDelta: refresh.getBoundingClientRect().top - originalRefreshTop,
+      refreshRight: innerWidth - refresh.getBoundingClientRect().right,
       contentPaddingLeft: parseFloat(getComputedStyle(main).paddingLeft),
       contentPaddingRight: parseFloat(getComputedStyle(main).paddingRight),
     };
   });
   expect(positions.headerTop).toBe(0);
   expect(positions.headerLeft).toBe(0);
-  expect(positions.headerHeightDelta).toBe(47);
-  expect(positions.contentTopDelta).toBe(47);
+  expect(positions.headerHeightDelta).toBe(0);
+  expect(positions.contentTopDelta).toBe(0);
+  expect(positions.titleTopDelta).toBe(47);
+  expect(positions.refreshTopDelta).toBe(47);
   expect(positions.contentLeft).toBe(0);
   expect(positions.contentRight).toBe(0);
-  expect(positions.toolbarPaddingLeft).toBe(59);
+  expect(positions.refreshRight).toBe(59);
   expect(positions.contentPaddingLeft).toBe(59);
   expect(positions.contentPaddingRight).toBe(59);
 });

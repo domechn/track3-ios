@@ -2,11 +2,11 @@
 
 ## Direction
 
-Track3 uses the iOS grouped layout: quiet surfaces, one indigo-blue accent, prominent money, and controls with at least 44 pt touch targets. The app uses the device font through `-apple-system, "SF Pro Text", "SF Pro Display", system-ui`; it downloads no font. The phone layout applies at the existing coarse-pointer media query through 950 px. Desktop routes continue to use the same components and data.
+Track3 uses the iOS grouped layout: quiet surfaces, one indigo-blue accent, prominent money, and controls with at least 44 pt touch targets. The phone layout uses the device font through `-apple-system, "SF Pro Text", "SF Pro Display", system-ui`. It applies at the existing coarse-pointer media query through 950 px. Desktop keeps its Outfit and JetBrains Mono fonts and original semantic theme values.
 
 ## Tokens
 
-`src/style.css` is the source of truth. Tailwind semantic colors in `tailwind.config.js` resolve the same variables.
+`src/style.css` is the source of truth. Tailwind semantic colors in `tailwind.config.js` resolve the same variables. Phone overrides apply only at the mobile media query. `--accent` remains the neutral control state on both layouts; `--ios-accent` supplies the blue brand color.
 
 | Role | Light | Dark |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ Track3 uses the iOS grouped layout: quiet surfaces, one indigo-blue accent, prom
 | Primary label | near `#1C1C1E` | near white |
 | Secondary label | `#636366` | `#AEAEB2` |
 | Accent | `#315CBE` | `#6D97FA` |
-| Gain | `--ios-gain` (`#248A3D` for readable light text; chart green is `#34C759`) | `#30D158` |
+| Gain | `--ios-gain` (`#166534` for readable light text on tinted surfaces; chart green is `#34C759`) | `#30D158` |
 | Loss | `--ios-loss` (`#D70015` for readable light text; chart red is `#FF3B30`) | `#FF453A` |
 | Inset separator | `--ios-separator`, 0.5 px | same token |
 | Segment track / thumb | `--ios-segment-track` / `--ios-segment-selected` | same tokens, with the selected thumb lighter than its track |
@@ -34,9 +34,9 @@ Use `MobileCard` for one metric or chart, `InsetGroup` and `ListRow` for setting
 
 `AnimatedAmount` takes a raw number and the existing currency formatter; it animates only when the value changes and skips animation when reduced motion is requested. The Overview range segments filter points inside the portfolio date selection; they do not change the saved date selection or data queries. Gain and loss pills follow the user's quote-color convention.
 
-The tab bar and compact navigation bar use blur and a hairline. The Overview large title and hero value remain visible at the top of the page; the compact value appears in the top bar after scrolling. Use `MobileIcon` for shell icons. Keep existing route targets and per-tab stacks.
+The tab bar and compact navigation bar use blur and a hairline. Root tabs place the large title at the top without a separate brand bar; the compact value appears in the top bar after scrolling. Overview exposes date selection when saved history exists and refresh when a source is configured. Use `MobileIcon` for shell icons. Keep existing route targets and per-tab stacks.
 
-The Overview P&L canvas has a fixed 172 px phone height so responsive chart resizing cannot expand its flex column. Its x labels use the same localized short date style as the hero chart. Allocation rows use the same palette index as the donut slice, including the shared Other slice on later pages.
+The Overview P&L canvas has a fixed 172 px phone height so responsive chart resizing cannot expand its flex column. Its x labels use the same localized short date style as the hero chart. The hero chart has no reserved Chart.js x ticks; its date labels sit just below the plotting area. A touch scrub shows a short date and value over the selected point, plus a point marker and crosshair. Allocation rows use the same palette index as the donut slice, including the shared Other slice on later pages. The source teaser lists the three largest latest-source balances and links to Wallets.
 
 ## Motion and access
 

@@ -174,12 +174,10 @@ const App = ({
   currency,
   dateRange,
   quoteColor,
-  onEmptyChange,
 }: {
   currency: CurrencyRateDetail;
   dateRange: TDateRange;
   quoteColor: QuoteColor;
-  onEmptyChange?: (empty: boolean) => void;
 }) => {
   const { resolvedTheme } = useTheme();
   const lineColor = resolvedTheme === "dark" ? darkChartColors[0].main : chartColors[0].main;
@@ -204,6 +202,7 @@ const App = ({
   const [showValue, setShowValue] = useState(false);
   const [chartRange, setChartRange] = useState<"1W" | "1M" | "3M" | "1Y" | "ALL">("ALL");
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const [scrubPosition, setScrubPosition] = useState<{ x: number; y: number; top: number; bottom: number } | null>(null);
   const lastScrub = useRef<number | null>(null);
   const [chartWidth, setChartWidth] = useState(600);
   const loadGenRef = useRef(0);
@@ -262,11 +261,10 @@ const App = ({
   useEffect(() => {
     const gen = ++loadGenRef.current;
     void loadData(dateRange, gen)
-      .then(([tv, ac]) => {
+      .then(() => {
         if (gen !== loadGenRef.current) {
           return;
         }
-        onEmptyChange?.(tv.totalValue === 0 && ac.data.length === 0);
         resizeChartWithDelay(chartName);
       })
       .finally(() => {
@@ -386,12 +384,17 @@ const App = ({
       responsive: true,
       animation: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? false : { duration: 350 },
       onResize: (_chart: unknown, size: { width: number }) => setChartWidth(size.width),
-      onHover: (_event: unknown, elements: Array<{ index: number }>) => {
+      onHover: (_event: unknown, elements: Array<{ index: number; element: { x: number; y: number } }>,
+        chart: { chartArea: { top: number; bottom: number } }) => {
         if (!isMobile) return;
         const next = elements[0]?.index ?? null;
         if (next !== null && next !== lastScrub.current) haptic("selection");
         lastScrub.current = next;
         setScrubIndex(next);
+        setScrubPosition(next === null ? null : {
+          x: elements[0].element.x, y: elements[0].element.y,
+          top: chart.chartArea.top, bottom: chart.chartArea.bottom,
+        });
       },
       hover: {
         mode: "index",
@@ -437,6 +440,7 @@ const App = ({
           },
           ticks: {
             ...glassScaleOptions.ticks,
+            display: !isMobile,
             maxRotation: 0,
             minRotation: 0,
             align: "center",
@@ -489,6 +493,7 @@ const App = ({
           border: { display: !isMobile },
         },
       },
+      layout: { padding: { right: isMobile ? 8 : 0 } },
     }),
     [
       showPercentageInChart,
@@ -543,7 +548,7 @@ const App = ({
               variant="ghost"
               size="icon"
               className="touch:h-11 touch:w-11 text-muted-foreground h-8 w-8"
-              aria-label={t("totalValue.showPercentage")}
+              aria-label={isMobile ? `${t("overview.percentChart")} — ${t("totalValue.showPercentage")}` : t("totalValue.showPercentage")}
               aria-pressed={showPercentageInChart}
               onClick={() => setShowPercentageInChart(!showPercentageInChart)}
             >
@@ -570,7 +575,7 @@ const App = ({
               variant="ghost"
               size="icon"
               className="touch:h-11 touch:w-11 text-muted-foreground h-8 w-8"
-              aria-label={t("totalValue.switchBase")}
+              aria-label={isMobile ? `${t("overview.btcBase")} — ${t("totalValue.switchBase")}` : t("totalValue.switchBase")}
               aria-pressed={btcAsBase}
               onClick={() => setBtcAsBase(!btcAsBase)}
             >
@@ -615,13 +620,19 @@ const App = ({
             </button>{" "}
             {t("totalValue.from").replace("{date}", displayedFirstDate)}
           </p>
-          <div className="min-h-[120px] flex-1 mobile-hero-chart" onPointerLeave={() => setScrubIndex(null)}>
-            {isMobile && scrubIndex !== null && plottedTimestamps[scrubIndex] !== undefined &&
-              <div className="mobile-chart-chip" role="status">
-                {timeToDateStr(plottedTimestamps[scrubIndex])} · {showPercentageInChart
+          <div className="min-h-[120px] flex-1 mobile-hero-chart" onPointerLeave={() => { setScrubIndex(null); setScrubPosition(null); }}>
+            {isMobile && scrubIndex !== null && scrubPosition && plottedTimestamps[scrubIndex] !== undefined && <>
+              <div className="mobile-chart-crosshair" aria-hidden="true"
+                style={{ left: scrubPosition.x, top: scrubPosition.top, height: scrubPosition.bottom - scrubPosition.top }} />
+              <div className="mobile-chart-point" aria-hidden="true"
+                style={{ left: scrubPosition.x, top: scrubPosition.y }} />
+              <div className="mobile-chart-chip" aria-hidden="true"
+                style={{ left: Math.max(75, Math.min(chartWidth - 75, scrubPosition.x)) }}>
+                {new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric" })
+                  .format(new Date(plottedTimestamps[scrubIndex]))} · {showPercentageInChart
                   ? `${lineValues[plottedIndices[scrubIndex]]?.toFixed(2)}%`
                   : `${btcAsBase ? btcSymbol : currency.symbol}${prettyNumberToLocaleString(lineValues[plottedIndices[scrubIndex]] ?? 0)}`}
-              </div>}
+              </div></>}
             <Line role="img" aria-label={t("totalValue.chartSummary")
               .replace("{value}", totalValueShower.formatTotalValue())
               .replace("{change}", changedValueOrPercentage)

@@ -111,7 +111,7 @@ describe("Overview card alignment", () => {
     const totalValueCard = screen
       .getByText("Total Value In USD")
       .closest(".bg-card");
-    const pnlCard = screen.getByText("PNL Analysis").closest(".bg-card");
+    const pnlCard = screen.getByText("P&L").closest(".bg-card");
 
     expect(totalValueCard).not.toBeNull();
     expect(pnlCard).not.toBeNull();

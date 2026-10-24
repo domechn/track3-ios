@@ -41,6 +41,8 @@ test("a first launch portfolio offers a direct source setup action", async ({ br
     await installTauriBridge(page, undefined, false, false, true);
     await page.goto("/#/overview");
     await expect(page.getByRole("button", { name: "Add your first source" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
     await expect(page.locator("#app-main-content [aria-busy='true']")).toHaveCount(0);
     mkdirSync("test-results/mobile", { recursive: true });
     await page.screenshot({ path: "test-results/mobile/390x844-first-launch.png" });
@@ -65,6 +67,9 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     await installTauriBridge(page, undefined, false, false, false, false, true);
     await page.goto("/#/overview");
     await expect(page.locator(".mobile-allocation-row")).toHaveCount(5, { timeout: 5_000 });
+    await expect(page.locator(".overview-source-row")).toHaveCount(3);
+    await expect(page.locator(".overview-source-row").first()).toContainText("$");
+    await expect(page.locator(".overview-source-row").first()).toContainText("%");
     await expect(page.getByRole("button", { name: "Next token holdings page" })).toBeVisible();
     await expect(page.locator(".mobile-hero-value")).not.toContainText("$42,000.00");
     await expect(page.locator(".mobile-hero-dates")).toContainText("Aug 24");
@@ -81,16 +86,25 @@ test("review screenshots have several assets and a multi-month trend", async ({ 
     expect(await page.locator(".mobile-hero-value").evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(44);
     await expect(page.locator(".mobile-allocation-row .mobile-allocation-swatch")).toHaveCount(5);
     await expect(page.locator(".mobile-allocation-center")).toContainText("$");
+    await expect(page.locator(".mobile-allocation-rows")).toContainText("6,400");
+    await expect(page.locator(".overview-main-grid > :nth-child(2)")).not.toContainText("PNL Analysis");
+    await expect(page.locator(".mobile-allocation-center")).not.toContainText("Allocation");
+    await expect(page.locator(".overview-movers-card")).toContainText("Net P&L for selected range");
+    await expect(page.locator(".overview-movers-card .mobile-movers-total > div:last-child")).toContainText(/[+-]\d/);
     const [gains, losses] = await page.locator(".profit-mobile-list").allTextContents();
     expect(gains).not.toContain("-$");
     expect(losses).not.toContain("+$");
     await expect(page.getByRole("region", { name: "Insights" })).not.toContainText("No significant changes yet");
     await expect(page.getByRole("region", { name: "Insights" })).toContainText("$7,298.27");
     await expect(page.locator(".mobile-hero-change")).not.toContainText("2026-");
-    await expect(page.locator("#app-top-bar .mobile-nav-brand")).toBeVisible();
+    await expect(page.locator(".mobile-route-heading .mobile-large-title")).toBeVisible();
     await expect(page.locator(".overview-insights .mobile-section-header")).toContainText("Insights");
     await expect(page.getByRole("button", { name: "Show percentage change in chart" })).toContainText("Percent");
     await expect(page.getByRole("button", { name: "Switch total value base currency" })).toContainText("BTC base");
+    await page.goto("/#/more");
+    await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Choose date range" })).toHaveCount(0);
+    await expect(page.locator(".mobile-more-hub .mobile-inset-heading")).toHaveCount(0);
   } finally {
     await context.close();
   }
@@ -106,7 +120,30 @@ test("touching the trend reveals a readable value chip", async ({ browser }) => 
     await expect(chart).toBeVisible();
     const box = (await chart.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await expect(page.getByRole("status").filter({ hasText: "$" })).toBeVisible();
+    const chip = page.locator(".mobile-chart-chip");
+    await expect(chip).toBeVisible();
+    await expect(chip).toContainText("$");
+    expect(await chip.getAttribute("role")).toBeNull();
+    const firstX = (await chip.boundingBox())!.x;
+    await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2);
+    await expect.poll(async () => (await chip.boundingBox())?.x).toBeGreaterThan(firstX + 25);
+    mkdirSync("test-results/mobile", { recursive: true });
+    await page.screenshot({ path: "test-results/mobile/390x844-overview-scrub.png" });
+  } finally {
+    await context.close();
+  }
+});
+
+test("Overview skeleton reserves the first paint", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  const page = watchPage(await context.newPage());
+  try {
+    await installTauriBridge(page, undefined, false, false, false, false, true, true);
+    await page.goto("/#/overview");
+    await expect(page.locator("main [aria-busy]").first()).toHaveAttribute("aria-busy", "false");
+    await expect(page.locator(".overview-skeleton")).toBeVisible();
+    mkdirSync("test-results/mobile", { recursive: true });
+    await page.screenshot({ path: "test-results/mobile/390x844-overview-loading.png" });
   } finally {
     await context.close();
   }

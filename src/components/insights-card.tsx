@@ -14,7 +14,7 @@ import { IconButton, SectionHeader } from "./mobile";
 
 function SeverityIcon({ severity }: { severity: InsightSeverity }) {
   return severity === "info"
-    ? <InfoCircledIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" />
+    ? <InfoCircledIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
     : <ExclamationTriangleIcon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${
       severity === "critical" ? "text-destructive" : "text-amber-600 dark:text-amber-400"
     }`} />;

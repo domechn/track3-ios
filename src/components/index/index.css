@@ -1,10 +1,17 @@
 .mobile-route-heading, .history-mobile-list, .history-mobile-detail-list, .mobile-header-total, .mobile-compact-title, .mobile-analytics-hub { display: none; }
 
 @media (max-width: 950px) and (pointer: coarse) {
+  .app-layout { font-family: -apple-system, "SF Pro Text", "SF Pro Display", system-ui, sans-serif; }
+  .app-layout .glass { background: hsl(var(--card)); border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .app-layout .font-mono { font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace; }
   .app-layout { min-width: 0; max-width: 100vw; }
   .app-layout > aside { display: none; }
   .app-content { margin-left: 0 !important; width: 100%; min-width: 0; transition: none !important; }
   #app-top-bar { top: 0; z-index: 30; padding-top: var(--mobile-safe-top); border: 0; border-bottom: .5px solid var(--ios-separator); background: hsl(var(--card) / .86); box-shadow: none; backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px); }
+  #app-top-bar.mobile-topbar-root:not(.mobile-topbar-collapsed) { position: absolute; inset: 0 0 auto; height: 0; padding-top: 0; border: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  #app-top-bar.mobile-topbar-root:not(.mobile-topbar-collapsed) > div:first-child { height: 0; min-height: 0; padding: 0; }
+  #app-top-bar.mobile-topbar-root:not(.mobile-topbar-collapsed) .ml-auto { position: absolute; top: calc(var(--mobile-safe-top) + .55rem); right: max(1rem, var(--mobile-safe-right)); }
+  #app-top-bar.mobile-topbar-collapsed { position: fixed; left: 0; right: 0; }
   #app-top-bar > div:first-child { min-height: 3.5rem; height: auto; padding: .25rem max(1rem, var(--mobile-safe-right)) .25rem max(1rem, var(--mobile-safe-left)); }
   #app-top-bar .mr-4 { margin-right: .5rem; }
   .mobile-header-total { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: .05rem; }
@@ -27,9 +34,12 @@
   #app-top-bar .date-picker-mobile button { color: hsl(var(--primary)); }
   #app-top-bar .date-picker-mobile svg { width: 20px; height: 20px; }
   #app-top-bar .absolute { position: fixed; left: 1rem; right: 1rem; top: calc(var(--mobile-safe-top) + 3.5rem); padding: .5rem; border-radius: .75rem; background: hsl(var(--card)); box-shadow: 0 4px 16px rgba(0,0,0,.15); }
-  #app-main-content { min-width: 0; width: 100%; padding: 1rem max(1rem, var(--mobile-safe-right)) calc(5rem + var(--mobile-safe-bottom)) max(1rem, var(--mobile-safe-left)); overflow-x: clip; touch-action: pan-y; }
+  #app-main-content { min-width: 0; width: 100%; padding: calc(1rem + var(--mobile-safe-top)) max(1rem, var(--mobile-safe-right)) calc(5rem + var(--mobile-safe-bottom)) max(1rem, var(--mobile-safe-left)); overflow-x: clip; touch-action: pan-y; }
+  .mobile-topbar-back + #app-main-content { padding-top: 1rem; }
   #app-main-content > * { min-width: 0; }
   .mobile-route-heading { display: block; }
+  .mobile-route-heading .mobile-page-nav { display: none; }
+  .mobile-route-heading .mobile-large-title { margin: 0 0 1rem; }
   .history-desktop-table, .history-desktop-detail-table { display: none; }
   .history-mobile-list { display: grid; gap: .65rem; }
   .history-mobile-snapshot { border: 1px solid hsl(var(--border)); border-radius: .8rem; background: hsl(var(--card)); }
@@ -39,6 +49,7 @@
   .history-mobile-asset { border: 1px solid hsl(var(--border)); border-radius: .75rem; padding: .75rem; }
   .history-mobile-delete { min-height: 2.75rem; margin-top: .4rem; color: hsl(var(--destructive)); font-size: .875rem; }
   .overview-sections { display: grid; gap: 24px; }
+  .overview-sections > * { margin-top: 0 !important; }
   .overview-main-grid { display: flex; flex-direction: column; gap: 24px; }
   .overview-main-grid > * { width: 100%; }
   .overview-sections .rounded-2xl.bg-card { border: 0; box-shadow: none; }
@@ -46,8 +57,8 @@
   .overview-total .mobile-hero-header { display: contents; }
   .overview-total .mobile-hero-header > h3 { order: 0; }
   .overview-total .mobile-hero-card > :last-child { order: 1; }
-  .overview-total .mobile-hero-tools { order: 2; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; }
-  .overview-total .mobile-hero-tools button { display: inline-flex; width: auto; min-width: 120px; gap: 6px; padding: 0 12px; border-radius: 10px; background: var(--ios-segment-track); color: hsl(var(--secondary-foreground)); font-size: 13px; }
+  .overview-total .mobile-hero-tools { order: 2; justify-content: flex-start; gap: 8px; width: 100%; margin-top: 8px; }
+  .overview-total .mobile-hero-tools button { display: inline-flex; width: auto; min-width: 0; gap: 6px; padding: 0 12px; border-radius: 10px; background: var(--ios-segment-track); color: hsl(var(--secondary-foreground)); font-size: 13px; }
   .overview-total .mobile-hero-tools button[aria-pressed="true"] { background: hsl(var(--primary) / .13); color: hsl(var(--primary)); }
   .overview-total .mobile-hero-tool-label { display: inline; }
   .mobile-hero-header h3 { font-size: 13px; font-weight: 500; }
@@ -57,9 +68,11 @@
   .overview-total .mobile-hero-value { margin: 4px 0 0; font-size: clamp(44px, 12vw, 56px); line-height: 1.05; font-weight: 600; letter-spacing: -.055em; overflow-wrap: anywhere; }
   .mobile-hero-change { display: flex; align-items: center; gap: 8px; margin: 8px 0 14px; font-size: 13px; }
   .mobile-hero-change button { display: flex; align-items: center; padding: 0; }
-  .mobile-hero-chart { position: relative; height: 210px; min-height: 210px; margin: 0 -10px 2px; }
-  .mobile-hero-dates { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 10px; color: hsl(var(--muted-foreground)); font-size: 12px; }
-  .mobile-chart-chip { position: absolute; top: 3px; left: 50%; z-index: 2; transform: translateX(-50%); white-space: nowrap; border-radius: 999px; background: hsl(var(--card) / .94); padding: 6px 12px; box-shadow: 0 2px 8px #0002; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .mobile-hero-chart { position: relative; height: 180px; min-height: 180px; margin: 0 0 2px; }
+  .mobile-hero-dates { position: relative; display: flex; align-items: center; justify-content: space-between; margin: -12px 4px 10px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+  .mobile-chart-chip { position: absolute; top: 3px; z-index: 2; transform: translateX(-50%); white-space: nowrap; border-radius: 999px; background: hsl(var(--card) / .94); padding: 6px 12px; box-shadow: 0 2px 8px #0002; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .mobile-chart-crosshair { position: absolute; z-index: 1; width: .5px; background: var(--ios-separator); pointer-events: none; }
+  .mobile-chart-point { position: absolute; z-index: 2; width: 10px; height: 10px; transform: translate(-50%, -50%); border: 2px solid hsl(var(--card)); border-radius: 50%; background: var(--ios-accent); box-shadow: 0 0 0 1px var(--ios-accent); pointer-events: none; }
   .mobile-hero-card .mobile-segments { margin-top: 5px; }
   .overview-pnl-chart.overview-pnl-chart { height: 172px; min-height: 172px; flex: none; }
   .mobile-hero-card .mobile-segment { padding: 4px 5px; min-width: 0; font-size: 13px; }
@@ -107,10 +120,13 @@
   .mobile-allocation-value { align-items: flex-end; }
   .mobile-allocation-pagination { display: flex; width: 100%; align-items: center; justify-content: center; gap: 16px; padding: 8px 8px 16px; color: hsl(var(--muted-foreground)); }
   .overview-source-teaser { padding: 0; overflow: hidden; }
-  .overview-loading { align-items: flex-start; padding-top: 24px; }
+  .overview-source-value { display: flex; flex-direction: column; align-items: flex-end; font-size: 15px; }
+  .overview-source-value strong { color: hsl(var(--foreground)); font-weight: 600; }
+  .overview-source-value span { font-size: 13px; }
+  .overview-loading.overview-loading { align-items: flex-start; padding-top: 24px; background: hsl(var(--background)); backdrop-filter: none; -webkit-backdrop-filter: none; }
   .overview-loading > div { width: 100%; height: 320px; border: 0; background: hsl(var(--card)); box-shadow: none; }
-  .overview-loading > .overview-skeleton { max-width: none; height: 370px; border-radius: 16px; padding: 24px 20px; }
-  .overview-loading .animate-pulse { background: hsl(var(--muted)); }
+  .overview-loading > .overview-skeleton { max-width: none; height: 370px; border-radius: 16px; background: hsl(var(--card)); padding: 24px 20px; }
+  .overview-loading .mobile-skeleton { background: hsl(var(--muted)); }
   .overview-sections .mobile-section-header { margin-bottom: 8px; }
   .overview-sections .mobile-list-row { font-size: 15px; }
   .overview-sections .mobile-record-list { border: 0; border-radius: 14px; }

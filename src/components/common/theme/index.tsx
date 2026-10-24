@@ -28,8 +28,8 @@ function applyThemeToDOM(theme: Theme) {
   root.classList.remove("light", "dark");
 
   if (theme === "system") {
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-      .matches
+    const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)")
+      ?.matches
       ? "dark"
       : "light";
     root.classList.add(systemTheme);
@@ -58,7 +58,8 @@ export function ThemeProvider({
   }, [theme]);
   useEffect(() => {
     if (theme !== "system") return;
-    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const query = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!query) return;
     const onChange = () => {
       applyThemeToDOM("system");
       setSystemVersion((version) => version + 1);
@@ -70,7 +71,7 @@ export function ThemeProvider({
   const value = {
     theme,
     resolvedTheme: theme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" as const : "light" as const
+      ? window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" as const : "light" as const
       : theme,
     setTheme: (theme: Theme) => {
       localStorage.setItem(storageKey, theme);

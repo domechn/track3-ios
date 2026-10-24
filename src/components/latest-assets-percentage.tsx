@@ -353,8 +353,8 @@ const App = ({
           const chartIndex = percentageData.findIndex((part) =>
             part.coin === asset.coin && "assetType" in part && part.assetType === asset.assetType);
           return <Link key={getAssetLogoKey(reference)} to={buildAssetDetailsPath(reference)}
-            className="mobile-list-row mobile-allocation-row"
-            aria-label={t("common.openAssetDetails").replace("{asset}", formatAssetLabel(reference))}>
+            className="mobile-list-row mobile-allocation-row">
+            <span className="sr-only">{t("common.openAssetDetails").replace("{asset}", formatAssetLabel(reference))}</span>
             <span className="mobile-allocation-swatch" aria-hidden="true"
               style={{ backgroundColor: palette[chartIndex < 0 ? percentageData.length - 1 : chartIndex].main }} />
             {asset.assetType === "stock"
@@ -363,7 +363,7 @@ const App = ({
             <span className="mobile-allocation-name">
               <strong>{asset.coin}</strong>
               <span>{asset.amount >= 1
-                ? prettyNumberKeepNDigitsAfterDecimalPoint(asset.amount, 4)
+                ? asset.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })
                 : prettyPriceNumberToLocaleString(asset.amount)}</span>
             </span>
             <span className="mobile-allocation-value">
@@ -391,7 +391,6 @@ const App = ({
             <div className="col-span-2 md:col-span-3 h-[330px] mobile-allocation-chart">
               {renderDoughnut()}
               {isMobile && <div className="mobile-allocation-center">
-                <span>{t("overview.allocation")}</span>
                 <strong className="ios-money">{currency.symbol + prettyNumberToLocaleString(
                   currencyWrapper(currency)(latestAssetsPercentageData.reduce((sum, asset) => sum + asset.value, 0)),
                 )}</strong>
